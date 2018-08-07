@@ -1010,6 +1010,17 @@ and test for <code>__STDCPP_MATH_SPEC_FUNCS__ >= 201003L</code>.
       <entry>Library Fundamentals 2 TS</entry>
     </row>
 
+    <row>
+      <entry>
+	<link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0214r9.pdf">
+	  P0214R9
+	</link>
+      </entry>
+      <entry>Data-Parallel Types</entry>
+      <entry>in progress</entry>
+      <entry>Parallelism 2 TS</entry>
+    </row>
+
   </tbody>
 </tgroup>
 </table>
@@ -1155,6 +1166,208 @@ and test for <code>__STDCPP_MATH_SPEC_FUNCS__ >= 201003L</code>.
       If <code>!is_regular_file(p)</code>, an error is reported.
    </para>
 
+   <section xml:id="iso.2017.par2ts" xreflabel="Implementation Specific Behavior of the Parallelism 2 TS"><info><title>Parallelism 2 TS</title></info>
+
+     <para>
+        <emphasis>9.2.1 [parallel.simd.abi]</emphasis>
+        <code>max_fixed_size&lt;T&gt;</code> is 32, except when targetting AVX512BW and <code>sizeof(T)</code> is 1.
+     </para>
+
+     <para>
+        When targeting 32-bit x86,
+        <classname>simd_abi::compatible&lt;T&gt;</classname> is an alias for
+        <classname>simd_abi::scalar</classname>. When targeting 64-bit x86
+        (including x32), <classname>simd_abi::compatible&lt;T&gt;</classname> is
+        an alias for <classname>simd_abi::__sse</classname>, unless
+        <code>T</code> is <code>long double</code>, in which case it is an alias
+        for <classname>simd_abi::scalar</classname>.
+     </para>
+
+     <para>
+        When targeting x86 (both 32-bit and 64-bit),
+        <classname>simd_abi::native&lt;T&gt;</classname> is an alias for one of
+        <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>,
+        <classname>simd_abi::_VecBuiltin&lt;32&gt;</classname>, or
+        <classname>simd_abi::_VecBltnBtmsk&lt;64&gt;</classname>, depending on
+        the machine options the compiler was invoked with.
+     </para>
+
+     <para>
+        For any other targeted machine
+        <classname>simd_abi::compatible&lt;T&gt;</classname> and
+        <classname>simd_abi::native&lt;T&gt;</classname> are aliases for
+        <classname>simd_abi::scalar</classname>. (subject to change)
+     </para>
+
+     <para>
+        The extended ABI tag types defined in the
+        <code>std::experimental::parallelism_v2::simd_abi</code> namespace are:
+        <classname>simd_abi::__sse_x&lt;N&gt;</classname>,
+        <classname>simd_abi::__avx_x&lt;N&gt;</classname>,
+        <classname>simd_abi::__avx512_x&lt;N&gt;</classname>,
+        <classname>simd_abi::__neon_x&lt;N&gt;</classname>,
+        <classname>simd_abi::__sse_n&lt;T, N&gt;</classname>,
+        <classname>simd_abi::__avx_n&lt;T, N&gt;</classname>,
+        <classname>simd_abi::__avx512_n&lt;T, N&gt;</classname>,
+        <classname>simd_abi::__neon_n&lt;T, N&gt;</classname>,
+        <classname>simd_abi::__sse</classname>,
+        <classname>simd_abi::__avx</classname>,
+        <classname>simd_abi::__avx512</classname>,
+        <classname>simd_abi::__neon</classname>,
+        <classname>simd_abi::__neon64</classname>, and
+        <classname>simd_abi::__neon128</classname>.
+     </para>
+
+     <para>
+        <classname>simd_abi::deduce&lt;T, N, Abis...&gt;::type</classname>,
+        with <code>N &gt; 1</code> is an alias for an extended ABI tag, if a
+        supported extended ABI tag exists. Otherwise it is an alias for
+        <classname>simd_abi::fixed_size&lt;N&gt;</classname>. If multiple
+        supported extended ABI tags satisfy the constraint, the widest register
+        type is chosen.
+     </para>
+
+     <para>
+        <emphasis>9.2.2 [parallel.simd.traits]</emphasis>
+        <classname>memory_alignment&lt;T, U&gt;::value</classname> is
+        <code>sizeof(U) * T::size()</code> rounded up to the next power-of-two
+        value.
+     </para>
+
+     <para>
+        <emphasis>9.3.1 [parallel.simd.overview]</emphasis>
+        Given an extended ABI tag <code>Abi</code>,
+        <classname>simd&lt;T, Abi&gt;</classname> is supported according to the following table:
+        <table frame="all" xml:id="table.par2ts_simd_support">
+          <title>Support for Extended ABI Tags</title>
+
+          <tgroup cols="3" align="left" colsep="0" rowsep="1">
+          <colspec colname="c1"/>
+          <colspec colname="c2"/>
+          <colspec colname="c3"/>
+            <thead>
+              <row>
+                <entry>ABI tag</entry>
+                <entry>value type <code>T</code></entry>
+                <entry>required machine option</entry>
+              </row>
+            </thead>
+
+            <tbody>
+              <row>
+                <entry>
+                  <classname>__sse</classname>
+                </entry>
+                <entry morerows="2"><code>float</code></entry>
+                <entry morerows="2">"-msse"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__sse_n&lt;float, N&gt;</classname> for <code>N</code> one of 2, 3, 4, 8, 12, or 16
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__sse_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+              <row>
+                <entry>
+                  <classname>__sse</classname>
+                </entry>
+                <entry morerows="2">any vectorizable type, except <code>long double</code> and <code>float</code></entry>
+                <entry morerows="2">"-msse2"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__sse_n&lt;T, N&gt;</classname> for either <code>N &gt; 1 &amp;&amp; N * sizeof(T) &lt;= 16</code> or <code>N * sizeof(T)</code> equal to 32, 48, or 64
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__sse_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+              <row>
+                <entry>
+                  <classname>__avx</classname>
+                </entry>
+                <entry morerows="2"><code>double</code> and <code>float</code></entry>
+                <entry morerows="2">"-mavx"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx_n&lt;T, N&gt;</classname> for either <code>N * sizeof(T) &gt; 16 &amp;&amp; N * sizeof(T) &lt;= 32</code> or <code>N * sizeof(T)</code> equal to 64, 96, or 128
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+              <row>
+                <entry>
+                  <classname>__avx</classname>
+                </entry>
+                <entry morerows="2">any integral vectorizable type</entry>
+                <entry morerows="2">"-mavx2"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx_n&lt;T, N&gt;</classname> for either <code>N * sizeof(T) &gt; 16 &amp;&amp; N * sizeof(T) &lt;= 32</code> or <code>N * sizeof(T)</code> equal to 64, 96, or 128
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+              <row>
+                <entry>
+                  <classname>__avx512</classname>
+                </entry>
+                <entry morerows="2"><code>float</code>, <code>double</code>, and any integral vectorizable type with <code>sizeof(T) &gt;= 4</code></entry>
+                <entry morerows="2">"-mavx512f"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx512_n&lt;T, N&gt;</classname> for either <code>N * sizeof(T) &gt; 16 &amp;&amp; N * sizeof(T) &lt;= 32</code> or <code>N * sizeof(T)</code> equal to 64, 96, or 128
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx512_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+              <row>
+                <entry>
+                  <classname>__avx512</classname>
+                </entry>
+                <entry morerows="2">any integral vectorizable type with <code>sizeof(T) &lt; 4</code></entry>
+                <entry morerows="2">"-mavx512bw"</entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx512_n&lt;T, N&gt;</classname> for either <code>N * sizeof(T) &gt; 16 &amp;&amp; N * sizeof(T) &lt;= 32</code> or <code>N * sizeof(T)</code> equal to 64, 96, or 128
+                </entry>
+              </row>
+              <row>
+                <entry>
+                  <classname>__avx512_x&lt;N&gt;</classname> for <code>N</code> one of 1, 2, 3, or 4
+                </entry>
+              </row>
+
+            </tbody>
+          </tgroup>
+        </table>
+     </para>
+
+   </section>
 
 </section>
 
