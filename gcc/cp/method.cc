@@ -1823,6 +1823,10 @@ synthesize_method (tree fndecl)
       build_comparison_op (fndecl, true, tf_none);
       need_body = false;
     }
+  else if (sfk == sfk_conditional_operator)
+    {
+      need_body = false;
+    }
 
   /* If we haven't yet generated the body of the function, just
      generate an empty compound statement.  */
@@ -3245,6 +3249,14 @@ defaulted_late_check (tree fn)
       return;
     }
 
+  if (kind == sfk_conditional_operator)
+    {
+      if (TREE_CODE( TREE_VALUE (TYPE_ARG_TYPES (TREE_TYPE (fn)))) != BOOLEAN_TYPE)
+	error("defaulted declaration %q+D requires the type of the first "
+	      "operand to be bool", fn);
+      return;
+    }
+
   bool fn_const_p = (copy_fn_p (fn) == 2);
   tree implicit_fn = implicitly_declare_fn (kind, ctx, fn_const_p,
 					    NULL, NULL);
@@ -3308,13 +3320,14 @@ defaultable_fn_check (tree fn)
 {
   special_function_kind kind = sfk_none;
 
-  if (template_parm_scope_p ())
+  if (DECL_OVERLOADED_OPERATOR_IS (fn, COND_EXPR))
+    kind = sfk_conditional_operator;
+  else if (template_parm_scope_p ())
     {
       error ("a template cannot be defaulted");
       return false;
     }
-
-  if (DECL_CONSTRUCTOR_P (fn))
+  else if (DECL_CONSTRUCTOR_P (fn))
     {
       if (FUNCTION_FIRST_USER_PARMTYPE (fn) == void_list_node)
 	kind = sfk_constructor;
