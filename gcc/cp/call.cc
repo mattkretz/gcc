@@ -5500,6 +5500,28 @@ build_conditional_expr (const op_location_t &loc,
       return build3_loc (loc, VEC_COND_EXPR, arg2_type, arg1, arg2, arg3);
     }
 
+  /* Extension: allow "real" user-defined overloads if the condition argument
+   * (arg1) is not contextually convertible to bool, and at least one argument
+   * is a user-defined type. */
+  if (!can_convert_arg (boolean_type_node, TREE_TYPE (arg1), arg1,
+			LOOKUP_NORMAL, complain)
+      && (OVERLOAD_TYPE_P (TREE_TYPE (arg1))
+	  || OVERLOAD_TYPE_P (TREE_TYPE (arg2))
+	  || OVERLOAD_TYPE_P (TREE_TYPE (arg3))))
+    {
+      /* Add namespace-scope operators to the list of functions to
+	 consider.  */
+      releasing_vec args;
+      args->quick_push (arg1);
+      args->quick_push (arg2);
+      args->quick_push (arg3);
+      tree fnname = ovl_op_identifier (false, COND_EXPR);
+      tree fns = lookup_name_real (fnname, 0, 1, /*block_p=*/true, 0, 0);
+      fns = lookup_arg_dependent (fnname, fns, args);
+
+      return build_new_function_call (fns, &args, complain);
+    }
+
   /* [expr.cond]
 
      The first expression is implicitly converted to bool (clause
@@ -5713,6 +5735,32 @@ build_conditional_expr (const op_location_t &loc,
       releasing_vec args;
       conversion *conv;
       bool any_viable_p;
+      {
+	/* Add namespace-scope operators to the list of functions to
+	   consider.  */
+	args->quick_push (arg1);
+	args->quick_push (arg2);
+	args->quick_push (arg3);
+	tree fnname = ovl_op_identifier (false, COND_EXPR);
+	tree fns = lookup_name_real (fnname, 0, 1, /*block_p=*/true, 0, 0);
+	fns = lookup_arg_dependent (fnname, fns, args);
+	add_candidates (fns, NULL_TREE, args, NULL_TREE, NULL_TREE, false,
+			NULL_TREE, NULL_TREE, LOOKUP_IMPLICIT, &candidates,
+			complain);
+	args->truncate (0);
+
+	if (!same_type_p (arg2_type, arg3_type))
+	  {
+	    args->quick_push (arg1);
+	    args->quick_push (arg3);
+	    args->quick_push (arg2);
+	    add_candidates (fns, NULL_TREE, args, NULL_TREE, NULL_TREE, false,
+			    NULL_TREE, NULL_TREE,
+			    LOOKUP_IMPLICIT | LOOKUP_REVERSED, &candidates,
+			    complain);
+	    args->truncate (0);
+	  }
+      }
 
       /* Rearrange the arguments so that add_builtin_candidate only has
 	 to know about two args.  In build_builtin_candidate, the
@@ -5758,12 +5806,66 @@ build_conditional_expr (const op_location_t &loc,
 	 operands for the remainder of this section.  */
       conv = cand->convs[0];
       arg1 = convert_like (conv, arg1, complain);
-      conv = cand->convs[1];
-      arg2 = convert_like (conv, arg2, complain);
-      arg2_type = TREE_TYPE (arg2);
-      conv = cand->convs[2];
-      arg3 = convert_like (conv, arg3, complain);
-      arg3_type = TREE_TYPE (arg3);
+      tree fn = cand->fn;
+      if (identifier_p (fn))
+	{
+	  conv = cand->convs[1];
+	  arg2 = convert_like (conv, arg2, complain);
+	  arg2_type = TREE_TYPE (arg2);
+	  conv = cand->convs[2];
+	  arg3 = convert_like (conv, arg3, complain);
+	  arg3_type = TREE_TYPE (arg3);
+	}
+      else
+	{
+	  inform (loc, "P0917 extension: using user-defined common type for "
+		       "%<operator?:%>");
+	  tree fn_ret_type = TREE_TYPE (TREE_TYPE (fn));
+	  if (!same_type_p (arg2_type, fn_ret_type))
+	    {
+	      inform (loc, "converting 2nd operand from %qT to %qT",
+		      TREE_TYPE (arg2), fn_ret_type);
+	      arg2_type = fn_ret_type;
+	      conv = implicit_conversion (arg2_type, TREE_TYPE (arg2), arg2,
+					  false, LOOKUP_NORMAL, complain);
+	      if (!conv)
+		{
+		  error_at (
+		    loc, "conversion of second operand from %qT to %qT failed",
+		    TREE_TYPE (arg2), arg2_type);
+		  return error_mark_node;
+		}
+	      arg2 = convert_like (conv, arg2, complain);
+	    }
+	  if (!same_type_p (arg3_type, fn_ret_type))
+	    {
+	      inform (loc, "converting 3nd operand from %qT to %qT",
+		      TREE_TYPE (arg3), fn_ret_type);
+	      arg3_type = fn_ret_type;
+	      conv = implicit_conversion (arg3_type, TREE_TYPE (arg3), arg3,
+					  false, LOOKUP_NORMAL, complain);
+	      if (!conv)
+		{
+		  error_at (
+		    loc, "conversion of third operand from %qT to %qT failed",
+		    TREE_TYPE (arg3), arg3_type);
+		  return error_mark_node;
+		}
+	      arg3 = convert_like (conv, arg3, complain);
+	    }
+
+	  /* If the second and third operands are glvalues of the same value
+	     category (they have the same type by construction), the result is
+	     of that type and value category.  */
+	  if (glvalue_p (arg2) && glvalue_p (arg3))
+	    {
+	      is_glvalue = true;
+	      result_type = arg2_type;
+	      arg2 = mark_lvalue_use (arg2);
+	      arg3 = mark_lvalue_use (arg3);
+	      goto valid_operands;
+	    }
+	}
     }
 
   /* [expr.cond]

@@ -15105,8 +15105,10 @@ grok_op_properties (tree decl, bool complain)
   if (operator_code == COND_EXPR)
     {
       /* 13.4.0.3 */
+      /* Enable operator?: overloading
       error_at (loc, "ISO C++ prohibits overloading %<operator ?:%>");
-      return false;
+      */
+      return true;
     }
 
   /* Count the number of arguments and check for ellipsis.  */

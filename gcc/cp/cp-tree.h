@@ -5464,7 +5464,8 @@ enum special_function_kind {
   sfk_conversion,	   /* A conversion operator.  */
   sfk_deduction_guide,	   /* A class template deduction guide.  */
   sfk_comparison,	   /* A comparison operator (e.g. ==, <, <=>).  */
-  sfk_virtual_destructor   /* Used by member synthesis fns.  */
+  sfk_virtual_destructor,  /* Used by member synthesis fns.  */
+  sfk_conditional_operator /* Used by operator?:(bool, T, U)  */
 };
 
 /* The various kinds of linkage.  From [basic.link],

@@ -5601,6 +5601,8 @@ special_function_p (const_tree decl)
   if (DECL_OVERLOADED_OPERATOR_CODE_RAW (decl) >= OVL_OP_EQ_EXPR
       && DECL_OVERLOADED_OPERATOR_CODE_RAW (decl) <= OVL_OP_SPACESHIP_EXPR)
     return sfk_comparison;
+  if (DECL_OVERLOADED_OPERATOR_IS (decl, COND_EXPR))
+    return sfk_conditional_operator;
 
   return sfk_none;
 }
