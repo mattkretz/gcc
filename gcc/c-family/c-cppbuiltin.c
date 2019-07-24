@@ -884,6 +884,8 @@ c_cpp_builtins (cpp_reader *pfile)
 
   if (c_dialect_cxx ())
     {
+      cpp_define (pfile, "__GXX_CONDITIONAL_IS_OVERLOADABLE__=1");
+
       if (flag_weak && SUPPORTS_ONE_ONLY)
 	cpp_define (pfile, "__GXX_WEAK__=1");
       else

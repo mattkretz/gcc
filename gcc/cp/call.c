@@ -5093,6 +5093,79 @@ build_conditional_expr_1 (const op_location_t &loc,
   orig_arg2 = arg2;
   orig_arg3 = arg3;
 
+  /* Extension: allow user-defined overloads */
+
+  if (OVERLOAD_TYPE_P(TREE_TYPE(arg1)) || OVERLOAD_TYPE_P(TREE_TYPE(arg2)) ||
+      OVERLOAD_TYPE_P(TREE_TYPE(arg3)))
+    {
+      /* Add namespace-scope operators to the list of functions to
+	 consider.  */
+      vec<tree, va_gc>* arglist;
+      vec_alloc(arglist, 3);
+      arglist->quick_push(arg1);
+      arglist->quick_push(arg2);
+      arglist->quick_push(arg3);
+      tree fnname = ovl_op_identifier(false, COND_EXPR);
+      tree fns = lookup_name_real(fnname, 0, 1, /*block_p=*/true, 0, 0);
+      fns      = lookup_arg_dependent(fnname, fns, arglist);
+      add_candidates(fns, NULL_TREE, arglist, NULL_TREE, NULL_TREE, false,
+		     NULL_TREE, NULL_TREE, LOOKUP_IMPLICIT, &candidates, complain);
+
+      if (candidates)
+	{
+	  tree args[3];
+	  /* Rearrange the arguments so that add_builtin_candidate only has
+	     to know about two args.  In build_builtin_candidate, the
+	     arguments are unscrambled.  */
+	  args[0] = arg2;
+	  args[1] = arg3;
+	  args[2] = arg1;
+	  add_builtin_candidates (&candidates,
+				  COND_EXPR,
+				  NOP_EXPR,
+				  ovl_op_identifier (false, COND_EXPR),
+				  args,
+				  LOOKUP_NORMAL, complain);
+	  bool any_viable_p;
+	  candidates = splice_viable(candidates, false, &any_viable_p);
+	  if (any_viable_p)
+	    {
+	      cand = tourney(candidates, complain);
+	      if (cand && TREE_CODE (cand->fn) == FUNCTION_DECL)
+		{
+		  // TODO
+//		  if (overload)
+//		    *overload = cand->fn;
+
+		  if (resolve_args(arglist, complain) == NULL)
+		    result = error_mark_node;
+		  else
+		    result = build_over_call(cand, LOOKUP_NORMAL, complain);
+
+		  if (trivial_fn_p(cand->fn))
+		    /* There won't be a CALL_EXPR.  */;
+		  else if (result && result != error_mark_node)
+		    {
+		      tree call = extract_call_expr(result);
+		      CALL_EXPR_OPERATOR_SYNTAX(call) = true;
+
+		      if (processing_template_decl &&
+			  DECL_HIDDEN_FRIEND_P(cand->fn))
+			/* This prevents build_new_function_call from discarding
+			   this function during instantiation of the enclosing
+			   template.  */
+			KOENIG_LOOKUP_P(call) = 1;
+
+		      /* Specify evaluation order as per P0145R2.  */
+		      CALL_EXPR_ORDERED_ARGS(call) = false;
+		    }
+		  if (result)
+		    return result;
+		}
+	    }
+	}
+    }
+
   if (gnu_vector_type_p (TREE_TYPE (arg1))
       && VECTOR_INTEGER_TYPE_P (TREE_TYPE (arg1)))
     {
