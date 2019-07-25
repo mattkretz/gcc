@@ -6313,13 +6313,12 @@ add_operator_candidates (z_candidate **candidates,
   bool memonly = false;
   switch (code)
     {
-      /* =, ->, [], () must be non-static member functions.  */
+      /* =, ->, () must be non-static member functions.  */
     case MODIFY_EXPR:
       if (code2 != NOP_EXPR)
 	break;
       /* FALLTHRU */
     case COMPONENT_REF:
-    case ARRAY_REF:
       memonly = true;
       break;
 

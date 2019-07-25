@@ -15061,7 +15061,6 @@ grok_op_properties (tree decl, bool complain)
       if (operator_code == TYPE_EXPR
 	  || operator_code == CALL_EXPR
 	  || operator_code == COMPONENT_REF
-	  || operator_code == ARRAY_REF
 	  || operator_code == NOP_EXPR)
 	{
 	  error_at (loc, "%qD must be a non-static member function", decl);
