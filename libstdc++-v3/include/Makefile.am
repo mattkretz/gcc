@@ -729,6 +729,7 @@ experimental_headers = \
 	${experimental_srcdir}/ratio \
 	${experimental_srcdir}/regex \
 	${experimental_srcdir}/set \
+	${experimental_srcdir}/simd \
 	${experimental_srcdir}/socket \
 	${experimental_srcdir}/source_location \
 	${experimental_srcdir}/string \
@@ -749,6 +750,17 @@ experimental_bits_headers = \
 	${experimental_bits_srcdir}/lfts_config.h \
 	${experimental_bits_srcdir}/net.h \
 	${experimental_bits_srcdir}/shared_ptr.h \
+	${experimental_bits_srcdir}/simd.h \
+	${experimental_bits_srcdir}/simd_builtin.h \
+	${experimental_bits_srcdir}/simd_combine.h \
+	${experimental_bits_srcdir}/simd_converter.h \
+	${experimental_bits_srcdir}/simd_detail.h \
+	${experimental_bits_srcdir}/simd_fixed_size.h \
+	${experimental_bits_srcdir}/simd_math.h \
+	${experimental_bits_srcdir}/simd_neon.h \
+	${experimental_bits_srcdir}/simd_scalar.h \
+	${experimental_bits_srcdir}/simd_x86.h \
+	${experimental_bits_srcdir}/simd_x86_conversions.h \
 	${experimental_bits_srcdir}/string_view.tcc \
 	${experimental_bits_filesystem_headers}
 
