@@ -46,6 +46,50 @@ _GLIBCXX_SIMD_INTRINSIC constexpr decltype(auto)
 
 // }}}
 
+struct _SimdImplScalar;
+struct _MaskImplScalar;
+// simd_abi::_Scalar {{{
+struct simd_abi::_Scalar {
+    template <typename _Tp> static constexpr size_t size = 1;
+    template <typename _Tp> static constexpr size_t _S_full_size = 1;
+    static constexpr bool                        _S_is_partial = false;
+    struct _IsValidAbiTag : true_type {};
+    template <typename _Tp> struct _IsValidSizeFor : true_type {};
+    template <typename _Tp> struct _IsValid : __is_vectorizable<_Tp> {};
+    template <typename _Tp> static constexpr bool _S_is_valid_v = _IsValid<_Tp>::value;
+
+    _GLIBCXX_SIMD_INTRINSIC static constexpr bool __masked(bool __x)
+    {
+      return __x;
+    }
+
+    using _SimdImpl = _SimdImplScalar;
+    using _MaskImpl = _MaskImplScalar;
+
+    template <typename _Tp, bool = _S_is_valid_v<_Tp>> struct __traits : _InvalidTraits {
+    };
+
+    template <typename _Tp> struct __traits<_Tp, true> {
+        using _IsValid = true_type;
+        using _SimdImpl = _SimdImplScalar;
+        using _MaskImpl = _MaskImplScalar;
+        using _SimdMember = _Tp;
+        using _MaskMember = bool;
+        static constexpr size_t _S_simd_align = alignof(_SimdMember);
+        static constexpr size_t _S_mask_align = alignof(_MaskMember);
+
+        // nothing the user can spell converts to/from simd/simd_mask
+        struct _SimdCastType {
+            _SimdCastType() = delete;
+        };
+        struct _MaskCastType {
+            _MaskCastType() = delete;
+        };
+        struct _SimdBase {};
+        struct _MaskBase {};
+    };
+};
+// }}}
 // _SimdImplScalar {{{
 struct _SimdImplScalar {
   // member types {{{2
@@ -60,25 +104,25 @@ struct _SimdImplScalar {
   }
 
   // __generator {{{2
-  template <typename _F, typename _Tp>
+  template <typename _Fp, typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _Tp
-    __generator(_F&& __gen, _TypeTag<_Tp>)
+    __generator(_Fp&& __gen, _TypeTag<_Tp>)
   {
     return __gen(_SizeConstant<0>());
   }
 
   // __load {{{2
-  template <typename _Tp, typename _U, typename _F>
+  template <typename _Tp, typename _Up, typename _Fp>
   _GLIBCXX_SIMD_INTRINSIC static _Tp
-    __load(const _U* __mem, _F, _TypeTag<_Tp>) noexcept
+    __load(const _Up* __mem, _Fp, _TypeTag<_Tp>) noexcept
   {
     return static_cast<_Tp>(__mem[0]);
   }
 
   // __masked_load {{{2
-  template <typename _Tp, typename _U, typename _F>
+  template <typename _Tp, typename _Up, typename _Fp>
   static inline _Tp
-    __masked_load(_Tp __merge, bool __k, const _U* __mem, _F) noexcept
+    __masked_load(_Tp __merge, bool __k, const _Up* __mem, _Fp) noexcept
   {
     if (__k)
       __merge = static_cast<_Tp>(__mem[0]);
@@ -86,16 +130,16 @@ struct _SimdImplScalar {
   }
 
   // __store {{{2
-  template <typename _Tp, typename _U, typename _F>
-  static inline void __store(_Tp __v, _U* __mem, _F, _TypeTag<_Tp>) noexcept
+  template <typename _Tp, typename _Up, typename _Fp>
+  static inline void __store(_Tp __v, _Up* __mem, _Fp, _TypeTag<_Tp>) noexcept
   {
     __mem[0] = static_cast<_Tp>(__v);
   }
 
   // __masked_store {{{2
-  template <typename _Tp, typename _U, typename _F>
+  template <typename _Tp, typename _Up, typename _Fp>
   static inline void
-    __masked_store(const _Tp __v, _U* __mem, _F, const bool __k) noexcept
+    __masked_store(const _Tp __v, _Up* __mem, _Fp, const bool __k) noexcept
   {
     if (__k)
       __mem[0] = __v;
@@ -328,11 +372,11 @@ struct _SimdImplScalar {
     template <typename _Tp> static bool __less_equal(_Tp __x, _Tp __y) { return __x <= __y; }
 
     // smart_reference access {{{2
-    template <typename _Tp, typename _U>
-    static void __set(_Tp& __v, [[maybe_unused]] int __i, _U&& __x) noexcept
+    template <typename _Tp, typename _Up>
+    static void __set(_Tp& __v, [[maybe_unused]] int __i, _Up&& __x) noexcept
     {
       _GLIBCXX_DEBUG_ASSERT(__i == 0);
-      __v = std::forward<_U>(__x);
+      __v = std::forward<_Up>(__x);
     }
 
     // __masked_assign {{{2
@@ -370,6 +414,22 @@ struct _MaskImplScalar {
   using _TypeTag = _Tp*;
 
   // }}}
+  // __broadcast {{{
+  template <typename>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr bool __broadcast(bool __x)
+  {
+    return __x;
+  }
+
+  // }}}
+  // __load {{{
+  template <typename, typename _Fp>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr bool __load(const bool* __mem)
+  {
+    return __mem[0];
+  }
+
+  // }}}
   // __to_bits {{{
   _GLIBCXX_SIMD_INTRINSIC static constexpr _UChar __to_bits(bool __x)
   {
@@ -394,9 +454,9 @@ struct _MaskImplScalar {
     }
 
     // __masked_load {{{2
-    template <typename _F>
+    template <typename _Fp>
     _GLIBCXX_SIMD_INTRINSIC static bool __masked_load(bool __merge, bool __mask, const bool *__mem,
-                                         _F) noexcept
+                                         _Fp) noexcept
     {
         if (__mask) {
             __merge = __mem[0];
@@ -405,14 +465,14 @@ struct _MaskImplScalar {
     }
 
     // __store {{{2
-    template <typename _F> _GLIBCXX_SIMD_INTRINSIC static void __store(bool __v, bool *__mem, _F) noexcept
+    template <typename _Fp> _GLIBCXX_SIMD_INTRINSIC static void __store(bool __v, bool *__mem, _Fp) noexcept
     {
         __mem[0] = __v;
     }
 
     // __masked_store {{{2
-    template <typename _F>
-    _GLIBCXX_SIMD_INTRINSIC static void __masked_store(const bool __v, bool *__mem, _F,
+    template <typename _Fp>
+    _GLIBCXX_SIMD_INTRINSIC static void __masked_store(const bool __v, bool *__mem, _Fp,
                                           const bool __k) noexcept
     {
         if (__k) {
@@ -444,6 +504,62 @@ struct _MaskImplScalar {
     }
 
     // }}}2
+    // __all_of {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static bool __all_of(simd_mask<_Tp, _Abi> __k)
+    {
+      return __k._M_data;
+    }
+
+    // }}}
+    // __any_of {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static bool __any_of(simd_mask<_Tp, _Abi> __k)
+    {
+      return __k._M_data;
+    }
+
+    // }}}
+    // __none_of {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static bool __none_of(simd_mask<_Tp, _Abi> __k)
+    {
+      return !__k._M_data;
+    }
+
+    // }}}
+    // __some_of {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static bool __some_of(simd_mask<_Tp, _Abi>)
+    {
+      return false;
+    }
+
+    // }}}
+    // __popcount {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static int __popcount(simd_mask<_Tp, _Abi> __k)
+    {
+      return __k._M_data;
+    }
+
+    // }}}
+    // __find_first_set {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static int __find_first_set(simd_mask<_Tp, _Abi>)
+    {
+      return 0;
+    }
+
+    // }}}
+    // __find_last_set {{{
+    template <typename _Tp, typename _Abi>
+    _GLIBCXX_SIMD_INTRINSIC static int __find_last_set(simd_mask<_Tp, _Abi>)
+    {
+      return 0;
+    }
+
+    // }}}
 };
 
 // }}}
