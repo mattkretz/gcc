@@ -1,0 +1,44 @@
+// test only floattypes
+#include "bits/verify.h"
+#include "bits/metahelpers.h"
+#include "bits/test_values.h"
+
+template <typename V>
+void
+test()
+{
+  vir::test::setFuzzyness<float>(0);
+  vir::test::setFuzzyness<double>(0);
+
+  using limits = std::numeric_limits<typename V::value_type>;
+  test_values_2arg<V>(
+    {limits::quiet_NaN(), limits::infinity(), -limits::infinity(), +0., -0.,
+     limits::denorm_min(), limits::min(), limits::max(), limits::min() / 3},
+    {10000, -limits::max() / 2, limits::max() / 2}, [](const V a, const V b) {
+      using IV = std::experimental::fixed_size_simd<int, V::size()>;
+      IV quo = {}; // the type is wrong, this should fail
+      const V totest = remquo(a, b, &quo);
+      auto&& expected
+	= [&](const auto& v, const auto& w) -> std::pair<const V, const IV> {
+	std::pair<V, IV> tmp = {};
+	using std::remquo;
+	for (std::size_t i = 0; i < V::size(); ++i)
+	  {
+	    int tmp2;
+	    tmp.first[i] = remquo(v[i], w[i], &tmp2);
+	    tmp.second[i] = tmp2;
+	  }
+	return tmp;
+      };
+      const auto expect1 = expected(a, b);
+      COMPARE(isnan(totest), isnan(expect1.first))
+	<< "remquo(" << a << ", " << b << ", quo) = " << totest
+	<< " != " << expect1.first;
+      const V clean_a = iif(isnan(totest), 0, a);
+      const V clean_b = iif(isnan(totest), 1, b);
+      const auto expect2 = expected(clean_a, clean_b);
+      COMPARE(remquo(clean_a, clean_b, &quo), expect2.first)
+	<< "\nclean_a/b = " << clean_a << ", " << clean_b;
+      COMPARE(quo, expect2.second);
+    });
+}

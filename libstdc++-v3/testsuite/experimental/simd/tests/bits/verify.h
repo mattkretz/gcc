@@ -1,0 +1,272 @@
+#ifndef TESTS_BITS_VERIFY_H_
+#define TESTS_BITS_VERIFY_H_
+
+#include <experimental/simd>
+#include <sstream>
+#include <iomanip>
+#include "ulp.h"
+
+#ifdef _GLIBCXX_SIMD_HAVE_NEON
+// work around PR89357:
+#define alignas(...) __attribute__((aligned(__VA_ARGS__)))
+#endif
+
+using schar = signed char;
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
+using llong = long long;
+using ullong = unsigned long long;
+using ldouble = long double;
+using wchar = wchar_t;
+using char16 = char16_t;
+using char32 = char32_t;
+
+template <class T>
+T
+make_value_unknown(const T& x)
+{
+  if constexpr (std::is_constructible_v<T, const volatile T&>)
+    {
+      const volatile T& y = x;
+      return y;
+    }
+  else
+    {
+      T y = x;
+      asm("" : "+m"(y));
+      return y;
+    }
+}
+
+class verify
+{
+  const bool m_failed = false;
+
+  template <typename T,
+	    typename = decltype(std::declval<std::stringstream&>()
+				<< std::declval<const T&>())>
+  void print(const T& x, int) const
+  {
+    std::stringstream ss;
+    ss << x;
+    __builtin_fprintf(stderr, "%s", ss.str().c_str());
+  }
+
+  template <typename T>
+  void print(const T& x, ...) const
+  {
+    if constexpr (std::experimental::is_simd_v<T>)
+      {
+	std::stringstream ss;
+	if constexpr (std::is_floating_point_v<typename T::value_type>)
+	  {
+	    ss << "\n(" << x[0] << " == " << std::hexfloat << x[0]
+	       << std::defaultfloat << ')';
+	    for (unsigned i = 1; i < x.size(); ++i)
+	      {
+		ss << (i % 4 == 0 ? ",\n(" : ", (") << x[i]
+		   << " == " << std::hexfloat << x[i] << std::defaultfloat
+		   << ')';
+	      }
+	  }
+	else
+	  {
+	    ss << +x[0];
+	    for (unsigned i = 1; i < x.size(); ++i)
+	      {
+		ss << ", " << +x[i];
+	      }
+	  }
+	__builtin_fprintf(stderr, "%s", ss.str().c_str());
+      }
+    else if constexpr (std::experimental::is_simd_mask_v<T>)
+      {
+	__builtin_fprintf(stderr, (x[0] ? "[1" : "[0"));
+	for (unsigned i = 1; i < x.size(); ++i)
+	  {
+	    __builtin_fprintf(stderr, (x[i] ? "1" : "0"));
+	  }
+	__builtin_fprintf(stderr, "]");
+      }
+    else
+      {
+	print_hex(&x, sizeof(T));
+      }
+  }
+
+  void print_hex(const void* x, std::size_t n) const
+  {
+    __builtin_fprintf(stderr, "0x");
+    const auto* bytes = static_cast<const unsigned char*>(x);
+    for (std::size_t i = 0; i < n; ++i)
+      {
+	__builtin_fprintf(stderr, (i && i % 4 == 0) ? "'%02x" : "%02x",
+			  bytes[i]);
+      }
+  }
+
+public:
+  template <typename... Ts>
+  verify(bool        ok,
+	 const char* file,
+	 const int   line,
+	 const char* func,
+	 const char* cond,
+	 const Ts&... extra_info)
+  : m_failed(!ok)
+  {
+    if (m_failed)
+      {
+	__builtin_fprintf(stderr, "%s:%d: (%s): Assertion '%s' failed.\n", file,
+			  line, func, cond);
+	auto &&unused [[maybe_unused]] = {0, (print(extra_info, int()), 0)...};
+      }
+  }
+
+  ~verify()
+  {
+    if (m_failed)
+      {
+	__builtin_fprintf(stderr, "\n");
+	__builtin_abort();
+      }
+  }
+
+  template <typename T>
+  const verify& operator<<(const T& x) const
+  {
+    if (m_failed)
+      {
+	print(x, int());
+      }
+    return *this;
+  }
+};
+
+#define COMPARE(_a, _b)                                                        \
+  [&](auto&& _aa, auto&& _bb) {                                                \
+    return verify(std::experimental::all_of(_aa == _bb), __FILE__, __LINE__,   \
+		  __PRETTY_FUNCTION__, "all_of(" #_a " == " #_b ")",           \
+		  #_a " = ", _aa, "\n" #_b " = ", _bb);                        \
+  }((_a), (_b))
+
+#define VERIFY(_test)                                                          \
+  verify(_test, __FILE__, __LINE__, __PRETTY_FUNCTION__, #_test)
+
+// ulp_distance_signed can raise FP exceptions and thus must be conditionally
+// executed
+#define ULP_COMPARE(_a, _b, _allowed_distance)                                 \
+  [&](auto&& _aa, auto&& _bb) {                                                \
+    const bool success = std::experimental::all_of(                            \
+      vir::test::ulp_distance(_aa, _bb) <= (_allowed_distance));               \
+    return verify(success, __FILE__, __LINE__, __PRETTY_FUNCTION__,            \
+		  "all_of(" #_a " ~~ " #_b ")", #_a " = ", _aa,                \
+		  "\n" #_b " = ", _bb, "\ndistance = ",                        \
+		  success ? 0 : vir::test::ulp_distance_signed(_aa, _bb));     \
+  }((_a), (_b))
+
+namespace vir
+{
+namespace test
+{
+  template <typename T>
+  inline T _S_fuzzyness = 0;
+  template <typename T>
+  void setFuzzyness(T x)
+  {
+    _S_fuzzyness<T> = x;
+  }
+} // namespace test
+} // namespace vir
+
+#define FUZZY_COMPARE(_a, _b)                                                  \
+  ULP_COMPARE(                                                                 \
+    _a, _b,                                                                    \
+    vir::test::_S_fuzzyness<vir::test::value_type_t<decltype((_a) + (_b))>>)
+
+template <typename V>
+void test();
+template <typename V>
+void invoke_test(...)
+{
+}
+template <typename V, typename = decltype(V())>
+void invoke_test(int)
+{
+  test<V>();
+  __builtin_fprintf(stderr, "PASS: %s\n", __PRETTY_FUNCTION__);
+}
+
+template <class T> void iterate_abis()/*{{{*/
+{
+  using namespace std::experimental::parallelism_v2;
+#ifndef TESTFIXEDSIZE
+  invoke_test<simd<T, simd_abi::__sse>>(int());
+  invoke_test<simd<T, simd_abi::__avx>>(int());
+  invoke_test<simd<T, simd_abi::__avx512>>(int());
+  invoke_test<simd<T, simd_abi::__neon>>(int());
+  invoke_test<simd<T, simd_abi::scalar>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
+#else
+  invoke_test<simd<T, simd_abi::fixed_size<1>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<2>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<5>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<6>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<7>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<8>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<9>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<10>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<11>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<13>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<14>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<15>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<16>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<17>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<18>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<19>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<20>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<21>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<22>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<23>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<25>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<26>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<27>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<29>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<30>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<31>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<32>>>(int());
+#endif
+}/*}}}*/
+
+int main()/*{{{*/
+{
+  iterate_abis<TESTTYPE>();
+  /*
+  iterate_abis<long double>();
+  iterate_abis<double>();
+  iterate_abis<float>();
+  iterate_abis<long long>();
+  iterate_abis<unsigned long long>();
+  iterate_abis<unsigned long>();
+  iterate_abis<long>();
+  iterate_abis<int>();
+  iterate_abis<unsigned int>();
+  iterate_abis<short>();
+  iterate_abis<unsigned short>();
+  iterate_abis<char>();
+  iterate_abis<signed char>();
+  iterate_abis<unsigned char>();
+  iterate_abis<char32_t>();
+  iterate_abis<char16_t>();
+  iterate_abis<wchar_t>();
+  */
+  return 0;
+}/*}}}*/
+
+#endif  // TESTS_BITS_VERIFY_H_
