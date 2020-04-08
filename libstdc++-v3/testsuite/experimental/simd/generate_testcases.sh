@@ -24,19 +24,10 @@ alltypes=(
 )
 
 archlist=(
-sse sse2 sse3 ssse3 sse4
-avx avx2
-arch=knl
-arch=skylake-avx512
-arch=pentium3
+arch=native
 arch=armv7-a+simd
-arch=armv7ve+simd
-arch=armv8-a+simd
 arch=armv8.1-a+simd
-arch=armv8.2-a+simd
-arch=armv8.3-a+simd
-arch=armv8.4-a+simd
-arch=armv8-r+simd
+cpu=power7
 )
 
 cd ${0%/*}
@@ -51,47 +42,35 @@ for testcase in tests/*.h; do
   for type in "${typelist[@]}"; do
     for m in "${archlist[@]}"; do
       target=$m
-      runtime=${m}_runtime
       case "$m" in
-        *knl)
-          target=avx512f
-          runtime=avx512f_runtime
-          ;;
-        *skylake-avx512)
-          target='{ avx512bw && { avx512vl && avx512dq } }'
-          runtime='{ avx512bw_runtime && { avx512vl_runtime && avx512dq_runtime } }'
-          ;;
-        *pentium3)
-          target="{ia32 && sse}"
-          runtime=sse_runtime
+        arch=native)
+          target="{ x86_64-*-* i?86-*-* }"
+	  runtime=sse_runtime
           ;;
         *armv8*)
-          target=aarch64_little_endian
+          target="aarch64-*-*"
           runtime=arm_neon_hw
           ;;
         *+neon*|*+simd*)
-          target=arm_neon
+          target="armv7*-*-*"
           runtime=arm_neon_hw
           ;;
+        cpu=power7)
+          target="powerpc64*-*-*"
+          runtime=vsx_hw
       esac
-      cat > "${testcase}-${type// /_}-${m// /_}.cc" <<EOF
+      name=${m//arch=/}
+      cat > "${testcase}-${type// /_}-${name}.cc" <<EOF
 // { dg-options "-O2 -std=gnu++17 \"-DTESTTYPE=${type}\" -m${m}" }
 // { dg-do run { target { c++17 && ${target} } } }
-// { dg-xfail-run-if "expected SIGILL" { ! ${runtime} } }
+#include "tests/${testcase}.h"
+EOF
+    cat > "${testcase}-${type// /_}-${name}-fixed_size.cc" <<EOF
+// { dg-options "-O2 -std=gnu++17 \"-DTESTTYPE=${type}\" -DTESTFIXEDSIZE -m${m}" }
+// { dg-do run { target { c++17 && ${target} } } }
 // { dg-require-effective-target run_expensive_tests }
 #include "tests/${testcase}.h"
 EOF
     done
-    cat > "${testcase}-${type// /_}-native.cc" <<EOF
-// { dg-options "-O2 -std=gnu++17 \"-DTESTTYPE=${type}\" -march=native" }
-// { dg-do run { target { c++17 && sse } } }
-#include "tests/${testcase}.h"
-EOF
-    cat > "${testcase}-${type// /_}-native-fixed_size.cc" <<EOF
-// { dg-options "-O2 -std=gnu++17 \"-DTESTTYPE=${type}\" -DTESTFIXEDSIZE -march=native" }
-// { dg-do run { target { c++17 && sse } } }
-// { dg-require-effective-target run_expensive_tests }
-#include "tests/${testcase}.h"
-EOF
   done
 done
