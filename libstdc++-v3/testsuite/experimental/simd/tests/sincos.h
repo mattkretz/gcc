@@ -1,4 +1,6 @@
 // test only floattypes
+// { dg-additional-files "reference-sincos-sp.dat" }
+// { dg-additional-files "reference-sincos-ep.dat" }
 #include "bits/verify.h"
 #include "bits/metahelpers.h"
 #include "bits/mathreference.h"

@@ -203,10 +203,11 @@ template <class T> void iterate_abis()/*{{{*/
 {
   using namespace std::experimental::parallelism_v2;
 #ifndef TESTFIXEDSIZE
-  invoke_test<simd<T, simd_abi::__sse>>(int());
-  invoke_test<simd<T, simd_abi::__avx>>(int());
-  invoke_test<simd<T, simd_abi::__avx512>>(int());
-  invoke_test<simd<T, simd_abi::__neon>>(int());
+  invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
+  invoke_test<simd<T, simd_abi::_VecBuiltin<16>>>(int());
+  invoke_test<simd<T, simd_abi::_VecBuiltin<32>>>(int());
+  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<56>>>(int());
+  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<64>>>(int());
   invoke_test<simd<T, simd_abi::scalar>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
@@ -242,31 +243,6 @@ template <class T> void iterate_abis()/*{{{*/
   invoke_test<simd<T, simd_abi::fixed_size<31>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<32>>>(int());
 #endif
-}/*}}}*/
-
-int main()/*{{{*/
-{
-  iterate_abis<TESTTYPE>();
-  /*
-  iterate_abis<long double>();
-  iterate_abis<double>();
-  iterate_abis<float>();
-  iterate_abis<long long>();
-  iterate_abis<unsigned long long>();
-  iterate_abis<unsigned long>();
-  iterate_abis<long>();
-  iterate_abis<int>();
-  iterate_abis<unsigned int>();
-  iterate_abis<short>();
-  iterate_abis<unsigned short>();
-  iterate_abis<char>();
-  iterate_abis<signed char>();
-  iterate_abis<unsigned char>();
-  iterate_abis<char32_t>();
-  iterate_abis<char16_t>();
-  iterate_abis<wchar_t>();
-  */
-  return 0;
 }/*}}}*/
 
 #endif  // TESTS_BITS_VERIFY_H_
