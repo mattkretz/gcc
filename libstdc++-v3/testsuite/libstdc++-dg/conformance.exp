@@ -96,7 +96,7 @@ if {[info exists tests_file] && [file exists $tests_file]} {
 		 && (${v3-threads} || [string first thread $t] == -1)  
 		 && ([string first "_filebuf" $t] == -1
 		     || [check_v3_target_fileio])
-		 && [string first "simd/" $t] == -1 } {
+		 && [string first "/experimental/simd/" $t] == -1 } {
 		lappend tests $t
 	    }
 	}
