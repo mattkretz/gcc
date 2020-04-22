@@ -299,6 +299,28 @@ constexpr inline bool __have_avx512bw_vl = __have_avx512bw && __have_avx512vl;
 constexpr inline bool __have_neon = _GLIBCXX_SIMD_HAVE_NEON;
 constexpr inline bool __have_neon_a32 = _GLIBCXX_SIMD_HAVE_NEON_A32;
 constexpr inline bool __have_neon_a64 = _GLIBCXX_SIMD_HAVE_NEON_A64;
+
+#ifdef __POWER9_VECTOR__
+constexpr inline bool __have_power9vec = true;
+#else
+constexpr inline bool __have_power9vec = false;
+#endif
+#if defined __POWER8_VECTOR__
+constexpr inline bool __have_power8vec = true;
+#else
+constexpr inline bool __have_power8vec = __have_power9vec;
+#endif
+#if defined __VSX__
+constexpr inline bool __have_power_vsx = true;
+#else
+constexpr inline bool __have_power_vsx = __have_power8vec;
+#endif
+#if defined __ALTIVEC__
+constexpr inline bool __have_power_vmx = true;
+#else
+constexpr inline bool __have_power_vmx = __have_power_vsx;
+#endif
+
 // }}}
 // __is_scalar_abi {{{
 template <typename _Abi>
@@ -2127,6 +2149,31 @@ struct __intrinsic_type<_Tp, _Bytes,
   using type = typename __intrinsic_type<_Up, _VBytes>::type;
 };
 #endif // _GLIBCXX_SIMD_HAVE_NEON
+
+// }}}
+// __intrinsic_type (PPC){{{
+#ifdef __ALTIVEC__
+template <typename _Tp, size_t _Bytes>
+struct __intrinsic_type<
+  _Tp, _Bytes, std::enable_if_t<__is_vectorizable_v<_Tp> && _Bytes <= 16>>
+{
+  static_assert(!std::is_same_v<_Tp, long double>,
+		"no __intrinsic_type support for long double on PPC");
+#ifndef __VSX__
+  static_assert(!std::is_same_v<_Tp, double>,
+		"no __intrinsic_type support for double on PPC w/o VSX");
+#endif
+#ifndef __POWER8_VECTOR__
+  static_assert(!(std::is_integral_v<_Tp> && sizeof(_Tp) > 4),
+		"no __intrinsic_type support for integers larger than 4 Bytes "
+		"on PPC w/o POWER8 vectors");
+#endif
+  using type = __vector conditional_t<
+    is_floating_point_v<_Tp>, _Tp,
+    conditional_t<is_unsigned_v<_Tp>, make_unsigned_t<__int_for_sizeof_t<_Tp>>,
+		  __int_for_sizeof_t<_Tp>>>;
+};
+#endif // __ALTIVEC__
 
 // }}}
 // _SimdWrapper<bool>{{{1

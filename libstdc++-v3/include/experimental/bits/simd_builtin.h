@@ -808,7 +808,11 @@ struct __can_vectorize
   : conjunction<
       __is_vectorizable<_Tp>,
       __bool_constant<(
-	__have_sse2 || (__have_sse && is_same_v<_Tp, float>) || __have_neon_a64
+	__have_sse2 || (__have_sse && is_same_v<_Tp, float>)
+	|| __have_power8vec
+	|| (__have_power_vmx && (sizeof(_Tp) < 8))
+	|| (__have_power_vsx && std::is_floating_point_v<_Tp>)
+	|| __have_neon_a64
 	|| (__have_neon_a32 && !is_same_v<_Tp, double>)
 	|| (__have_neon && sizeof(_Tp) < 8))>>
 {
@@ -983,7 +987,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
 		? 64
 		: __have_avx2 || (__have_avx && std::is_floating_point_v<_Tp>)
 		    ? 32
-		    : __have_sse || __have_neon ? 16 : 0))>>
+		    : __have_sse || __have_neon || __have_power_vmx ? 16 : 0))>>
   {
   };
   template <typename _Tp>
