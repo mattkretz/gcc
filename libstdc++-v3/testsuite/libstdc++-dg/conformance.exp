@@ -116,10 +116,6 @@ set DEFAULT_VECTCFLAGS ""
 set EFFECTIVE_TARGETS ""
 
 if [check_vect_support_and_set_flags] {
-  set x86_index [lsearch -exact $DEFAULT_VECTCFLAGS "-msse2"]
-  if { $x86_index >= 0 } {
-    lset DEFAULT_VECTCFLAGS $x86_index "-march=native"
-  }
   lappend DEFAULT_VECTCFLAGS "-O2"
   et-dg-runtest dg-runtest [lsort \
     [glob -nocomplain $srcdir/experimental/simd/*.cc]] \
