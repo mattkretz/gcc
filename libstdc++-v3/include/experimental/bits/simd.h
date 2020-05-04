@@ -2339,6 +2339,53 @@ struct _SimdWrapper<
 
 // }}}
 
+// __vectorized_sizeof {{{
+template <typename _Tp>
+constexpr size_t
+__vectorized_sizeof()
+{
+  if constexpr (!__is_vectorizable_v<_Tp>)
+    return 0;
+
+  if constexpr (sizeof(_Tp) <= 8)
+    {
+      // X86:
+      if constexpr (__have_avx512bw)
+	return 64;
+      if constexpr (__have_avx512f && sizeof(_Tp) >= 4)
+	return 64;
+      if constexpr (__have_avx2)
+	return 32;
+      if constexpr (__have_avx && std::is_floating_point_v<_Tp>)
+	return 32;
+      if constexpr (__have_sse2)
+	return 16;
+      if constexpr (__have_sse && std::is_same_v<_Tp, float>)
+	return 16;
+      if constexpr (__have_mmx && sizeof(_Tp) <= 4 && std::is_integral_v<_Tp>)
+	return 8;
+
+      // PowerPC:
+      if constexpr (__have_power8vec || (__have_power_vmx && (sizeof(_Tp) < 8))
+		    || (__have_power_vsx && std::is_floating_point_v<_Tp>) )
+	return 16;
+
+      // ARM:
+      if constexpr (__have_neon_a64
+		    || (__have_neon_a32 && !is_same_v<_Tp, double>) )
+	return 16;
+      if constexpr (__have_neon
+		    && sizeof(_Tp) < 8
+		    // Only allow fp if the user allows non-ICE559 fp (e.g. via
+		    // -ffast-math). ARMv7 NEON fp is not conforming to IEC559.
+		    && (__GCC_IEC_559 == 0 || !std::is_floating_point_v<_Tp>) )
+	return 16;
+    }
+
+  return sizeof(_Tp);
+};
+
+// }}}
 namespace simd_abi {
 // most of simd_abi is defined in simd_detail.h
 template <typename _Tp>
@@ -2362,35 +2409,19 @@ template <typename> using compatible = scalar;
 // }}}
 // native {{{
 template <typename _Tp>
-auto
+constexpr auto
 __determine_native_abi()
 {
-  if constexpr (sizeof(_Tp) > 8)
+  constexpr size_t __bytes = __vectorized_sizeof<_Tp>();
+  if constexpr (__bytes == sizeof(_Tp))
     return static_cast<scalar*>(nullptr);
-  else if constexpr (__have_avx512bw || (__have_avx512f && sizeof(_Tp) >= 4))
-#if _GLIBCXX_SIMD_X86INTRIN // {{{
-    return static_cast<_Avx512<64>*>(nullptr);
-#else  // _GLIBCXX_SIMD_X86INTRIN
-    return static_cast<_VecBuiltin<64>*>(nullptr);
-#endif // _GLIBCXX_SIMD_X86INTRIN }}}
-  else if constexpr (__have_avx2
-		     || (__have_avx && std::is_floating_point_v<_Tp>) )
-    return static_cast<_VecBuiltin<32>*>(nullptr);
-  else if constexpr ((__have_neon
-		      && (__have_neon_a32
-			  || std::is_floating_point_v<_Tp> || sizeof(_Tp) < 8)
-		      && (__have_neon_a64
-			  || std::is_integral_v<_Tp> || sizeof(_Tp) < 8))
-		     || __have_sse2
-		     || (__have_sse && std::is_same_v<_Tp, float>) )
-    return static_cast<_VecBuiltin<16>*>(nullptr);
-  else if constexpr (__have_mmx && sizeof(_Tp) <= 4 && std::is_integral_v<_Tp>)
-    return static_cast<_VecBuiltin<8>*>(nullptr);
+  else if constexpr (__have_avx512vl || (__have_avx512f && __bytes == 64))
+    return static_cast<_VecBltnBtmsk<__bytes>*>(nullptr);
   else
-    return static_cast<scalar*>(nullptr);
+    return static_cast<_VecBuiltin<__bytes>*>(nullptr);
 }
 
-template <typename _Tp>
+template <typename _Tp, typename = enable_if_t<__is_vectorizable_v<_Tp>>>
 using native = std::remove_pointer_t<decltype(__determine_native_abi<_Tp>())>;
 
 // }}}

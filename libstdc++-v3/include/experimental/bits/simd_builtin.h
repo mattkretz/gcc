@@ -802,45 +802,6 @@ __convert_all(_From __v)
 
 // }}}
 
-// __can_vectorize {{{
-template <typename _Tp>
-struct __can_vectorize
-  : conjunction<
-      __is_vectorizable<_Tp>,
-      __bool_constant<(
-	__have_sse2 || (__have_sse && is_same_v<_Tp, float>)
-	|| __have_power8vec
-	|| (__have_power_vmx && (sizeof(_Tp) < 8))
-	|| (__have_power_vsx && std::is_floating_point_v<_Tp>)
-	|| __have_neon_a64
-	|| (__have_neon_a32 && !is_same_v<_Tp, double>)
-	|| (__have_neon && sizeof(_Tp) < 8))>>
-{
-};
-template <> struct __can_vectorize<long double> : false_type
-{
-};
-
-template <typename _Tp>
-inline constexpr bool __can_vectorize_v = __can_vectorize<_Tp>::value;
-
-// }}}
-// __avx512_is_vectorizable {{{1
-template <typename _Tp>
-struct __avx512_is_vectorizable
-#if _GLIBCXX_SIMD_X86INTRIN // {{{
-  : std::conditional_t<__have_avx512bw || (sizeof(_Tp) >= 4 && __have_avx512f),
-		       __is_vectorizable<_Tp>, std::false_type>
-#else
-  : std::false_type
-#endif // _GLIBCXX_SIMD_X86INTRIN }}}
-{
-};
-template <> struct __avx512_is_vectorizable<long double> : false_type
-{
-};
-
-// }}}
 // _GnuTraits {{{
 template <typename _Tp, typename _Mp, typename _Abi, size_t _Np>
 struct _GnuTraits
@@ -980,14 +941,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
     : std::conjunction<
 	__bool_constant<(_UsedBytes / sizeof(_Tp) > 1
 			 && _UsedBytes % sizeof(_Tp) == 0)>,
-	__can_vectorize<_Tp>,
-	__bool_constant<(
-	  _UsedBytes
-	  <= (__have_avx512bw || (__have_avx512f && sizeof(_Tp) >= 4)
-		? 64
-		: __have_avx2 || (__have_avx && std::is_floating_point_v<_Tp>)
-		    ? 32
-		    : __have_sse || __have_neon || __have_power_vmx ? 16 : 0))>>
+	__bool_constant<(_UsedBytes <= __vectorized_sizeof<_Tp>())>>
   {
   };
   template <typename _Tp>
@@ -1088,9 +1042,14 @@ template <int _UsedBytes> struct simd_abi::_VecBltnBtmsk
 		       && (_UsedBytes > 32 || __have_avx512vl))>
   {
   };
+  // Bitmasks require at least AVX512F. If sizeof(_Tp) < 4 the AVX512BW is also
+  // required.
   template <typename _Tp>
-  struct _IsValid : conjunction<_IsValidAbiTag, __avx512_is_vectorizable<_Tp>,
-				_IsValidSizeFor<_Tp>>
+  struct _IsValid
+    : conjunction<_IsValidAbiTag, __bool_constant<__have_avx512f>,
+		  __bool_constant<__have_avx512bw || (sizeof(_Tp) >= 4)>,
+		  __bool_constant<(__vectorized_sizeof<_Tp>() > sizeof(_Tp))>,
+		  _IsValidSizeFor<_Tp>>
   {
   };
   template <typename _Tp>
@@ -1551,9 +1510,9 @@ template <typename _Abi> struct _SimdImplBuiltin
 	_SuperImpl::__masked_store_nocvt(__wrapper_bitcast<_Up>(__v), __mem,
 					 _Fp(), __kk);
       }
-    else if constexpr (
-      __can_vectorize_v<
-	_Up> && !_CommonImpl::template __converts_via_decomposition_v<_Tp, _Up, __max_store_size>)
+    else if constexpr (__vectorized_sizeof<_Up>() > sizeof(_Up)
+		       && !_CommonImpl::template __converts_via_decomposition_v<
+			  _Tp, _Up, __max_store_size>)
       { // conversion via decomposition is better handled via the bit_iteration
 	// fallback below
 	constexpr size_t _UW_size
