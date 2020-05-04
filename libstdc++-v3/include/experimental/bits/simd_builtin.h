@@ -200,7 +200,7 @@ __shift_elements_right(_Tp __v)
 // __extract_part(_SimdWrapper<_Tp, _Np>) {{{
 template <int _Index, int _Total, int _Combine, typename _Tp, size_t _Np>
 _GLIBCXX_SIMD_INTRINSIC
-  _GLIBCXX_SIMD_CONST _SimdWrapper<_Tp, _Np / _Total * _Combine>
+  _GLIBCXX_CONST _SimdWrapper<_Tp, _Np / _Total * _Combine>
   __extract_part(const _SimdWrapper<_Tp, _Np> __x)
 {
   if constexpr (_Index % 2 == 0 && _Total % 2 == 0 && _Combine % 2 == 0)

@@ -137,7 +137,7 @@ __is_zero(_Tp __a)
 // }}}
 // __movemask{{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST int
+_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST int
 __movemask(_Tp __a)
 {
   if constexpr (sizeof(_Tp) == 32)
@@ -160,7 +160,7 @@ __movemask(_Tp __a)
 // }}}
 // __testz{{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST constexpr int
+_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST constexpr int
 __testz(_Tp __a, typename _TVT::type __b)
 {
   if (!__builtin_is_constant_evaluated())
@@ -192,7 +192,7 @@ __testz(_Tp __a, typename _TVT::type __b)
 // __testc{{{
 // requires SSE4.1 or above
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST constexpr int
+_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST constexpr int
 __testc(_Tp __a, typename _TVT::type __b)
 {
   if (__builtin_is_constant_evaluated())
@@ -222,7 +222,7 @@ __testc(_Tp __a, typename _TVT::type __b)
 // }}}
 // __testnzc{{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST constexpr int
+_GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST constexpr int
 __testnzc(_Tp __a, typename _TVT::type __b)
 {
   if (!__builtin_is_constant_evaluated())
@@ -1450,8 +1450,8 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
   // values.
 #ifndef _GLIBCXX_SIMD_NO_SHIFT_OPT
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  inline _GLIBCXX_SIMD_CONST static typename _TVT::type
-  __bit_shift_left(_Tp __xx, int __y)
+  inline _GLIBCXX_CONST static typename _TVT::type __bit_shift_left(_Tp __xx,
+								    int __y)
   {
     using _V = typename _TVT::type;
     using _Up = typename _TVT::value_type;
@@ -1551,7 +1551,7 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
   }
 
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  inline _GLIBCXX_SIMD_CONST static typename _TVT::type
+  inline _GLIBCXX_CONST static typename _TVT::type
   __bit_shift_left(_Tp __xx, typename _TVT::type __y)
   {
     using _V = typename _TVT::type;
@@ -1712,8 +1712,8 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
   // __bit_shift_right {{{
 #ifndef _GLIBCXX_SIMD_NO_SHIFT_OPT
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  inline _GLIBCXX_SIMD_CONST static typename _TVT::type
-  __bit_shift_right(_Tp __xx, int __y)
+  inline _GLIBCXX_CONST static typename _TVT::type __bit_shift_right(_Tp __xx,
+								     int __y)
   {
     using _V = typename _TVT::type;
     using _Up = typename _TVT::value_type;
@@ -1758,7 +1758,7 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
   }
 
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  inline _GLIBCXX_SIMD_CONST static typename _TVT::type
+  inline _GLIBCXX_CONST static typename _TVT::type
   __bit_shift_right(_Tp __xx, typename _TVT::type __y)
   {
     using _V = typename _TVT::type;

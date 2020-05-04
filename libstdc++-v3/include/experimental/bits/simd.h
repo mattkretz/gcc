@@ -843,7 +843,7 @@ struct _BitOps
   //}}}
   // __firstbit{{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST static auto __firstbit(_Tp __bits)
+  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST static auto __firstbit(_Tp __bits)
   {
     static_assert(std::is_integral_v<_Tp>,
 		  "__firstbit requires an integral argument");
@@ -862,7 +862,7 @@ struct _BitOps
   // }}}
   // __lastbit{{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONST static auto __lastbit(_Tp __bits)
+  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST static auto __lastbit(_Tp __bits)
   {
     static_assert(std::is_integral_v<_Tp>,
 		  "__lastbit requires an integral argument");
@@ -3357,7 +3357,7 @@ split(const simd<_Tp, _Ap>&);
 // __extract_part {{{
 template <int _Index, int _Total, int _Combine = 1, typename _Tp, size_t _Np>
 _GLIBCXX_SIMD_INTRINSIC
-  _GLIBCXX_SIMD_CONST _SimdWrapper<_Tp, _Np / _Total * _Combine>
+  _GLIBCXX_CONST _SimdWrapper<_Tp, _Np / _Total * _Combine>
   __extract_part(const _SimdWrapper<_Tp, _Np> __x);
 
 template <int Index, int Parts, int _Combine = 1, typename _Tp, typename _A0,
