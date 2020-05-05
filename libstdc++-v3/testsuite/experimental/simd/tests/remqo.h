@@ -12,8 +12,12 @@ test()
 
   using limits = std::numeric_limits<typename V::value_type>;
   test_values_2arg<V>(
-    {limits::quiet_NaN(), limits::infinity(), -limits::infinity(), +0., -0.,
-     limits::denorm_min(), limits::min(), limits::max(), limits::min() / 3},
+    {
+#ifdef __STDC_IEC_559__
+      limits::quiet_NaN(), limits::infinity(), -limits::infinity(),
+      limits::denorm_min(), limits::min() / 3, -0.,
+#endif
+      +0., limits::min(), limits::max()},
     {10000, -limits::max() / 2, limits::max() / 2}, [](const V a, const V b) {
       using IV = std::experimental::fixed_size_simd<int, V::size()>;
       IV quo = {}; // the type is wrong, this should fail

@@ -10,10 +10,7 @@ test()
   vir::test::setFuzzyness<double>(0);
 
   using limits = std::numeric_limits<typename V::value_type>;
-  test_values<V>({limits::infinity(),
-		  -limits::infinity(),
-		  +0.,
-		  -0.,
+  test_values<V>({+0.,
 		  0.5,
 		  -0.5,
 		  1.5,
@@ -40,11 +37,16 @@ test()
 		  -0x1.fffffcp23,
 		  0x1.8p23,
 		  -0x1.8p23,
+#ifdef __STDC_IEC_559__
+		  limits::infinity(),
+		  -limits::infinity(),
+		  -0.,
 		  limits::quiet_NaN(),
 		  limits::denorm_min(),
+		  limits::min() / 3,
+#endif
 		  limits::min(),
-		  limits::max(),
-		  limits::min() / 3},
+		  limits::max()},
 		 {10000, -limits::max() / 2, limits::max() / 2},
 		 MAKE_TESTER(sqrt), MAKE_TESTER(erf), MAKE_TESTER(erfc),
 		 MAKE_TESTER(tgamma), MAKE_TESTER(lgamma), MAKE_TESTER(ceil),

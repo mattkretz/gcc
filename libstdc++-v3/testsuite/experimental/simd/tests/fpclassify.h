@@ -22,14 +22,17 @@ test()
 {
   using limits = std::numeric_limits<typename V::value_type>;
   test_values<V>(
-    {0., -0., 1., -1., limits::infinity(), -limits::infinity(), limits::max(),
-     -limits::max(), limits::min(), limits::min() * 0.9, -limits::min(),
-     -limits::min() * 0.9, limits::denorm_min(), -limits::denorm_min(),
-     limits::quiet_NaN()
+    {
+      0., 1., -1.,
+#if __GCC_IEC_559 >= 2
+	-0., limits::infinity(), -limits::infinity(), limits::denorm_min(),
+	-limits::denorm_min(), limits::quiet_NaN(),
 #ifdef __SUPPORT_SNAN__
-       ,
-     limits::signaling_NaN()
+	limits::signaling_NaN(),
 #endif
+#endif
+	limits::max(), -limits::max(), limits::min(), limits::min() * 0.9,
+	-limits::min(), -limits::min() * 0.9
     },
     [](const V input) {
       using intv = std::experimental::fixed_size_simd<int, V::size()>;

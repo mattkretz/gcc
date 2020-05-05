@@ -31,24 +31,26 @@ test()
      -0.99,
      -0.5,
      -0.499,
-     -0.,
      3 << 21,
      3 << 22,
      3 << 23,
      -(3 << 21),
      -(3 << 22),
      -(3 << 23),
+#ifdef __STDC_IEC_559__
+     -0.,
      limits::infinity(),
      -limits::infinity(),
      limits::denorm_min(),
+     limits::min() * 0.9,
+     -limits::denorm_min(),
+     -limits::min() * 0.9,
+#endif
      limits::max(),
      limits::min(),
-     limits::min() * 0.9,
      limits::lowest(),
-     -limits::denorm_min(),
      -limits::max(),
      -limits::min(),
-     -limits::min() * 0.9,
      -limits::lowest()},
     [](const V input) {
       const V expected([&](auto i) { return std::trunc(input[i]); });
@@ -63,8 +65,13 @@ test()
       COMPARE(floor(input), expected) << input;
     });
 
+#ifdef __STDC_IEC_559__
   test_values<V>(
-    {limits::quiet_NaN(), limits::signaling_NaN()},
+    {
+#ifdef __SUPPORT_SNAN__
+      limits::signaling_NaN(),
+#endif
+      limits::quiet_NaN()},
     [](const V input) {
       const V expected([&](auto i) { return std::trunc(input[i]); });
       COMPARE(isnan(trunc(input)), isnan(expected)) << input;
@@ -77,4 +84,5 @@ test()
       const V expected([&](auto i) { return std::floor(input[i]); });
       COMPARE(isnan(floor(input)), isnan(expected)) << input;
     });
+#endif
 }

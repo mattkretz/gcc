@@ -59,12 +59,14 @@ test()
 	  }
       }
   };
-  test_values_3arg<V>({limits::quiet_NaN(), limits::infinity(),
-		       -limits::infinity(), +0., -0., 1., -1.,
-		       limits::denorm_min(), limits::min(), limits::max(),
-		       -limits::max(), limits::min() / 3},
-		      {100000, -limits::max(), limits::max()},
-		      MAKE_TESTER_2(hypot, hypot3));
+  test_values_3arg<V>(
+    {
+#ifdef __STDC_IEC_559__
+      limits::quiet_NaN(), limits::infinity(), -limits::infinity(),
+      limits::min() / 3, -0., limits::denorm_min(),
+#endif
+      0., 1., -1., limits::min(), limits::max(), -limits::max()},
+    {100000, -limits::max(), limits::max()}, MAKE_TESTER_2(hypot, hypot3));
   COMPARE(hypot(V(limits::max()), V(limits::max()), V()),
 	  V(limits::infinity()));
   COMPARE(hypot(V(limits::max()), V(), V(limits::max())),
@@ -96,11 +98,14 @@ test()
 
   vir::test::setFuzzyness<float>(0);
   vir::test::setFuzzyness<double>(0);
-  test_values_3arg<V>({limits::quiet_NaN(), limits::infinity(),
-		       -limits::infinity(), +0., -0., limits::denorm_min(),
-		       limits::min(), limits::max(), limits::min() / 3},
-		      {10000, -limits::max() / 2, limits::max() / 2},
-		      MAKE_TESTER(fma));
+  test_values_3arg<V>(
+    {
+#ifdef __STDC_IEC_559__
+      limits::quiet_NaN(), limits::infinity(), -limits::infinity(), -0.,
+      limits::min() / 3, limits::denorm_min(),
+#endif
+      0., limits::min(), limits::max()},
+    {10000, -limits::max() / 2, limits::max() / 2}, MAKE_TESTER(fma));
   VERIFY((sfinae_is_callable<V, V, V>(
     [](auto a, auto b, auto c) -> decltype(fma(a, b, c)) { return {}; })));
   VERIFY((sfinae_is_callable<T, T, V>(

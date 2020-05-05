@@ -13,11 +13,14 @@ test()
   vir::test::setFuzzyness<float>(1);
   vir::test::setFuzzyness<double>(1);
   vir::test::setFuzzyness<long double>(1);
-  test_values_2arg<V>({limits::quiet_NaN(), limits::infinity(),
-		       -limits::infinity(), +0., -0., limits::denorm_min(),
-		       limits::min(), limits::max(), limits::min() / 3},
-		      {100000, -limits::max() / 2, limits::max() / 2},
-		      MAKE_TESTER(hypot));
+  test_values_2arg<V>(
+    {
+#ifdef __STDC_IEC_559__
+      limits::quiet_NaN(), limits::infinity(), -limits::infinity(), -0.,
+      limits::denorm_min(), limits::min() / 3,
+#endif
+      +0., limits::min(), limits::max()},
+    {100000, -limits::max() / 2, limits::max() / 2}, MAKE_TESTER(hypot));
   COMPARE(hypot(V(limits::max()), V(limits::max())), V(limits::infinity()));
   COMPARE(hypot(V(limits::min()), V(limits::min())),
 	  V(limits::min() * std::sqrt(T(2))));
@@ -32,8 +35,12 @@ test()
   vir::test::setFuzzyness<double>(0);
   vir::test::setFuzzyness<long double>(0);
   test_values_2arg<V>(
-    {limits::quiet_NaN(), limits::infinity(), -limits::infinity(), +0., -0.,
-     limits::denorm_min(), limits::min(), limits::max(), limits::min() / 3},
+    {
+#ifdef __STDC_IEC_559__
+      limits::quiet_NaN(), limits::infinity(), -limits::infinity(),
+      limits::denorm_min(), limits::min() / 3, -0.,
+#endif
+      +0., limits::min(), limits::max()},
     {10000, -limits::max() / 2, limits::max() / 2}, MAKE_TESTER(pow),
     MAKE_TESTER(fmod), MAKE_TESTER(remainder), MAKE_TESTER_NOFPEXCEPT(copysign),
     MAKE_TESTER(nextafter), // MAKE_TESTER(nexttoward),
