@@ -621,11 +621,15 @@ __convert_all(_From __v)
 	    return __vector_bitcast<_FromT, decltype(__n)::value>(__vv);
 	  };
 	  [[maybe_unused]] const auto __vi = __to_intrin(__v);
-	  auto&& __make_array = [](std::initializer_list<auto> __xs) {
-	    return __call_with_subscripts(
-	      __xs.begin(), std::make_index_sequence<_Np>(),
-	      [](auto... __ys) { return _R{__vector_bitcast<_ToT>(__ys)...}; });
-	  };
+	  auto&& __make_array =
+	    []<typename _ToConvert>(_ToConvert __x0,
+				    [[maybe_unused]] _ToConvert __x1) {
+	      if constexpr (_Np == 1)
+		return _R{__vector_bitcast<_ToT>(__x0)};
+	      else
+		return _R{__vector_bitcast<_ToT>(__x0),
+			  __vector_bitcast<_ToT>(__x1)};
+	    };
 
 	  if constexpr (_Np == 0)
 	    return _R{};
@@ -634,12 +638,12 @@ __convert_all(_From __v)
 	      static_assert(std::is_integral_v<_FromT>);
 	      static_assert(std::is_integral_v<_ToT>);
 	      if constexpr (is_unsigned_v<_FromT>)
-		return __make_array({_mm_unpacklo_epi8(__vi, __m128i()),
-				     _mm_unpackhi_epi8(__vi, __m128i())});
+		return __make_array(_mm_unpacklo_epi8(__vi, __m128i()),
+				    _mm_unpackhi_epi8(__vi, __m128i()));
 	      else
 		return __make_array(
-		  {_mm_srai_epi16(_mm_unpacklo_epi8(__vi, __vi), 8),
-		   _mm_srai_epi16(_mm_unpackhi_epi8(__vi, __vi), 8)});
+		  _mm_srai_epi16(_mm_unpacklo_epi8(__vi, __vi), 8),
+		  _mm_srai_epi16(_mm_unpackhi_epi8(__vi, __vi), 8));
 	    }
 	  else if constexpr (sizeof(_FromT) == 2 && sizeof(_ToT) == 4)
 	    {
@@ -654,34 +658,34 @@ __convert_all(_From __v)
 		  });
 		}
 	      else if constexpr (is_unsigned_v<_FromT>)
-		return __make_array({_mm_unpacklo_epi16(__vi, __m128i()),
-				     _mm_unpackhi_epi16(__vi, __m128i())});
+		return __make_array(_mm_unpacklo_epi16(__vi, __m128i()),
+				    _mm_unpackhi_epi16(__vi, __m128i()));
 	      else
 		return __make_array(
-		  {_mm_srai_epi32(_mm_unpacklo_epi16(__vi, __vi), 16),
-		   _mm_srai_epi32(_mm_unpackhi_epi16(__vi, __vi), 16)});
+		  _mm_srai_epi32(_mm_unpacklo_epi16(__vi, __vi), 16),
+		  _mm_srai_epi32(_mm_unpackhi_epi16(__vi, __vi), 16));
 	    }
 	  else if constexpr (sizeof(_FromT) == 4 && sizeof(_ToT) == 8
 			     && is_integral_v<_FromT> && is_integral_v<_ToT>)
 	    {
 	      if constexpr (is_unsigned_v<_FromT>)
-		return __make_array({_mm_unpacklo_epi32(__vi, __m128i()),
-				     _mm_unpackhi_epi32(__vi, __m128i())});
+		return __make_array(_mm_unpacklo_epi32(__vi, __m128i()),
+				    _mm_unpackhi_epi32(__vi, __m128i()));
 	      else
 		return __make_array(
-		  {_mm_unpacklo_epi32(__vi, _mm_srai_epi32(__vi, 31)),
-		   _mm_unpackhi_epi32(__vi, _mm_srai_epi32(__vi, 31))});
+		  _mm_unpacklo_epi32(__vi, _mm_srai_epi32(__vi, 31)),
+		  _mm_unpackhi_epi32(__vi, _mm_srai_epi32(__vi, 31)));
 	    }
 	  else if constexpr (sizeof(_FromT) == 4 && sizeof(_ToT) == 8
 			     && is_integral_v<_FromT> && is_integral_v<_ToT>)
 	    {
 	      if constexpr (is_unsigned_v<_FromT>)
-		return __make_array({_mm_unpacklo_epi32(__vi, __m128i()),
-				     _mm_unpackhi_epi32(__vi, __m128i())});
+		return __make_array(_mm_unpacklo_epi32(__vi, __m128i()),
+				    _mm_unpackhi_epi32(__vi, __m128i()));
 	      else
 		return __make_array(
-		  {_mm_unpacklo_epi32(__vi, _mm_srai_epi32(__vi, 31)),
-		   _mm_unpackhi_epi32(__vi, _mm_srai_epi32(__vi, 31))});
+		  _mm_unpacklo_epi32(__vi, _mm_srai_epi32(__vi, 31)),
+		  _mm_unpackhi_epi32(__vi, _mm_srai_epi32(__vi, 31)));
 	    }
 	  else if constexpr (sizeof(_FromT) == 1 && sizeof(_ToT) >= 4
 			     && is_signed_v<_FromT>)
