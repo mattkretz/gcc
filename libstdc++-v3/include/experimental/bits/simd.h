@@ -229,18 +229,22 @@ template <size_t> struct __int_for_sizeof;
 template <> struct __int_for_sizeof<1>
 {
   using type = signed char;
+  static_assert(sizeof(type) == 1);
 };
 template <> struct __int_for_sizeof<2>
 {
   using type = signed short;
+  static_assert(sizeof(type) == 2);
 };
 template <> struct __int_for_sizeof<4>
 {
   using type = signed int;
+  static_assert(sizeof(type) == 4);
 };
 template <> struct __int_for_sizeof<8>
 {
   using type = signed long long;
+  static_assert(sizeof(type) == 8);
 };
 #ifdef __SIZEOF_INT128__
 #pragma GCC diagnostic push
@@ -248,6 +252,7 @@ template <> struct __int_for_sizeof<8>
 template <> struct __int_for_sizeof<16>
 {
   using type = __int128;
+  static_assert(sizeof(type) == 16);
 };
 #pragma GCC diagnostic pop
 #endif // __SIZEOF_INT128__
