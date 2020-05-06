@@ -117,6 +117,7 @@ set EFFECTIVE_TARGETS ""
 
 if [check_vect_support_and_set_flags] {
   lappend DEFAULT_VECTCFLAGS "-O2"
+  lappend DEFAULT_VECTCFLAGS "-Wno-psabi"
   et-dg-runtest dg-runtest [lsort \
     [glob -nocomplain $srcdir/experimental/simd/*.cc]] \
     "$DEFAULT_VECTCFLAGS" "$DEFAULT_CXXFLAGS $PCH_CXXFLAGS"
