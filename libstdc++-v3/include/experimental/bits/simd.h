@@ -2153,6 +2153,24 @@ struct __intrinsic_type<_Tp, _Bytes,
 // }}}
 // __intrinsic_type (PPC){{{
 #ifdef __ALTIVEC__
+template <typename _Tp> struct __intrinsic_type_impl;
+#define _GLIBCXX_SIMD_PPC_INTRIN(_Tp)                                          \
+  template <> struct __intrinsic_type_impl<_Tp>                                \
+  {                                                                            \
+    using type = __vector _Tp;                                                 \
+  }
+_GLIBCXX_SIMD_PPC_INTRIN(float);
+_GLIBCXX_SIMD_PPC_INTRIN(double);
+_GLIBCXX_SIMD_PPC_INTRIN(signed char);
+_GLIBCXX_SIMD_PPC_INTRIN(unsigned char);
+_GLIBCXX_SIMD_PPC_INTRIN(signed short);
+_GLIBCXX_SIMD_PPC_INTRIN(unsigned short);
+_GLIBCXX_SIMD_PPC_INTRIN(signed int);
+_GLIBCXX_SIMD_PPC_INTRIN(unsigned int);
+_GLIBCXX_SIMD_PPC_INTRIN(signed long long);
+_GLIBCXX_SIMD_PPC_INTRIN(unsigned long long);
+#undef _GLIBCXX_SIMD_PPC_INTRIN
+
 template <typename _Tp, size_t _Bytes>
 struct __intrinsic_type<
   _Tp, _Bytes, std::enable_if_t<__is_vectorizable_v<_Tp> && _Bytes <= 16>>
@@ -2168,10 +2186,8 @@ struct __intrinsic_type<
 		"no __intrinsic_type support for integers larger than 4 Bytes "
 		"on PPC w/o POWER8 vectors");
 #endif
-  using type = __vector conditional_t<
-    is_floating_point_v<_Tp>, _Tp,
-    conditional_t<is_unsigned_v<_Tp>, make_unsigned_t<__int_for_sizeof_t<_Tp>>,
-		  __int_for_sizeof_t<_Tp>>>;
+  using type = typename __intrinsic_type_impl<conditional_t<
+    is_floating_point_v<_Tp>, _Tp, __int_for_sizeof_t<_Tp>>>::type;
 };
 #endif // __ALTIVEC__
 
