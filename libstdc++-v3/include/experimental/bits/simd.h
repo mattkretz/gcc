@@ -3655,8 +3655,7 @@ split(const simd_mask<typename _V::simd_type::value_type, _Ap>& __x)
 
 // }}}
 // split<_Sizes...>(simd) {{{
-template <size_t... _Sizes, typename _Tp, typename _Ap,
-	  typename = enable_if_t<((_Sizes + ...) == simd<_Tp, _Ap>::size())>>
+template <size_t... _Sizes, typename _Tp, typename _Ap, typename>
 _GLIBCXX_SIMD_ALWAYS_INLINE
   std::tuple<simd<_Tp, simd_abi::deduce_t<_Tp, _Sizes>>...>
   split(const simd<_Tp, _Ap>& __x)
