@@ -13,7 +13,7 @@ template <typename V> void test()
       using L = std::numeric_limits<T>;
       test_values<V>({L::max(), L::lowest(), L::min(), -L::max() / 2, T(), -T(),
 		      T(-1), T(-2)},
-		     {100, L::lowest(), L::max()}, [](V input) {
+		     {1000}, [](V input) {
 		       const V expected(
 			 [&](auto i) { return T(std::abs(T(input[i]))); });
 		       COMPARE(abs(input), expected) << "input: " << input;
