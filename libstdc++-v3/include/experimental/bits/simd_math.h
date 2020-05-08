@@ -1191,6 +1191,12 @@ __hypot(_VV __x, _VV __y, _VV __z)
 		= _Limits::quiet_NaN();
 	      where(isinf(__absx) || isinf(__absy) || isinf(__absz), __fixup)
 		= __inf;
+	      // Instead of __lo == 0, the following could depend on __h1² ==
+	      // __h1² + __lo (i.e. __hi is so much larger than the other two
+	      // inputs that the result is exactly __hi). While this may improve
+	      // precision, it is likely to reduce efficiency if the ISA has
+	      // FMAs (because __h1² + __lo is an FMA, but the intermediate
+	      // __h1² must be kept)
 	      where(!(__lo == 0 || isunordered(__x, __y + __z) || isinf(__absx)
 		      || isinf(__absy) || isinf(__absz)),
 		    __fixup)
