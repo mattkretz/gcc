@@ -203,17 +203,19 @@ template <class T> void iterate_abis()/*{{{*/
 {
   using namespace std::experimental::parallelism_v2;
 #ifndef TESTFIXEDSIZE
-  invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
+  invoke_test<simd<T, simd_abi::scalar>>(int());
   invoke_test<simd<T, simd_abi::_VecBuiltin<16>>>(int());
+  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<64>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
+#ifdef STRESSTEST
+  invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
   invoke_test<simd<T, simd_abi::_VecBuiltin<32>>>(int());
   invoke_test<simd<T, simd_abi::_VecBltnBtmsk<56>>>(int());
-  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<64>>>(int());
-  invoke_test<simd<T, simd_abi::scalar>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
+#endif
 #else
   invoke_test<simd<T, simd_abi::fixed_size<1>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<2>>>(int());
