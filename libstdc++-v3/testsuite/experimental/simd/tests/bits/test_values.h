@@ -32,33 +32,64 @@ void test_values(const std::initializer_list<typename V::value_type> &inputs,
 }
 
 template <class V> struct RandomValues {
-    const std::size_t count;
-    const typename V::value_type min;
-    const typename V::value_type max;
+  using T = typename V::value_type;
+  using L = std::numeric_limits<T>;
+  static constexpr bool isfp = std::is_floating_point_v<T>;
+  const std::size_t count;
+  std::conditional_t<std::is_floating_point_v<T>,
+		     std::uniform_real_distribution<T>,
+		     std::uniform_int_distribution<T>>
+    dist;
+  const bool uniform;
+
+  RandomValues(std::size_t count_, T min, T max)
+    : count(count_), dist(min, max), uniform(true)
+  {
+    if constexpr (std::is_floating_point_v<T>)
+      VERIFY(max - min <= L::max());
+  }
+
+  RandomValues(std::size_t count_)
+    : count(count_), dist(isfp ? 1 : L::lowest(), isfp ? 2 : L::max()),
+      uniform(!isfp)
+  {
+  }
+
+  template <typename URBG> V operator()(URBG& gen)
+  {
+    if (uniform)
+      return V([&](int) { return dist(gen); });
+    else
+      {
+	auto exp_dist
+	  = std::normal_distribution<float>(0.f, L::max_exponent * .5f);
+	return V([&](int) {
+	  const T mant = dist(gen);
+	  T fp = 0;
+	  do
+	    {
+	      const int exp = exp_dist(gen);
+	      fp = std::ldexp(mant, exp);
+	    }
+	  while (fp >= L::max() || fp <= L::denorm_min());
+	  fp = gen() & 0x4 ? fp : -fp;
+	  return fp;
+	});
+      }
+  }
 };
 
 static std::mt19937 g_mt_gen{0};
 
 template <class V, class... F>
-void test_values(const std::initializer_list<typename V::value_type> &inputs,
-                 const RandomValues<V> &random, F &&... fun_pack)
+void
+test_values(const std::initializer_list<typename V::value_type>& inputs,
+	    RandomValues<V> random, F&&... fun_pack)
 {
-    test_values<V>(inputs, fun_pack...);
-
-    using T = typename V::value_type;
-    std::conditional_t<std::is_floating_point_v<T>, std::uniform_real_distribution<T>,
-                       std::uniform_int_distribution<T>>
-        dist(random.min, random.max);
-    auto &&rnd_v = [&]() {
-        V tmp;
-        for (std::size_t i = 0; i < V::size(); ++i) {
-            tmp[i] = dist(g_mt_gen);
-        }
-        return tmp;
-    };
-
-    for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i) {
-        [](auto...) {}((fun_pack(rnd_v()), 0)...);
+  test_values<V>(inputs, fun_pack...);
+  for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i)
+    {
+      [](auto...) {}((fun_pack(random(g_mt_gen)), 0)...);
     }
 }
 
@@ -78,25 +109,14 @@ void test_values_2arg(const std::initializer_list<typename V::value_type> &input
 }
 
 template <class V, class... F>
-void test_values_2arg(const std::initializer_list<typename V::value_type> &inputs,
-                      const RandomValues<V> &random, F &&... fun_pack)
+void
+test_values_2arg(const std::initializer_list<typename V::value_type>& inputs,
+		 RandomValues<V> random, F&&... fun_pack)
 {
-    test_values_2arg<V>(inputs, fun_pack...);
-
-    using T = typename V::value_type;
-    std::conditional_t<std::is_floating_point_v<T>, std::uniform_real_distribution<T>,
-                       std::uniform_int_distribution<T>>
-        dist(random.min, random.max);
-    auto &&rnd_v = [&]() {
-        V tmp;
-        for (std::size_t i = 0; i < V::size(); ++i) {
-            tmp[i] = dist(g_mt_gen);
-        }
-        return tmp;
-    };
-
-    for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i) {
-        [](auto...) {}((fun_pack(rnd_v(), rnd_v()), 0)...);
+  test_values_2arg<V>(inputs, fun_pack...);
+  for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i)
+    {
+      [](auto...) {}((fun_pack(random(g_mt_gen), random(g_mt_gen)), 0)...);
     }
 }
 
@@ -120,25 +140,15 @@ void test_values_3arg(const std::initializer_list<typename V::value_type> &input
 }
 
 template <class V, class... F>
-void test_values_3arg(const std::initializer_list<typename V::value_type> &inputs,
-                      const RandomValues<V> &random, F &&... fun_pack)
+void
+test_values_3arg(const std::initializer_list<typename V::value_type>& inputs,
+		 RandomValues<V> random, F&&... fun_pack)
 {
-    test_values_3arg<V>(inputs, fun_pack...);
-
-    using T = typename V::value_type;
-    std::conditional_t<std::is_floating_point_v<T>, std::uniform_real_distribution<T>,
-                       std::uniform_int_distribution<T>>
-        dist(random.min, random.max);
-    auto &&rnd_v = [&]() {
-        V tmp;
-        for (std::size_t i = 0; i < V::size(); ++i) {
-            tmp[i] = dist(g_mt_gen);
-        }
-        return tmp;
-    };
-
-    for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i) {
-        [](auto...) {}((fun_pack(rnd_v(), rnd_v(), rnd_v()), 0)...);
+  test_values_3arg<V>(inputs, fun_pack...);
+  for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i)
+    {
+      [](auto...) {
+      }((fun_pack(random(g_mt_gen), random(g_mt_gen), random(g_mt_gen)), 0)...);
     }
 }
 

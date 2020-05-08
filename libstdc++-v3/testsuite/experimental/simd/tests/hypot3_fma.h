@@ -9,9 +9,9 @@ test()
 {
   vir::test::setFuzzyness<float>(1);
   vir::test::setFuzzyness<double>(1);
-  using T = typename V::value_type;
   vir::test::setFuzzyness<long double>(2); // because of the bad reference
 
+  using T = typename V::value_type;
   using limits = std::numeric_limits<T>;
   // 3-arg std::hypot needs to be fixed, this is a better reference:
   auto&& hypot3 = [](T x, T y, T z) -> T {
@@ -66,7 +66,7 @@ test()
       limits::min() / 3, -0., limits::denorm_min(),
 #endif
       0., 1., -1., limits::min(), limits::max(), -limits::max()},
-    {100000, -limits::max(), limits::max()}, MAKE_TESTER_2(hypot, hypot3));
+    {100000}, MAKE_TESTER_2(hypot, hypot3));
   COMPARE(hypot(V(limits::max()), V(limits::max()), V()),
 	  V(limits::infinity()));
   COMPARE(hypot(V(limits::max()), V(), V(limits::max())),
