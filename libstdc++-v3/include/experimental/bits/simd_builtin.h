@@ -925,6 +925,7 @@ template <typename _Abi> struct _SimdImplX86;
 template <typename _Abi> struct _MaskImplX86;
 template <typename _Abi> struct _SimdImplNeon;
 template <typename _Abi> struct _MaskImplNeon;
+template <typename _Abi> struct _SimdImplPpc;
 // simd_abi::_VecBuiltin {{{
 template <int _UsedBytes> struct simd_abi::_VecBuiltin
 {
@@ -968,7 +969,11 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
   using _MaskImpl = _MaskImplNeon<_VecBuiltin<_UsedBytes>>;
 #else
   using _CommonImpl = _CommonImplBuiltin;
+#ifdef __ALTIVEC__
+  using _SimdImpl = _SimdImplPpc<_VecBuiltin<_UsedBytes>>;
+#else
   using _SimdImpl = _SimdImplBuiltin<_VecBuiltin<_UsedBytes>>;
+#endif
   using _MaskImpl = _MaskImplBuiltin<_VecBuiltin<_UsedBytes>>;
 #endif
 
