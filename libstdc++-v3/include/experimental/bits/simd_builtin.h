@@ -1666,26 +1666,13 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
   __bit_shift_left(_SimdWrapper<_Tp, _Np> __x, int __y)
   {
-    // The behavior is undefined if the right operand is negative, or greater
-    // than or equal to the width of the promoted left operand.
-    if (__y < 0 || __y >= sizeof(std::declval<_Tp>() << __y) * CHAR_BIT)
-      __builtin_unreachable();
-    else if (__builtin_constant_p(__y) && __y >= sizeof(_Tp) * CHAR_BIT)
-      return {};
-    else
-      return __x._M_data << __y;
+    return __x._M_data << __y;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
   __bit_shift_right(_SimdWrapper<_Tp, _Np> __x, int __y)
   {
-    if (__y < 0 || __y >= sizeof(std::declval<_Tp>() >> __y) * CHAR_BIT)
-      __builtin_unreachable();
-    else if (__builtin_constant_p(__y) && __y >= sizeof(_Tp) * CHAR_BIT
-	     && is_unsigned_v<_Tp>)
-      return {};
-    else
-      return __x._M_data >> __y;
+    return __x._M_data >> __y;
   }
 
   // compares {{{2

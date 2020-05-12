@@ -30,6 +30,9 @@
 #include "simd_detail.h"
 #include <bitset>
 #include <climits>
+#ifdef _GLIBCXX_DEBUG_UB
+#include <cstdio> // for stderr
+#endif
 #include <cstring>
 #include <functional>
 #include <iosfwd>
@@ -415,6 +418,20 @@ using __make_dependent_t = typename __make_dependent<_Tp, _Up>::type;
 // }}}
 // ^^^ ---- type traits ---- ^^^
 
+// __invoke_ub{{{
+template <typename... _Args>
+[[noreturn]] _GLIBCXX_SIMD_ALWAYS_INLINE void
+__invoke_ub(const char* __msg, const _Args&... __args)
+{
+#ifdef _GLIBCXX_DEBUG_UB
+  __builtin_fprintf(stderr, __msg, __args...);
+  __builtin_trap();
+#else
+  __builtin_unreachable();
+#endif
+}
+
+// }}}
 // __assert_unreachable{{{
 template <typename _Tp> struct __assert_unreachable
 {
@@ -4537,7 +4554,7 @@ find_first_set(const simd_mask<_Tp, _Abi>& __k)
       for (size_t __i = 0; __i < simd_size_v<_Tp, _Abi>; ++__i)
 	if (__k[__i])
 	  return __i;
-      __builtin_unreachable(); // make none_of(__k) UB/ill-formed
+      __invoke_ub("find_first_set(empty mask) is UB");
     }
   else
     return _Abi::_MaskImpl::__find_first_set(__k);
@@ -4551,7 +4568,7 @@ find_last_set(const simd_mask<_Tp, _Abi>& __k)
       for (size_t __i = simd_size_v<_Tp, _Abi>; __i > 0; --__i)
 	if (__k[__i - 1])
 	  return __i - 1;
-      __builtin_unreachable(); // make none_of(__k) UB/ill-formed
+      __invoke_ub("find_last_set(empty mask) is UB");
     }
   else
     return _Abi::_MaskImpl::__find_last_set(__k);
@@ -4678,13 +4695,39 @@ public:
     return _SimdIntOperators::__make_derived(
       _Impl::__bit_shift_right(__data(__x), __data(__y)));
   }
+  template <typename _VV = _V>
   _GLIBCXX_SIMD_CONSTEXPR friend _V operator<<(const _V& __x, int __y)
   {
+    using _Tp = typename _VV::value_type;
+    if (__y < 0)
+      __invoke_ub(
+	"The behavior is undefined if the right operand of a shift operation "
+	"is negative. [expr.shift]\nA shift by %d was requested",
+	__y);
+    if (__y >= sizeof(std::declval<_Tp>() << __y) * CHAR_BIT)
+      __invoke_ub(
+	"The behavior is undefined if the right operand of a shift operation "
+	"is greater than or equal to the width of the promoted left operand. "
+	"[expr.shift]\nA shift by %d was requested",
+	__y);
     return _SimdIntOperators::__make_derived(
       _Impl::__bit_shift_left(__data(__x), __y));
   }
+  template <typename _VV = _V>
   _GLIBCXX_SIMD_CONSTEXPR friend _V operator>>(const _V& __x, int __y)
   {
+    using _Tp = typename _VV::value_type;
+    if (__y < 0)
+      __invoke_ub(
+	"The behavior is undefined if the right operand of a shift operation "
+	"is negative. [expr.shift]\nA shift by %d was requested",
+	__y);
+    if (__y >= sizeof(std::declval<_Tp>() << __y) * CHAR_BIT)
+      __invoke_ub(
+	"The behavior is undefined if the right operand of a shift operation "
+	"is greater than or equal to the width of the promoted left operand. "
+	"[expr.shift]\nA shift by %d was requested",
+	__y);
     return _SimdIntOperators::__make_derived(
       _Impl::__bit_shift_right(__data(__x), __y));
   }
