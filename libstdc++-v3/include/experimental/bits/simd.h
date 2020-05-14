@@ -1385,7 +1385,7 @@ template <typename _Tp>
 struct _VectorTraitsImpl<_Tp, enable_if_t<__is_vector_type_v<_Tp>>>
 {
   using type = _Tp;
-  using value_type = decltype(std::declval<_Tp>()[0]);
+  using value_type = std::remove_reference_t<decltype(std::declval<_Tp>()[0])>;
   static constexpr int _S_width = sizeof(_Tp) / sizeof(value_type);
   using _Wrapper = _SimdWrapper<value_type, _S_width>;
   template <typename _Up, int _W = _S_width>
