@@ -2061,6 +2061,38 @@ template <typename _Abi> struct _SimdImplBuiltin
       return __x._M_data < 0 ? -__x._M_data : __x._M_data;
   }
 
+  // }}}3
+  // _S_plus_minus {{{
+  // Returns __x + __y - __y without -fassociative-math optimizing to __x.
+  // - _TV must be __vector_type_t<floating-point type, N>.
+  // - _UV must be _TV or floating-point type.
+  template <typename _TV, typename _UV>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _TV _S_plus_minus(_TV __x,
+							     _UV __y) noexcept
+  {
+#if __GCC_IEC_559 == 0
+    if (__builtin_is_constant_evaluated()
+	|| (__builtin_constant_p(__x) && __builtin_constant_p(__y)))
+      return (__x + __y) - __y;
+    else
+      return [&] {
+	__x += __y;
+	if constexpr(__have_sse)
+	  asm("" : "+x"(__x));
+	else if constexpr(__have_neon)
+	  asm("" : "+w"(__x));
+	else if constexpr (__have_power_vmx)
+	  asm("" : "+v"(__x));
+	else
+	  asm("" : "+g"(__x));
+	return __x - __y;
+      }();
+#else
+    return (__x + __y) - __y;
+#endif
+  }
+
+  // }}}
   // __nearbyint {{{3
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
   _GLIBCXX_SIMD_INTRINSIC static _Tp __nearbyint(_Tp __x_) noexcept
@@ -2074,10 +2106,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     constexpr _V __shifter_abs
       = _V() + (1ull << (std::numeric_limits<value_type>::digits - 1));
     const _V __shifter = __or(__and(_S_signmask<_V>, __x), __shifter_abs);
-    _V __shifted = __x + __shifter;
-    // how can we stop -fassociative-math to break this pattern?
-    // asm("" : "+X"(__shifted));
-    __shifted -= __shifter;
+    const _V __shifted = _S_plus_minus(__x, __shifter);
     return __absx < __shifter_abs ? __shifted : __x;
   }
 
@@ -2097,7 +2126,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     const _V __absx = __and(__x._M_data, _S_absmask<_V>);
     static_assert(CHAR_BIT * sizeof(1ull) >= std::numeric_limits<_Tp>::digits);
     constexpr _Tp __shifter = 1ull << (std::numeric_limits<_Tp>::digits - 1);
-    _V __truncated = (__absx + __shifter) - __shifter;
+    _V __truncated = _S_plus_minus(__absx, __shifter);
     __truncated -= __truncated > __absx ? _V() + 1 : _V();
     return __absx < __shifter ? __or(__xor(__absx, __x._M_data), __truncated)
 			      : __x._M_data;
@@ -2112,7 +2141,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     const _V __absx = __and(__x._M_data, _S_absmask<_V>);
     static_assert(CHAR_BIT * sizeof(1ull) >= std::numeric_limits<_Tp>::digits);
     constexpr _Tp __shifter = 1ull << (std::numeric_limits<_Tp>::digits - 1);
-    _V __truncated = (__absx + __shifter) - __shifter;
+    _V __truncated = _S_plus_minus(__absx, __shifter);
     __truncated -= __truncated > __absx ? _V() + 1 : _V();
     const _V __rounded
       = __or(__xor(__absx, __x._M_data),
