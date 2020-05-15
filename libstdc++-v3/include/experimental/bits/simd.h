@@ -45,6 +45,26 @@
 #include <arm_neon.h>
 #endif
 
+/* There are several closely related types, with the following naming
+ * convention:
+ * _Tp: vectorizable (arithmetic) type (or any type)
+ * _TV: __vector_type_t<_Tp, _Np>
+ * _TW: _SimdWrapper<_Tp, _Np>
+ * _TI: __intrinsic_type_t<_Tp, _Np>
+ * _TVT: _VectorTraits<_TV> or _VectorTraits<_TW>
+ * If one additional type is needed use _U instead of _T.
+ * Otherwise use _T\d, _TV\d, _TW\d, TI\d, _TVT\d.
+ *
+ * More naming conventions:
+ * _Ap or _Abi: An ABI tag from the simd_abi namespace
+ * _Ip: often used for integer types with sizeof(_Ip) == sizeof(_Tp),
+ *      _IV, _IW as for _TV, _TW
+ * _Np: number of elements (not bytes)
+ * _Bytes: number of bytes
+ *
+ * Variable names:
+ * __k: mask object (vector- or bitmask)
+ */
 _GLIBCXX_SIMD_BEGIN_NAMESPACE
 
 #if !_GLIBCXX_SIMD_X86INTRIN
