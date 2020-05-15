@@ -34,15 +34,16 @@
 _GLIBCXX_SIMD_BEGIN_NAMESPACE
 // _S_allbits{{{
 template <typename _V>
-static inline constexpr _V _S_allbits
+static inline _GLIBCXX_SIMD_USE_CONSTEXPR _V _S_allbits
   = reinterpret_cast<_V>(~__vector_type_t<char, sizeof(_V) / sizeof(char)>());
 
 // }}}
 // _S_signmask, _S_absmask{{{
 template <typename _V, typename = _VectorTraits<_V>>
-static inline constexpr _V _S_signmask = __xor(_V() + 1, _V() - 1);
+static inline _GLIBCXX_SIMD_USE_CONSTEXPR _V _S_signmask
+  = __xor(_V() + 1, _V() - 1);
 template <typename _V, typename = _VectorTraits<_V>>
-static inline constexpr _V _S_absmask
+static inline _GLIBCXX_SIMD_USE_CONSTEXPR _V _S_absmask
   = __andnot(_S_signmask<_V>, _S_allbits<_V>);
 
 //}}}
@@ -1019,7 +1020,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
 	  return __or(__x, ~__implicit_mask<_Up>()._M_data);
 	else
 	  {
-	    constexpr auto __one
+	    _GLIBCXX_SIMD_USE_CONSTEXPR auto __one
 	      = __andnot(__implicit_mask<_Up>()._M_data,
 			 __vector_broadcast<_S_full_size<_Up>>(_Up(1)));
 	    return __or(__x, __one);
@@ -1796,9 +1797,10 @@ template <typename _Abi> struct _SimdImplBuiltin
 	  {
 	    using _Ap = simd_abi::deduce_t<_Tp, __full_size>;
 	    using _TW = _SimdWrapper<_Tp, __full_size>;
-	    constexpr auto __implicit_mask_full
+	    _GLIBCXX_SIMD_USE_CONSTEXPR auto __implicit_mask_full
 	      = _Abi::template __implicit_mask<_Tp>().__as_full_vector();
-	    constexpr _TW __one = __vector_broadcast<__full_size>(_Tp(1));
+	    _GLIBCXX_SIMD_USE_CONSTEXPR _TW __one
+	      = __vector_broadcast<__full_size>(_Tp(1));
 	    const _TW __x_full = __data(__x).__as_full_vector();
 	    const _TW __x_padded_with_ones
 	      = _Ap::_CommonImpl::_S_blend(__implicit_mask_full, __one,
@@ -2103,7 +2105,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     const _V __absx = __and(__x, _S_absmask<_V>);
     static_assert(CHAR_BIT * sizeof(1ull)
 		  >= std::numeric_limits<value_type>::digits);
-    constexpr _V __shifter_abs
+    _GLIBCXX_SIMD_USE_CONSTEXPR _V __shifter_abs
       = _V() + (1ull << (std::numeric_limits<value_type>::digits - 1));
     const _V __shifter = __or(__and(_S_signmask<_V>, __x), __shifter_abs);
     const _V __shifted = _S_plus_minus(__x, __shifter);

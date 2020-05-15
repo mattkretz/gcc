@@ -228,6 +228,12 @@
 #define _GLIBCXX_SIMD_USE_CONSTEXPR_API constexpr
 #endif
 
+#if defined __clang__
+#define _GLIBCXX_SIMD_USE_CONSTEXPR const
+#else
+#define _GLIBCXX_SIMD_USE_CONSTEXPR constexpr
+#endif
+
 #define _GLIBCXX_SIMD_LIST_BINARY(__macro) __macro(|) __macro(&) __macro(^)
 #define _GLIBCXX_SIMD_LIST_SHIFTS(__macro) __macro(<<) __macro(>>)
 #define _GLIBCXX_SIMD_LIST_ARITHMETICS(__macro)                                \
