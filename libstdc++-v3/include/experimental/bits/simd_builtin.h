@@ -2381,7 +2381,12 @@ template <typename _Abi> struct _SimdImplBuiltin
   __masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
 		  __id<_SimdWrapper<_Tp, _Np>> __rhs)
   {
-    __lhs = _CommonImpl::_S_blend(__k, __lhs, __rhs);
+    if (__k._M_is_constprop_none_of())
+      return;
+    else if (__k._M_is_constprop_all_of())
+      __lhs = __rhs;
+    else
+      __lhs = _CommonImpl::_S_blend(__k, __lhs, __rhs);
   }
 
   template <typename _Tp, typename _K, size_t _Np>
@@ -2389,7 +2394,12 @@ template <typename _Abi> struct _SimdImplBuiltin
   __masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
 		  __id<_Tp> __rhs)
   {
-    if (__builtin_constant_p(__rhs) && __rhs == 0 && std::is_same_v<_K, _Tp>)
+    if (__k._M_is_constprop_none_of())
+      return;
+    else if (__k._M_is_constprop_all_of())
+      __lhs = __vector_broadcast<_Np>(__rhs);
+    else if (__builtin_constant_p(__rhs) && __rhs == 0
+	     && std::is_same_v<_K, _Tp>)
       {
 	if constexpr (!is_same_v<bool, _K>)
 	  // the __andnot optimization only makes sense if __k._M_data is a
@@ -2412,7 +2422,13 @@ template <typename _Abi> struct _SimdImplBuiltin
 		   _SimdWrapper<_Tp, _Np>& __lhs,
 		   const __id<_SimdWrapper<_Tp, _Np>> __rhs, _Op __op)
   {
-    __lhs = _CommonImpl::_S_blend(__k, __lhs, __op(_SuperImpl{}, __lhs, __rhs));
+    if (__k._M_is_constprop_none_of())
+      return;
+    else if (__k._M_is_constprop_all_of())
+      __lhs = __op(_SuperImpl{}, __lhs, __rhs);
+    else
+      __lhs
+	= _CommonImpl::_S_blend(__k, __lhs, __op(_SuperImpl{}, __lhs, __rhs));
   }
 
   template <typename _Op, typename _Tp, typename _K, size_t _Np>
@@ -2421,10 +2437,7 @@ template <typename _Abi> struct _SimdImplBuiltin
 		   _SimdWrapper<_Tp, _Np>& __lhs, const __id<_Tp> __rhs,
 		   _Op __op)
   {
-    __lhs = _CommonImpl::_S_blend(__k, __lhs,
-				  __op(_SuperImpl{}, __lhs,
-				       _SimdWrapper<_Tp, _Np>(
-					 __vector_broadcast<_Np>(__rhs))));
+    __masked_cassign(__k, __lhs, __vector_broadcast<_Np>(__rhs), __op);
   }
 
   // __masked_unary {{{2
@@ -2434,9 +2447,14 @@ template <typename _Abi> struct _SimdImplBuiltin
   __masked_unary(const _SimdWrapper<_K, _Np> __k,
 		 const _SimdWrapper<_Tp, _Np> __v)
   {
+    if (__k._M_is_constprop_none_of())
+      return __v;
     auto __vv = __make_simd(__v);
     _Op<decltype(__vv)> __op;
-    return _CommonImpl::_S_blend(__k, __v, __data(__op(__vv)));
+    if (__k._M_is_constprop_all_of())
+      return __data(__op(__vv));
+    else
+      return _CommonImpl::_S_blend(__k, __v, __data(__op(__vv)));
   }
 
   //}}}2

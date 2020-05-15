@@ -2284,6 +2284,30 @@ struct _SimdWrapper<
     return __builtin_constant_p(_M_data);
   }
 
+  _GLIBCXX_SIMD_INTRINSIC constexpr bool _M_is_constprop_none_of() const
+  {
+    if (__builtin_constant_p(_M_data))
+      {
+	constexpr int __nbits = sizeof(_BuiltinType) * CHAR_BIT;
+	constexpr _BuiltinType __active_mask
+	  = ~_BuiltinType() >> (__nbits - _Width);
+	return (_M_data & __active_mask) == 0;
+      }
+    return false;
+  }
+
+  _GLIBCXX_SIMD_INTRINSIC constexpr bool _M_is_constprop_all_of() const
+  {
+    if (__builtin_constant_p(_M_data))
+      {
+	constexpr int __nbits = sizeof(_BuiltinType) * CHAR_BIT;
+	constexpr _BuiltinType __active_mask
+	  = ~_BuiltinType() >> (__nbits - _Width);
+	return (_M_data & __active_mask) == __active_mask;
+      }
+    return false;
+  }
+
   _BuiltinType _M_data;
 };
 
@@ -2391,6 +2415,46 @@ struct _SimdWrapper<
   constexpr bool _M_is_constprop() const
   {
     return __builtin_constant_p(_M_data);
+  }
+
+  _GLIBCXX_SIMD_INTRINSIC constexpr bool _M_is_constprop_none_of() const
+  {
+    if (__builtin_constant_p(_M_data))
+      {
+	bool __r = true;
+	if constexpr (std::is_floating_point_v<_Tp>)
+	  {
+	    using _Ip = __int_for_sizeof_t<_Tp>;
+	    const auto __intdata = __vector_bitcast<_Ip>(_M_data);
+	    __execute_n_times<_Width>(
+	      [&](auto __i) { __r &= __intdata[__i.value] == _Ip(); });
+	  }
+	else
+	  __execute_n_times<_Width>(
+	    [&](auto __i) { __r &= _M_data[__i.value] == _Tp(); });
+	return __r;
+      }
+    return false;
+  }
+
+  _GLIBCXX_SIMD_INTRINSIC constexpr bool _M_is_constprop_all_of() const
+  {
+    if (__builtin_constant_p(_M_data))
+      {
+	bool __r = true;
+	if constexpr (std::is_floating_point_v<_Tp>)
+	  {
+	    using _Ip = __int_for_sizeof_t<_Tp>;
+	    const auto __intdata = __vector_bitcast<_Ip>(_M_data);
+	    __execute_n_times<_Width>(
+	      [&](auto __i) { __r &= __intdata[__i.value] == ~_Ip(); });
+	  }
+	else
+	  __execute_n_times<_Width>(
+	    [&](auto __i) { __r &= _M_data[__i.value] == ~_Tp(); });
+	return __r;
+      }
+    return false;
   }
 };
 
