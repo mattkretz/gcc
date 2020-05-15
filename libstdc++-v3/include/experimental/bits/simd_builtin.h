@@ -2182,20 +2182,18 @@ template <typename _Abi> struct _SimdImplBuiltin
   // __isnan {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isnan(_SimdWrapper<_Tp, _Np> __x)
+  __isnan([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
-    [](auto&&) {}(__x);
     return {}; // false
 #elif !defined __SUPPORT_SNAN__
     return __vector_bitcast<_Tp>(~(__x._M_data == __x._M_data));
 #elif defined __STDC_IEC_559__
-    using _Up = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
-    constexpr auto __max = __vector_bitcast<_Up>(
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __infn = __vector_bitcast<_Ip>(
       __vector_broadcast<_Np>(numeric_limits<_Tp>::infinity()));
-    auto __bits = __vector_bitcast<_Up>(__x);
-    __bits &= __vector_bitcast<_Up>(_S_absmask<__vector_type_t<_Tp, _Np>>);
-    return __vector_bitcast<_Tp>(__bits > __max);
+    return __vector_bitcast<_Tp>(__infn < __absn);
 #else
 #error "Not implemented: how to support SNaN but non-IEC559 floating-point?"
 #endif
@@ -2204,17 +2202,18 @@ template <typename _Abi> struct _SimdImplBuiltin
   // __isfinite {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isfinite(_SimdWrapper<_Tp, _Np> __x)
+  __isfinite([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
-    [](auto&&) {}(__x);
-    return __vector_bitcast<_Np>(_Tp()) == __vector_bitcast<_Np>(_Tp());
+    _GLIBCXX_SIMD_USE_CONSTEXPR __vector_type_t<_Tp, _Np> __zero = {};
+    return _SuperImpl::template __equal_to<_Tp, _Np>(__zero, __zero);
 #else
     // if all exponent bits are set, __x is either inf or NaN
-    using _I = __int_for_sizeof_t<_Tp>;
-    constexpr auto __inf = __vector_bitcast<_I>(
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
-    return __vector_bitcast<_Tp>(__inf > (__vector_bitcast<_I>(__x) & __inf));
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __maxn = __vector_bitcast<_Ip>(
+      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::max()));
+    return __vector_bitcast<_Tp>(__absn <= __maxn);
 #endif
   }
 
@@ -2231,8 +2230,8 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
   __signbit(_SimdWrapper<_Tp, _Np> __x)
   {
-    using _I = __int_for_sizeof_t<_Tp>;
-    return __vector_bitcast<_Tp>(__vector_bitcast<_I>(__x) < 0);
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    return __vector_bitcast<_Tp>(__vector_bitcast<_Ip>(__x) < 0);
     // Arithmetic right shift (SRA) would also work (instead of compare), but
     // 64-bit SRA isn't available on x86 before AVX512. And in general,
     // compares are more likely to be efficient than SRA.
@@ -2241,10 +2240,9 @@ template <typename _Abi> struct _SimdImplBuiltin
   // __isinf {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isinf(_SimdWrapper<_Tp, _Np> __x)
+  __isinf([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
-    [](auto&&) {}(__x);
     return {}; // false
 #else
     return _SuperImpl::template __equal_to<_Tp, _Np>(
@@ -2267,16 +2265,16 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
   __isnormal(_SimdWrapper<_Tp, _Np> __x)
   {
-    using _I = __int_for_sizeof_t<_Tp>;
-    const auto absn = __vector_bitcast<_I>(_SuperImpl::__abs(__x));
-    const auto minn = __vector_bitcast<_I>(
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __minn = __vector_bitcast<_Ip>(
       __vector_broadcast<_Np>(std::numeric_limits<_Tp>::min()));
 #if __FINITE_MATH_ONLY__
-    return __auto_bitcast(absn >= minn);
+    return __vector_bitcast<_Tp>(__absn >= __minn);
 #else
-    const auto infn = __vector_bitcast<_I>(
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
-    return __auto_bitcast(absn >= minn && absn < infn);
+    const auto __maxn = __vector_bitcast<_Ip>(
+      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::max()));
+    return __vector_bitcast<_Tp>(__minn <= __absn && __absn <= __maxn);
 #endif
   }
 
@@ -2286,32 +2284,35 @@ template <typename _Abi> struct _SimdImplBuiltin
   __fpclassify(_SimdWrapper<_Tp, _Np> __x)
   {
     using _I = __int_for_sizeof_t<_Tp>;
-    const auto __xi = __to_intrin(__abs(__x));
-    const auto __xn = __vector_bitcast<_I>(__xi);
+    const auto __xn = __vector_bitcast<_I>(__to_intrin(_SuperImpl::__abs(__x)));
     constexpr size_t _NI = sizeof(__xn) / sizeof(_I);
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __minn = __vector_bitcast<_I>(
+      __vector_broadcast<_NI>(std::numeric_limits<_Tp>::min()));
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __infn = __vector_bitcast<_I>(
+      __vector_broadcast<_NI>(std::numeric_limits<_Tp>::infinity()));
 
-    constexpr auto __fp_normal = __vector_broadcast<_NI, _I>(FP_NORMAL);
-    constexpr auto __fp_nan = __vector_broadcast<_NI, _I>(FP_NAN);
-    constexpr auto __fp_infinite = __vector_broadcast<_NI, _I>(FP_INFINITE);
-    constexpr auto __fp_subnormal = __vector_broadcast<_NI, _I>(FP_SUBNORMAL);
-    constexpr auto __fp_zero = __vector_broadcast<_NI, _I>(FP_ZERO);
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_normal
+      = __vector_broadcast<_NI, _I>(FP_NORMAL);
+#if !__FINITE_MATH_ONLY__
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_nan
+      = __vector_broadcast<_NI, _I>(FP_NAN);
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_infinite
+      = __vector_broadcast<_NI, _I>(FP_INFINITE);
+#endif
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_subnormal
+      = __vector_broadcast<_NI, _I>(FP_SUBNORMAL);
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_zero
+      = __vector_broadcast<_NI, _I>(FP_ZERO);
 
-    __vector_type_t<_I, _NI> __tmp;
-    if constexpr (sizeof(_Tp) == 4)
-      __tmp = __xn < 0x0080'0000
-		? (__xn == 0 ? __fp_zero : __fp_subnormal)
-		: (__xn < 0x7f80'0000
-		     ? __fp_normal
-		     : (__xn == 0x7f80'0000 ? __fp_infinite : __fp_nan));
-    else if constexpr (sizeof(_Tp) == 8)
-      __tmp = __xn < 0x0010'0000'0000'0000LL
-		? (__xn == 0 ? __fp_zero : __fp_subnormal)
-		: (__xn < 0x7ff0'0000'0000'0000LL
-		     ? __fp_normal
-		     : (__xn == 0x7ff0'0000'0000'0000LL ? __fp_infinite
-							: __fp_nan));
-    else
-      __assert_unreachable<_Tp>();
+    __vector_type_t<_I, _NI> __tmp
+      = __xn < __minn ? (__xn == 0 ? __fp_zero : __fp_subnormal)
+#if __FINITE_MATH_ONLY__
+		      : __fp_normal;
+#else
+		      : (__xn < __infn
+			   ? __fp_normal
+			   : (__xn == __infn ? __fp_infinite : __fp_nan));
+#endif
 
     if constexpr (sizeof(_I) == sizeof(int))
       {

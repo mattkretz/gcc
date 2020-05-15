@@ -869,7 +869,9 @@ modf(const simd<_Tp, _Abi>& __x, simd<_Tp, _Abi>* __iptr)
   const auto __integral = trunc(__x);
   *__iptr = __integral;
   auto __r = __x - __integral;
+#if !__FINITE_MATH_ONLY__
   where(isinf(__x), __r) = _Tp();
+#endif
   return copysign(__r, __x);
 }
 
