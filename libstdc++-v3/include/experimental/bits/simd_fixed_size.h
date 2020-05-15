@@ -1478,10 +1478,10 @@ template <int _Np> struct _SimdImplFixedSize
 		    return __binary_op(__left, __right);
 		  else
 		    {
-		      _GLIBCXX_SIMD_CONSTEXPR typename _LT::mask_type __k(
-			  __private_init, [](auto __j) constexpr {
-			    return __j < _RT::size();
-			  });
+		      _GLIBCXX_SIMD_USE_CONSTEXPR_API
+			typename _LT::mask_type __k(
+			  __private_init,
+			  [](auto __j) constexpr { return __j < _RT::size(); });
 		      _LT __ext_right = __left;
 		      where(__k, __ext_right)
 			= __proposed::resizing_simd_cast<_LT>(__right);
