@@ -42,13 +42,19 @@ test()
 		  limits::min() / 3,
 		  -limits::min() / 3,
 		  -0.,
-#endif
-		  +0.,
-		  limits::min(),
-		  limits::max(),
 		  -limits::min(),
-		  -limits::max()},
-		 {10000, -limits::max() / 2, limits::max() / 2},
+		  -limits::max(),
+		  +0.,
+#endif
+		  limits::min(),
+		  limits::max()},
+		 {10000,
+#ifdef __STDC_IEC_559__
+		  -limits::max() / 2,
+#else
+		  limits::min(),
+#endif
+		  limits::max() / 2},
 		 MAKE_TESTER(log), MAKE_TESTER(log10), MAKE_TESTER(log1p),
 		 MAKE_TESTER(log2), MAKE_TESTER(logb));
 }
