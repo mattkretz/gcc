@@ -376,9 +376,7 @@ struct _MaskImplNeon : _MaskImplNeonMixin, _MaskImplBuiltin<_Abi>
   template <typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static bool __none_of(simd_mask<_Tp, _Abi> __k)
   {
-    const auto __kk
-      = __vector_bitcast<char>(__k._M_data)
-	| ~__vector_bitcast<char>(_Abi::template __implicit_mask<_Tp>());
+    const auto __kk = _Abi::__masked(__k._M_data);
     if constexpr (sizeof(__k) == 16)
       {
 	const auto __x = __vector_bitcast<long long>(__kk);
