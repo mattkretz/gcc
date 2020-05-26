@@ -17,31 +17,18 @@
 
 #include "bits/verify.h"
 #include "bits/make_vec.h"
+#include "bits/test_values.h"
 
 // operators helpers  //{{{1
 template <class T>
 constexpr T
 genHalfBits()
 {
-  return std::numeric_limits<T>::max() >> (std::numeric_limits<T>::digits / 2);
-}
-template <>
-constexpr long double
-genHalfBits<long double>()
-{
-  return 0;
-}
-template <>
-constexpr double
-genHalfBits<double>()
-{
-  return 0;
-}
-template <>
-constexpr float
-genHalfBits<float>()
-{
-  return 0;
+  if constexpr (std::is_floating_point_v<T>)
+    return 0;
+  else
+    return std::numeric_limits<T>::max()
+	   >> (std::numeric_limits<T>::digits / 2);
 }
 
 template <typename V>
@@ -50,6 +37,7 @@ test()
 {
   using M = typename V::mask_type;
   using T = typename V::value_type;
+  using L = std::numeric_limits<T>;
   constexpr auto min = std::numeric_limits<T>::min();
   constexpr auto max = std::numeric_limits<T>::max();
   { // compares{{{2
@@ -205,8 +193,10 @@ test()
     y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
     COMPARE(x = x * y, make_vec<V>({2, 4, 6, 8, 10, 12, 14}));
     y = 2;
-    for (T n :
-	 {T(std::numeric_limits<T>::max() - 1), std::numeric_limits<T>::min()})
+    // don't test min() in the following. There's no guarantee, in general, that
+    // min/2*2 is min (e.g. NEON without subnormals)
+    for (T n : {T(L::max() - 1),
+		std::is_floating_point_v<T> ? T(L::min() * 3) : T(L::min())})
       {
 	x = n / 2;
 	COMPARE(x * y, V(n));
@@ -234,37 +224,70 @@ test()
     COMPARE(x, make_vec<V>({2, 4, 6}));
   }
 
-  { // divides{{{2
-    V x = 2;
-    COMPARE(x / x, V(1));
-    COMPARE(T(3) / x, V(T(3) / T(2)));
-    COMPARE(x / T(3), V(T(2) / T(3)));
-    V y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
-    COMPARE(y / x,
-	    make_vec<V>({T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}));
+  // divides{{{2
+  if constexpr (std::is_floating_point_v<T> && !L::is_iec559)
+    { // avoid testing subnormals and expect minor deltas if we have non-IEC559
+      // float
+      V x = 2;
+      ULP_COMPARE(x / x, V(1), 1);
+      ULP_COMPARE(T(3) / x, V(T(3) / T(2)), 1);
+      ULP_COMPARE(x / T(3), V(T(2) / T(3)), 1);
+      V y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
+      ULP_COMPARE(y / x,
+		  make_vec<V>(
+		    {T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}),
+		  1);
 
-    y = make_vec<V>(
-      {std::numeric_limits<T>::max(), std::numeric_limits<T>::min()});
-    V ref = make_vec<V>({T(std::numeric_limits<T>::max() / 2),
-			 T(std::numeric_limits<T>::min() / 2)});
-    COMPARE(y / x, ref);
+      test_values<V>({L::min() * 1024, T(1), T(), T(-1), L::max() / 1024,
+		      L::max() / 4, L::max(), L::lowest()},
+		     [&](V a) {
+		       V b = 2;
+		       V ref([&](auto i) { return a[i] / 2; });
+		       ULP_COMPARE(a / b, ref, 1);
+		       where(a == 0, a) = 1;
+		       // -freciprocal-math together with flush-to-zero makes
+		       // the following range restriction necessary (i.e.
+		       // 1/|a| must be >= L::min())
+		       where(abs(a) >= 1 / L::min(), a) = 1;
+		       ULP_COMPARE(a / a, V(1), 1) << "\na = " << a;
+		       ref = V([&](auto i) { return 2 / a[i]; });
+		       ULP_COMPARE(b / a, ref, 1) << "\na = " << a;
+		       ULP_COMPARE(b /= a, ref, 1);
+		       ULP_COMPARE(b, ref, 1);
+		     });
+    }
+  else
+    {
+      V x = 2;
+      COMPARE(x / x, V(1));
+      COMPARE(T(3) / x, V(T(3) / T(2)));
+      COMPARE(x / T(3), V(T(2) / T(3)));
+      V y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
+      COMPARE(y / x,
+	      make_vec<V>({T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}));
 
-    y = make_vec<V>(
-      {std::numeric_limits<T>::min(), std::numeric_limits<T>::max()});
-    ref = make_vec<V>({T(std::numeric_limits<T>::min() / 2),
-		       T(std::numeric_limits<T>::max() / 2)});
-    COMPARE(y / x, ref);
+      y = make_vec<V>(
+	{std::numeric_limits<T>::max(), std::numeric_limits<T>::min()});
+      V ref = make_vec<V>({T(std::numeric_limits<T>::max() / 2),
+			   T(std::numeric_limits<T>::min() / 2)});
+      COMPARE(y / x, ref);
 
-    y = make_vec<V>(
-      {std::numeric_limits<T>::max(), T(std::numeric_limits<T>::min() + 1)});
-    COMPARE(y / y, V(1));
+      y = make_vec<V>(
+	{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()});
+      ref = make_vec<V>({T(std::numeric_limits<T>::min() / 2),
+			 T(std::numeric_limits<T>::max() / 2)});
+      COMPARE(y / x, ref);
 
-    ref = make_vec<V>({T(2 / std::numeric_limits<T>::max()),
-		       T(2 / (std::numeric_limits<T>::min() + 1))});
-    COMPARE(x / y, ref);
-    COMPARE(x /= y, ref);
-    COMPARE(x, ref);
-  }
+      y = make_vec<V>(
+	{std::numeric_limits<T>::max(), T(std::numeric_limits<T>::min() + 1)});
+      COMPARE(y / y, V(1));
+
+      ref = make_vec<V>({T(2 / std::numeric_limits<T>::max()),
+			 T(2 / (std::numeric_limits<T>::min() + 1))});
+      COMPARE(x / y, ref);
+      COMPARE(x /= y, ref);
+      COMPARE(x, ref);
+    }
 
   { // increment & decrement {{{2
     const V from0 = make_vec<V>({0, 1, 2, 3}, 4);
