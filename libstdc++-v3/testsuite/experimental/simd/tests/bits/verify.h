@@ -62,7 +62,7 @@ class verify
 	std::stringstream ss;
 	if constexpr (std::is_floating_point_v<typename T::value_type>)
 	  {
-	    ss << "\n(" << x[0] << " == " << std::hexfloat << x[0]
+	    ss << '(' << x[0] << " == " << std::hexfloat << x[0]
 	       << std::defaultfloat << ')';
 	    for (unsigned i = 1; i < x.size(); ++i)
 	      {
@@ -109,19 +109,16 @@ class verify
 
 public:
   template <typename... Ts>
-  verify(bool        ok,
-	 const char* file,
-	 const int   line,
-	 const char* func,
-	 const char* cond,
-	 const Ts&... extra_info)
-  : m_failed(!ok)
+  verify(bool ok, size_t ip, const char* file, const int line, const char* func,
+	 const char* cond, const Ts&... extra_info)
+    : m_failed(!ok)
   {
     if (m_failed)
       {
-	__builtin_fprintf(stderr, "%s:%d: (%s): Assertion '%s' failed.\n", file,
-			  line, func, cond);
-	auto &&unused [[maybe_unused]] = {0, (print(extra_info, int()), 0)...};
+	__builtin_fprintf(stderr,
+			  "%s:%d: (%s):\nInstruction Pointer: %x\nAssertion '%s' failed.\n",
+			  file, line, func, ip, cond);
+	(print(extra_info, int()), ...);
       }
   }
 
@@ -143,17 +140,34 @@ public:
       }
     return *this;
   }
+
+  [[gnu::always_inline]] static inline size_t get_ip()
+  {
+    size_t _ip = 0;
+#ifdef __x86_64__
+    asm volatile("lea 0(%%rip),%0" : "=r"(_ip));
+#elif defined __i386__
+    asm volatile("1: movl $1b,%0" : "=r"(_ip));
+#elif defined __arm__
+    asm volatile("mov %0,pc" : "=r"(_ip));
+#elif defined __aarch64__
+    asm volatile("adr %0,." : "=r"(_ip));
+#endif
+    return _ip;
+  }
 };
 
 #define COMPARE(_a, _b)                                                        \
   [&](auto&& _aa, auto&& _bb) {                                                \
-    return verify(std::experimental::all_of(_aa == _bb), __FILE__, __LINE__,   \
-		  __PRETTY_FUNCTION__, "all_of(" #_a " == " #_b ")",           \
-		  #_a " = ", _aa, "\n" #_b " = ", _bb);                        \
+    return verify(std::experimental::all_of(_aa == _bb), verify::get_ip(),     \
+		  __FILE__, __LINE__, __PRETTY_FUNCTION__,                     \
+		  "all_of(" #_a " == " #_b ")", #_a " = ", _aa,                \
+		  "\n" #_b " = ", _bb);                                        \
   }((_a), (_b))
 
 #define VERIFY(_test)                                                          \
-  verify(_test, __FILE__, __LINE__, __PRETTY_FUNCTION__, #_test)
+  verify(_test, verify::get_ip(), __FILE__, __LINE__, __PRETTY_FUNCTION__,     \
+	 #_test)
 
 // ulp_distance_signed can raise FP exceptions and thus must be conditionally
 // executed
@@ -161,9 +175,9 @@ public:
   [&](auto&& _aa, auto&& _bb) {                                                \
     const bool success = std::experimental::all_of(                            \
       vir::test::ulp_distance(_aa, _bb) <= (_allowed_distance));               \
-    return verify(success, __FILE__, __LINE__, __PRETTY_FUNCTION__,            \
-		  "all_of(" #_a " ~~ " #_b ")", #_a " = ", _aa,                \
-		  "\n" #_b " = ", _bb, "\ndistance = ",                        \
+    return verify(success, verify::get_ip(), __FILE__, __LINE__,               \
+		  __PRETTY_FUNCTION__, "all_of(" #_a " ~~ " #_b ")",           \
+		  #_a " = ", _aa, "\n" #_b " = ", _bb, "\ndistance = ",        \
 		  success ? 0 : vir::test::ulp_distance_signed(_aa, _bb));     \
   }((_a), (_b))
 
