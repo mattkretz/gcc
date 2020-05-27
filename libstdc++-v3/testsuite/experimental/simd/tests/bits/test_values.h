@@ -152,6 +152,95 @@ test_values_3arg(const std::initializer_list<typename V::value_type>& inputs,
     }
 }
 
+#if __GCC_IEC_559 < 2
+// Without IEC559 we consider -0, subnormals, +/-inf, and all NaNs to be
+// invalid (potential UB when used or "produced"). This can't use isnormal (or
+// any other classification function), since they know about the UB.
+template <class V> typename V::mask_type isvalid(V x) {
+  using namespace std::experimental::parallelism_v2;
+  using namespace std::experimental::parallelism_v2::__proposed;
+  using T = typename V::value_type;
+  using I = rebind_simd_t<__int_for_sizeof_t<T>, V>;
+  const I abs_x = __bit_cast<I>(abs(x));
+  const I min = __bit_cast<I>(V(std::numeric_limits<T>::min()));
+  const I max = __bit_cast<I>(V(std::numeric_limits<T>::max()));
+  return static_simd_cast<typename V::mask_type>(
+    __bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
+}
+
+#define MAKE_TESTER_2(name_, reference_)                                       \
+  [&](auto... inputs) {                                                        \
+    ((where(!isvalid(inputs), inputs) = 1), ...);                              \
+    const auto totest = name_(inputs...);                                      \
+    using R = std::remove_const_t<decltype(totest)>;                           \
+    auto&& expected = [&](const auto&... vs) -> const R {                      \
+      R tmp = {};                                                              \
+      for (std::size_t i = 0; i < R::size(); ++i)                              \
+	tmp[i] = reference_(vs[i]...);                                         \
+      return tmp;                                                              \
+    };                                                                         \
+    const R expect1 = expected(inputs...);                                     \
+    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
+      {                                                                        \
+	((where(!isvalid(expect1), inputs) = 1), ...);                         \
+	const R expect2 = expected(inputs...);                                 \
+	((FUZZY_COMPARE(name_(inputs...), expect2) << "\ninputs = ")           \
+	 << ... << inputs);                                                    \
+      }                                                                        \
+    else                                                                       \
+      ((COMPARE(name_(inputs...), expect1) << "\n" #name_ "(")                 \
+       << ... << inputs)                                                       \
+	<< ")";                                                                \
+  }
+
+#define MAKE_TESTER_NOFPEXCEPT(name_)                                          \
+  [&](auto... inputs) {                                                        \
+    ((where(!isvalid(inputs), inputs) = 1), ...);                              \
+    using R = std::remove_const_t<decltype(name_(inputs...))>;                 \
+    auto&& expected = [&](const auto&... vs) -> const R {                      \
+      R tmp = {};                                                              \
+      for (std::size_t i = 0; i < R::size(); ++i)                              \
+	tmp[i] = std::name_(vs[i]...);                                         \
+      return tmp;                                                              \
+    };                                                                         \
+    const R expect1 = expected(inputs...);                                     \
+    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
+      {                                                                        \
+	((where(!isvalid(expect1), inputs) = 1), ...);                         \
+	std::feclearexcept(FE_ALL_EXCEPT);                                     \
+	asm volatile("");                                                      \
+	auto totest = name_(inputs...);                                        \
+	asm volatile("");                                                      \
+	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
+	 << ... << inputs)                                                     \
+	  << ")";                                                              \
+	const R expect2 = expected(inputs...);                                 \
+	std::feclearexcept(FE_ALL_EXCEPT);                                     \
+	asm volatile("");                                                      \
+	totest = name_(inputs...);                                             \
+	asm volatile("");                                                      \
+	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
+	 << ... << inputs)                                                     \
+	  << ")";                                                              \
+	((FUZZY_COMPARE(totest, expect2) << "\n" #name_ "(") << ... << inputs) \
+	  << ")";                                                              \
+      }                                                                        \
+    else                                                                       \
+      {                                                                        \
+	std::feclearexcept(FE_ALL_EXCEPT);                                     \
+	asm volatile("");                                                      \
+	auto totest = name_(inputs...);                                        \
+	asm volatile("");                                                      \
+	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
+	 << ... << inputs)                                                     \
+	  << ")";                                                              \
+	((COMPARE(totest, expect1) << "\n" #name_ "(") << ... << inputs)       \
+	  << ")";                                                              \
+      }                                                                        \
+  }
+
+#else
+
 #define MAKE_TESTER_2(name_, reference_)                                       \
   [&](const auto... inputs) {                                                  \
     const auto totest = name_(inputs...);                                      \
@@ -182,8 +271,6 @@ test_values_3arg(const std::initializer_list<typename V::value_type>& inputs,
 	  << ")";                                                              \
       }                                                                        \
   }
-
-#define MAKE_TESTER(name_) MAKE_TESTER_2(name_, std::name_)
 
 #define MAKE_TESTER_NOFPEXCEPT(name_)                                          \
   [&](const auto... inputs) {                                                  \
@@ -223,5 +310,9 @@ test_values_3arg(const std::initializer_list<typename V::value_type>& inputs,
 	  << ")";                                                              \
       }                                                                        \
   }
+
+#endif
+
+#define MAKE_TESTER(name_) MAKE_TESTER_2(name_, std::name_)
 
 // vim: foldmethod=marker ts=8 sw=2 noet sts=2

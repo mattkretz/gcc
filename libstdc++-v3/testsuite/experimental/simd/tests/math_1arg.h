@@ -37,14 +37,12 @@ test()
 		  -0x1.fffffcp23,
 		  0x1.8p23,
 		  -0x1.8p23,
-#ifdef __STDC_IEC_559__
 		  limits::infinity(),
 		  -limits::infinity(),
 		  -0.,
 		  limits::quiet_NaN(),
 		  limits::denorm_min(),
 		  limits::min() / 3,
-#endif
 		  limits::min(),
 		  limits::max()},
 		 {10000, -limits::max() / 2, limits::max() / 2},
