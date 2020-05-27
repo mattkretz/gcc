@@ -160,12 +160,26 @@ template <class V> typename V::mask_type isvalid(V x) {
   using namespace std::experimental::parallelism_v2;
   using namespace std::experimental::parallelism_v2::__proposed;
   using T = typename V::value_type;
-  using I = rebind_simd_t<__int_for_sizeof_t<T>, V>;
-  const I abs_x = __bit_cast<I>(abs(x));
-  const I min = __bit_cast<I>(V(std::numeric_limits<T>::min()));
-  const I max = __bit_cast<I>(V(std::numeric_limits<T>::max()));
-  return static_simd_cast<typename V::mask_type>(
-    __bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
+  if constexpr (sizeof(T) <= sizeof(double))
+    {
+      using I = rebind_simd_t<__int_for_sizeof_t<T>, V>;
+      const I abs_x = __bit_cast<I>(abs(x));
+      const I min = __bit_cast<I>(V(std::numeric_limits<T>::min()));
+      const I max = __bit_cast<I>(V(std::numeric_limits<T>::max()));
+      return static_simd_cast<typename V::mask_type>(
+	__bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
+    }
+  else
+    {
+      const V abs_x = abs(x);
+      const V min = std::numeric_limits<T>::min();
+      // Make max non-const static to inhibit constprop. Otherwise the compiler
+      // might decide `abs_x <= max` is constexpr true, by definition
+      // (-ffinite-math-only)
+      static V max = std::numeric_limits<T>::max();
+      return (x == 0 && copysign(x, V(1)) == V(1))
+	     || (abs_x >= min && abs_x <= max);
+    }
 }
 
 #define MAKE_TESTER_2(name_, reference_)                                       \
