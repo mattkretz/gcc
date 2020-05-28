@@ -987,7 +987,8 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
   //}}}
   // implicit masks {{{
   template <typename _Tp>
-  static constexpr _SimdWrapper<_Tp, size<_Tp>> __implicit_mask()
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, size<_Tp>>
+  __implicit_mask()
   {
     constexpr auto __size = _S_full_size<_Tp>;
     using _ImplicitMask = __vector_type_t<__int_for_sizeof_t<_Tp>, __size>;
@@ -999,7 +1000,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
   }
 
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  static constexpr _Tp __masked(_Tp __x)
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _Tp __masked(_Tp __x)
   {
     using _Up = typename _TVT::value_type;
     if constexpr (_S_is_partial)
@@ -1009,7 +1010,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
   }
 
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  static constexpr auto __make_padding_nonzero(_Tp __x)
+  _GLIBCXX_SIMD_INTRINSIC static constexpr auto __make_padding_nonzero(_Tp __x)
   {
     if constexpr (!_S_is_partial)
       return __x;
@@ -1120,7 +1121,7 @@ public:
   }
 
   template <typename _TV, typename _TVT = _VectorTraits<_TV>>
-  static constexpr auto __make_padding_nonzero(_TV __x)
+  _GLIBCXX_SIMD_INTRINSIC static constexpr auto __make_padding_nonzero(_TV __x)
   {
     if constexpr (!_S_is_partial)
       return __x;
