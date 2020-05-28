@@ -271,10 +271,8 @@ struct _SimdImplScalar
   {
     if constexpr (is_floating_point_v<_Tp>)
       {
-	using _I = __int_for_sizeof_t<_Tp>;
-	const _I __r = reinterpret_cast<const __may_alias<_I>&>(__x)
-		       & reinterpret_cast<const __may_alias<_I>&>(__y);
-	return reinterpret_cast<const __may_alias<_Tp>&>(__r);
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	return __bit_cast<_Tp>(__bit_cast<_Ip>(__x) & __bit_cast<_Ip>(__y));
       }
     else
       return static_cast<_Tp>(__promote_preserving_unsigned(__x)
@@ -285,10 +283,8 @@ struct _SimdImplScalar
   {
     if constexpr (is_floating_point_v<_Tp>)
       {
-	using _I = __int_for_sizeof_t<_Tp>;
-	const _I __r = reinterpret_cast<const __may_alias<_I>&>(__x)
-		       | reinterpret_cast<const __may_alias<_I>&>(__y);
-	return reinterpret_cast<const __may_alias<_Tp>&>(__r);
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	return __bit_cast<_Tp>(__bit_cast<_Ip>(__x) | __bit_cast<_Ip>(__y));
       }
     else
       return static_cast<_Tp>(__promote_preserving_unsigned(__x)
@@ -300,10 +296,8 @@ struct _SimdImplScalar
   {
     if constexpr (is_floating_point_v<_Tp>)
       {
-	using _I = __int_for_sizeof_t<_Tp>;
-	const _I __r = reinterpret_cast<const __may_alias<_I>&>(__x)
-		       ^ reinterpret_cast<const __may_alias<_I>&>(__y);
-	return reinterpret_cast<const __may_alias<_Tp>&>(__r);
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	return __bit_cast<_Tp>(__bit_cast<_Ip>(__x) ^ __bit_cast<_Ip>(__y));
       }
     else
       return static_cast<_Tp>(__promote_preserving_unsigned(__x)

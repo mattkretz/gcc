@@ -476,19 +476,6 @@ template <typename _Tp, typename _Ap>
 inline constexpr size_t __size_or_zero_v = __size_or_zero_dispatch<_Tp, _Ap>(0);
 
 // }}}
-// __bit_cast {{{
-template <typename _To, typename _From>
-_GLIBCXX_SIMD_INTRINSIC _To
-__bit_cast(const _From __x)
-{
-  static_assert(sizeof(_To) == sizeof(_From));
-  _To __r;
-  __builtin_memcpy(reinterpret_cast<char*>(&__r),
-		   reinterpret_cast<const char*>(&__x), sizeof(_To));
-  return __r;
-}
-
-// }}}
 // __div_roundup {{{
 inline constexpr std::size_t
 __div_roundup(std::size_t __a, std::size_t __b)
@@ -1543,6 +1530,45 @@ _To __convert_x86(_Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp, _Tp,
 #endif // _GLIBCXX_SIMD_WORKAROUND_PR85048
 
 //}}}
+// __bit_cast {{{
+template <typename _To, typename _From>
+_GLIBCXX_SIMD_INTRINSIC constexpr _To
+__bit_cast(const _From __x)
+{
+  // TODO: implement with / replace by __builtin_bit_cast ASAP
+  static_assert(sizeof(_To) == sizeof(_From));
+  constexpr bool __to_is_vectorizable
+    = std::is_arithmetic_v<_To> || std::is_enum_v<_To>;
+  constexpr bool __from_is_vectorizable
+    = std::is_arithmetic_v<_From> || std::is_enum_v<_From>;
+  if constexpr (__is_vector_type_v<_To> && __is_vector_type_v<_From>)
+    return reinterpret_cast<_To>(__x);
+  else if constexpr (__is_vector_type_v<_To> && __from_is_vectorizable)
+    {
+      using _FV [[gnu::vector_size(sizeof(_From))]] = _From;
+      return reinterpret_cast<_To>(_FV{__x});
+    }
+  else if constexpr (__to_is_vectorizable && __from_is_vectorizable)
+    {
+      using _TV [[gnu::vector_size(sizeof(_To))]] = _To;
+      using _FV [[gnu::vector_size(sizeof(_From))]] = _From;
+      return reinterpret_cast<_TV>(_FV{__x})[0];
+    }
+  else if constexpr (__to_is_vectorizable && __is_vector_type_v<_From>)
+    {
+      using _TV [[gnu::vector_size(sizeof(_To))]] = _To;
+      return reinterpret_cast<_TV>(__x)[0];
+    }
+  else
+    {
+      _To __r;
+      __builtin_memcpy(reinterpret_cast<char*>(&__r),
+		       reinterpret_cast<const char*>(&__x), sizeof(_To));
+      return __r;
+    }
+}
+
+// }}}
 // __to_intrin {{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>,
 	  typename _R
