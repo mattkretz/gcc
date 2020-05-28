@@ -4660,14 +4660,12 @@ popcount(const simd_mask<_Tp, _Abi>& __k) noexcept
 {
   if (__builtin_is_constant_evaluated() || __k._M_is_constprop())
     {
-      int __r = 0;
-      for (size_t __i = 0; __i < simd_size_v<_Tp, _Abi>; ++__i)
-	if (__k[__i])
-	  ++__r;
-      return __r;
+      const int __r = __call_with_subscripts<simd_size_v<_Tp, _Abi>>(
+	__k, [](auto... __elements) { return ((__elements != 0) + ...); });
+      if (__builtin_is_constant_evaluated() || __builtin_constant_p(__r))
+	return __r;
     }
-  else
-    return _Abi::_MaskImpl::__popcount(__k);
+  return _Abi::_MaskImpl::__popcount(__k);
 }
 template <typename _Tp, typename _Abi>
 _GLIBCXX_SIMD_ALWAYS_INLINE _GLIBCXX_SIMD_CONSTEXPR int
