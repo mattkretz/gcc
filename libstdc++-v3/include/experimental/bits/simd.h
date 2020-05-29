@@ -3980,21 +3980,16 @@ class _SmartReference
   int _M_index;
   _Up& _M_obj;
 
-  _GLIBCXX_SIMD_INTRINSIC constexpr _ValueType __read() const noexcept
+  _GLIBCXX_SIMD_INTRINSIC constexpr _ValueType _M_read() const noexcept
   {
     if constexpr (std::is_arithmetic_v<_Up>)
-      {
-	_GLIBCXX_DEBUG_ASSERT(_M_index == 0);
-	return _M_obj;
-      }
+      return _M_obj;
     else
-      {
-	return _M_obj[_M_index];
-      }
+      return _M_obj[_M_index];
   }
 
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC constexpr void __write(_Tp&& __x) const
+  _GLIBCXX_SIMD_INTRINSIC constexpr void _M_write(_Tp&& __x) const
   {
     _Accessor::__set(_M_obj, _M_index, static_cast<_Tp&&>(__x));
   }
@@ -4010,14 +4005,14 @@ public:
 
   _GLIBCXX_SIMD_INTRINSIC constexpr operator value_type() const noexcept
   {
-    return __read();
+    return _M_read();
   }
 
   template <typename _Tp,
 	    typename = _ValuePreservingOrInt<__remove_cvref_t<_Tp>, value_type>>
   _GLIBCXX_SIMD_INTRINSIC constexpr _SmartReference operator=(_Tp&& __x) &&
   {
-    __write(static_cast<_Tp&&>(__x));
+    _M_write(static_cast<_Tp&&>(__x));
     return {_M_obj, _M_index};
   }
 
@@ -4032,8 +4027,8 @@ public:
   _GLIBCXX_SIMD_INTRINSIC constexpr _SmartReference operator __op##=(          \
     _Tp&& __x)&&                                                               \
   {                                                                            \
-    const value_type& __lhs = __read();                                        \
-    __write(__lhs __op __x);                                                   \
+    const value_type& __lhs = _M_read();                                        \
+    _M_write(__lhs __op __x);                                                   \
     return {_M_obj, _M_index};                                                 \
   }
   _GLIBCXX_SIMD_ALL_ARITHMETICS(_GLIBCXX_SIMD_OP_);
@@ -4046,8 +4041,8 @@ public:
 	      ++std::declval<std::conditional_t<true, value_type, _Tp>&>())>
   _GLIBCXX_SIMD_INTRINSIC constexpr _SmartReference operator++() &&
   {
-    value_type __x = __read();
-    __write(++__x);
+    value_type __x = _M_read();
+    _M_write(++__x);
     return {_M_obj, _M_index};
   }
 
@@ -4056,9 +4051,9 @@ public:
 	      std::declval<std::conditional_t<true, value_type, _Tp>&>()++)>
   _GLIBCXX_SIMD_INTRINSIC constexpr value_type operator++(int) &&
   {
-    const value_type __r = __read();
+    const value_type __r = _M_read();
     value_type __x = __r;
-    __write(++__x);
+    _M_write(++__x);
     return __r;
   }
 
@@ -4067,8 +4062,8 @@ public:
 	      --std::declval<std::conditional_t<true, value_type, _Tp>&>())>
   _GLIBCXX_SIMD_INTRINSIC constexpr _SmartReference operator--() &&
   {
-    value_type __x = __read();
-    __write(--__x);
+    value_type __x = _M_read();
+    _M_write(--__x);
     return {_M_obj, _M_index};
   }
 
@@ -4077,9 +4072,9 @@ public:
 	      std::declval<std::conditional_t<true, value_type, _Tp>&>()--)>
   _GLIBCXX_SIMD_INTRINSIC constexpr value_type operator--(int) &&
   {
-    const value_type __r = __read();
+    const value_type __r = _M_read();
     value_type __x = __r;
-    __write(--__x);
+    _M_write(--__x);
     return __r;
   }
 
