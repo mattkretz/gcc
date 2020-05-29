@@ -256,15 +256,13 @@ template <class V> typename V::mask_type isvalid(V x) {
 #else
 
 #define MAKE_TESTER_2(name_, reference_)                                       \
-  [&](const auto... inputs) {                                                  \
+  [&](auto... inputs) {                                                        \
     const auto totest = name_(inputs...);                                      \
     using R = std::remove_const_t<decltype(totest)>;                           \
     auto&& expected = [&](const auto&... vs) -> const R {                      \
       R tmp = {};                                                              \
       for (std::size_t i = 0; i < R::size(); ++i)                              \
-	{                                                                      \
-	  tmp[i] = reference_(vs[i]...);                                       \
-	}                                                                      \
+	tmp[i] = reference_(vs[i]...);                                         \
       return tmp;                                                              \
     };                                                                         \
     const R expect1 = expected(inputs...);                                     \
@@ -273,21 +271,19 @@ template <class V> typename V::mask_type isvalid(V x) {
 	((COMPARE(isnan(totest), isnan(expect1)) << #name_ "(")                \
 	 << ... << inputs)                                                     \
 	  << ") = " << totest << " != " << expect1;                            \
-	const R expect2 = expected(iif(isnan(expect1), 0, inputs)...);         \
-	((FUZZY_COMPARE(name_(iif(isnan(expect1), 0, inputs)...), expect2)     \
+	((where(isnan(expect1), inputs) = 0), ...);                            \
+	((FUZZY_COMPARE(name_(inputs...), expected(inputs...))                 \
 	  << "\nclean = ")                                                     \
-	 << ... << iif(isnan(expect1), 0, inputs));                            \
+	 << ... << inputs);                                                    \
       }                                                                        \
     else                                                                       \
-      {                                                                        \
-	((COMPARE(name_(inputs...), expect1) << "\n" #name_ "(")               \
-	 << ... << inputs)                                                     \
-	  << ")";                                                              \
-      }                                                                        \
+      ((COMPARE(name_(inputs...), expect1) << "\n" #name_ "(")                 \
+       << ... << inputs)                                                       \
+	<< ")";                                                                \
   }
 
 #define MAKE_TESTER_NOFPEXCEPT(name_)                                          \
-  [&](const auto... inputs) {                                                  \
+  [&](auto... inputs) {                                                        \
     std::feclearexcept(FE_ALL_EXCEPT);                                         \
     auto totest = name_(inputs...);                                            \
     ((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")         \
@@ -297,9 +293,7 @@ template <class V> typename V::mask_type isvalid(V x) {
     auto&& expected = [&](const auto&... vs) -> const R {                      \
       R tmp = {};                                                              \
       for (std::size_t i = 0; i < R::size(); ++i)                              \
-	{                                                                      \
-	  tmp[i] = std::name_(vs[i]...);                                       \
-	}                                                                      \
+	tmp[i] = std::name_(vs[i]...);                                         \
       return tmp;                                                              \
     };                                                                         \
     const R expect1 = expected(inputs...);                                     \
@@ -308,10 +302,11 @@ template <class V> typename V::mask_type isvalid(V x) {
 	((COMPARE(isnan(totest), isnan(expect1)) << #name_ "(")                \
 	 << ... << inputs)                                                     \
 	  << ") = " << totest << " != " << expect1;                            \
-	const R expect2 = expected(iif(isnan(expect1), 0, inputs)...);         \
+	((where(isnan(expect1), inputs) = 0), ...);                            \
+	const R expect2 = expected(inputs...);                                 \
 	std::feclearexcept(FE_ALL_EXCEPT);                                     \
 	asm volatile("");                                                      \
-	totest = name_(iif(isnan(expect1), 0, inputs)...);                     \
+	totest = name_(inputs...);                                             \
 	asm volatile("");                                                      \
 	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
 	 << ... << inputs)                                                     \
