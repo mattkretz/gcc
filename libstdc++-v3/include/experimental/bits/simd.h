@@ -4363,16 +4363,16 @@ public:
   // scalar access {{{
   _GLIBCXX_SIMD_ALWAYS_INLINE reference operator[](size_t __i)
   {
+    if (__i >= size())
+      __invoke_ub("Subscript %d is out of range [0, %d]", __i, size() - 1);
     return {_M_data, int(__i)};
   }
-  _GLIBCXX_SIMD_ALWAYS_INLINE value_type operator[]([
-    [maybe_unused]] size_t __i) const
+  _GLIBCXX_SIMD_ALWAYS_INLINE value_type operator[](size_t __i) const
   {
+    if (__i >= size())
+      __invoke_ub("Subscript %d is out of range [0, %d]", __i, size() - 1);
     if constexpr (__is_scalar_abi<_Abi>())
-      {
-	_GLIBCXX_DEBUG_ASSERT(__i == 0);
-	return _M_data;
-      }
+      return _M_data;
     else
       return static_cast<bool>(_M_data[__i]);
   }
