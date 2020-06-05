@@ -146,9 +146,10 @@ template <typename _Abi> struct _SimdImplNeon : _SimdImplBuiltin<_Abi>
       return _Base::__sqrt(__x);
   } // }}}
   // __trunc {{{
-  template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  _GLIBCXX_SIMD_INTRINSIC static _Tp __trunc(_Tp __x)
+  template <typename _TW, typename _TVT = _VectorTraits<_TW>>
+  _GLIBCXX_SIMD_INTRINSIC static _TW __trunc(_TW __x)
   {
+    using _Tp = typename _TVT::value_type;
     if constexpr (__have_neon_a32)
       {
 	const auto __intrin = __to_intrin(__x);
@@ -163,8 +164,41 @@ template <typename _Abi> struct _SimdImplNeon : _SimdImplBuiltin<_Abi>
 	else
 	  __assert_unreachable<_Tp>();
       }
+    else if constexpr (is_same_v<_Tp, float>)
+      {
+	auto __intrin = __to_intrin(__x);
+	if constexpr (sizeof(__x) == 16)
+	  __intrin = vcvtq_f32_s32(vcvtq_s32_f32(__intrin));
+	else
+	  __intrin = vcvt_f32_s32(vcvt_s32_f32(__intrin));
+	return _Base::__abs(__x)._M_data < 0x1p23f
+		 ? __vector_bitcast<float>(__intrin)
+		 : __x._M_data;
+      }
     else
       return _Base::__trunc(__x);
+  } // }}}
+  // __round {{{
+  template <typename _Tp, size_t _Np>
+  _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
+  __round(_SimdWrapper<_Tp, _Np> __x)
+  {
+    if constexpr (__have_neon_a32)
+      {
+	const auto __intrin = __to_intrin(__x);
+	if constexpr (sizeof(_Tp) == 4 && sizeof(__x) == 8)
+	  return vrnda_f32(__intrin);
+	else if constexpr (sizeof(_Tp) == 4 && sizeof(__x) == 16)
+	  return vrndaq_f32(__intrin);
+	else if constexpr (sizeof(_Tp) == 8 && sizeof(__x) == 8)
+	  return vrnda_f64(__intrin);
+	else if constexpr (sizeof(_Tp) == 8 && sizeof(__x) == 16)
+	  return vrndaq_f64(__intrin);
+	else
+	  __assert_unreachable<_Tp>();
+      }
+    else
+      return _Base::__round(__x);
   } // }}}
   // __floor {{{
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>

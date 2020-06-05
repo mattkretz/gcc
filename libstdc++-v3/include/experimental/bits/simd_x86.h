@@ -2590,6 +2590,9 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
   __round(_SimdWrapper<_Tp, _Np> __x)
   {
+    // Note that _MM_FROUND_TO_NEAREST_INT rounds ties to even, not away from
+    // zero as required by std::round. Therefore this function is more
+    // complicated.
     using _V = __vector_type_t<_Tp, _Np>;
     _V __truncated;
     if constexpr (__is_avx512_ps<_Tp, _Np>())
@@ -2624,7 +2627,7 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
 	     : _V());
     if constexpr (__have_sse4_1)
       return __rounded;
-    else
+    else // adjust for missing range in cvttps_epi32
       return __and(_S_absmask<_V>, __x._M_data) < 0x1p23f ? __rounded
 							  : __x._M_data;
   }

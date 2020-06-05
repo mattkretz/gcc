@@ -2157,16 +2157,11 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
   __round(_SimdWrapper<_Tp, _Np> __x)
   {
-    using _V = __vector_type_t<_Tp, _Np>;
-    const _V __absx = __and(__x._M_data, _S_absmask<_V>);
-    static_assert(CHAR_BIT * sizeof(1ull) >= std::numeric_limits<_Tp>::digits);
-    constexpr _Tp __shifter = 1ull << (std::numeric_limits<_Tp>::digits - 1);
-    _V __truncated = _S_plus_minus(__absx, __shifter);
-    __truncated -= __truncated > __absx ? _V() + 1 : _V();
-    const _V __rounded
-      = __or(__xor(__absx, __x._M_data),
-	     __truncated + (__absx - __truncated >= _Tp(.5) ? _V() + 1 : _V()));
-    return __absx < __shifter ? __rounded : __x._M_data;
+    const auto __abs_x = _SuperImpl::__abs(__x);
+    const auto __t_abs = _SuperImpl::__trunc(__abs_x)._M_data;
+    const auto __r_abs // round(abs(x)) =
+      = __t_abs + (__abs_x._M_data - __t_abs >= _Tp(.5) ? _Tp(1) : 0);
+    return __or(__xor(__abs_x._M_data, __x._M_data), __r_abs);
   }
 
   // __floor {{{3
