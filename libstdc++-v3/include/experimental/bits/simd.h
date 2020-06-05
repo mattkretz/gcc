@@ -4691,13 +4691,15 @@ find_first_set(const simd_mask<_Tp, _Abi>& __k)
 {
   if (__builtin_is_constant_evaluated() || __k._M_is_constprop())
     {
-      for (size_t __i = 0; __i < simd_size_v<_Tp, _Abi>; ++__i)
-	if (__k[__i])
-	  return __i;
-      __invoke_ub("find_first_set(empty mask) is UB");
+      constexpr size_t _Np = simd_size_v<_Tp, _Abi>;
+      const size_t _Idx = __call_with_n_evaluations<_Np>(
+	[](auto... __indexes) { return std::min({__indexes...}); },
+	[&](auto __i) { return __k[__i] ? +__i : _Np; });
+      if (_Idx >= _Np) __invoke_ub("find_first_set(empty mask) is UB");
+      if (__builtin_constant_p(_Idx))
+	return _Idx;
     }
-  else
-    return _Abi::_MaskImpl::__find_first_set(__k);
+  return _Abi::_MaskImpl::__find_first_set(__k);
 }
 template <typename _Tp, typename _Abi>
 _GLIBCXX_SIMD_ALWAYS_INLINE _GLIBCXX_SIMD_CONSTEXPR int
@@ -4705,13 +4707,15 @@ find_last_set(const simd_mask<_Tp, _Abi>& __k)
 {
   if (__builtin_is_constant_evaluated() || __k._M_is_constprop())
     {
-      for (size_t __i = simd_size_v<_Tp, _Abi>; __i > 0; --__i)
-	if (__k[__i - 1])
-	  return __i - 1;
-      __invoke_ub("find_last_set(empty mask) is UB");
+      constexpr size_t _Np = simd_size_v<_Tp, _Abi>;
+      const int _Idx = __call_with_n_evaluations<_Np>(
+	[](auto... __indexes) { return std::max({__indexes...}); },
+	[&](auto __i) { return __k[__i] ? int(__i) : -1; });
+      if (_Idx < 0) __invoke_ub("find_first_set(empty mask) is UB");
+      if (__builtin_constant_p(_Idx))
+	return _Idx;
     }
-  else
-    return _Abi::_MaskImpl::__find_last_set(__k);
+  return _Abi::_MaskImpl::__find_last_set(__k);
 }
 
 _GLIBCXX_SIMD_ALWAYS_INLINE _GLIBCXX_SIMD_CONSTEXPR bool
