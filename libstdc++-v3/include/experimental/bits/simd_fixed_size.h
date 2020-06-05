@@ -1290,16 +1290,11 @@ template <int _Np> struct simd_abi::_Fixed
 struct _CommonImplFixedSize
 {
   // __store {{{
-  template <typename _Flags, typename _Tp, typename... _As>
+  template <typename _Tp, typename... _As>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __store(const _SimdTuple<_Tp, _As...>& __x, void* __addr, _Flags)
+  __store(const _SimdTuple<_Tp, _As...>& __x, void* __addr)
   {
     constexpr size_t _Np = _SimdTuple<_Tp, _As...>::size();
-    if constexpr (std::is_same_v<_Flags, vector_aligned_tag>)
-      __addr = __builtin_assume_aligned(
-	__addr, memory_alignment_v<fixed_size_simd<_Tp, _Np>, _Tp>);
-    else if constexpr (!std::is_same_v<_Flags, element_aligned_tag>)
-      __addr = __builtin_assume_aligned(__addr, _Flags::_S_alignment);
     __builtin_memcpy(__addr, &__x, _Np * sizeof(_Tp));
   }
 
@@ -1345,20 +1340,20 @@ template <int _Np> struct _SimdImplFixedSize
   }
 
   // __load {{{2
-  template <typename _Tp, typename _Up, typename _Fp>
-  static inline _SimdMember<_Tp> __load(const _Up* __mem, _Fp __f,
+  template <typename _Tp, typename _Up>
+  static inline _SimdMember<_Tp> __load(const _Up* __mem,
 					_TypeTag<_Tp>) noexcept
   {
     return _SimdMember<_Tp>::__generate([&](auto __meta) {
-      return __meta.__load(&__mem[__meta._S_offset], __f, _TypeTag<_Tp>());
+      return __meta.__load(&__mem[__meta._S_offset], _TypeTag<_Tp>());
     });
   }
 
   // __masked_load {{{2
-  template <typename _Tp, typename... _As, typename _Up, typename _Fp>
+  template <typename _Tp, typename... _As, typename _Up>
   static inline _SimdTuple<_Tp, _As...>
   __masked_load(const _SimdTuple<_Tp, _As...>& __old, const _MaskMember __bits,
-		const _Up* __mem, _Fp __f) noexcept
+		const _Up* __mem) noexcept
   {
     auto __merge = __old;
     __for_each(__merge, [&](auto __meta, auto& __native) {
@@ -1370,26 +1365,26 @@ template <int _Np> struct _SimdImplFixedSize
       // if the pointer arithmetic is UB.
 #pragma GCC diagnostic ignored "-Warray-bounds"
 	__native = __meta.__masked_load(__native, __meta.__make_mask(__bits),
-					__mem + __meta._S_offset, __f);
+					__mem + __meta._S_offset);
 #pragma GCC diagnostic pop
     });
     return __merge;
   }
 
   // __store {{{2
-  template <typename _Tp, typename _Up, typename _Fp>
-  static inline void __store(const _SimdMember<_Tp>& __v, _Up* __mem, _Fp __f,
+  template <typename _Tp, typename _Up>
+  static inline void __store(const _SimdMember<_Tp>& __v, _Up* __mem,
 			     _TypeTag<_Tp>) noexcept
   {
     __for_each(__v, [&](auto __meta, auto __native) {
-      __meta.__store(__native, &__mem[__meta._S_offset], __f, _TypeTag<_Tp>());
+      __meta.__store(__native, &__mem[__meta._S_offset], _TypeTag<_Tp>());
     });
   }
 
   // __masked_store {{{2
-  template <typename _Tp, typename... _As, typename _Up, typename _Fp>
+  template <typename _Tp, typename... _As, typename _Up>
   static inline void __masked_store(const _SimdTuple<_Tp, _As...>& __v,
-				    _Up* __mem, _Fp __f,
+				    _Up* __mem,
 				    const _MaskMember __bits) noexcept
   {
     __for_each(__v, [&](auto __meta, auto __native) {
@@ -1400,7 +1395,7 @@ template <int _Np> struct _SimdImplFixedSize
       // mask. Consequently, the compiler may assume this branch is unreachable,
       // if the pointer arithmetic is UB.
 #pragma GCC diagnostic ignored "-Warray-bounds"
-	__meta.__masked_store(__native, __mem + __meta._S_offset, __f,
+	__meta.__masked_store(__native, __mem + __meta._S_offset,
 			      __meta.__make_mask(__bits));
 #pragma GCC diagnostic pop
     });
@@ -1877,13 +1872,15 @@ template <int _Np> struct _MaskImplFixedSize
 
   // }}}
   // __load {{{
-  template <typename, typename _Fp>
+  template <typename>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember __load(const bool* __mem)
   {
-    using _Up = make_unsigned_t<__int_for_sizeof_t<bool>>;
-    const simd<_Up, _Abi> __bools(reinterpret_cast<const __may_alias<_Up>*>(
+    using _Ip = __int_for_sizeof_t<bool>;
+    // the following load uses element_aligned and relies on __mem already
+    // carrying alignment information from when this __load function was called.
+    const simd<_Ip, _Abi> __bools(reinterpret_cast<const __may_alias<_Ip>*>(
 				    __mem),
-				  _Fp());
+				  element_aligned);
     return __data(__bools != 0);
   }
 
@@ -1919,8 +1916,7 @@ template <int _Np> struct _MaskImplFixedSize
   }
 
   // __load {{{2
-  template <typename _Fp>
-  static inline _MaskMember __load(const bool* __mem, _Fp __f) noexcept
+  static inline _MaskMember __load(const bool* __mem) noexcept
   {
     // TODO: _UChar is not necessarily the best type to use here. For smaller
     // _Np _UShort, _UInt, _ULLong, float, and double can be more efficient.
@@ -1928,17 +1924,16 @@ template <int _Np> struct _MaskImplFixedSize
     using _Vs = __fixed_size_storage_t<_UChar, _Np>;
     __for_each(_Vs{}, [&](auto __meta, auto) {
       __r |= __meta.__mask_to_shifted_ullong(
-	__meta._S_mask_impl.__load(&__mem[__meta._S_offset], __f,
+	__meta._S_mask_impl.__load(&__mem[__meta._S_offset],
 				   _SizeConstant<__meta.size()>()));
     });
     return __r;
   }
 
   // __masked_load {{{2
-  template <typename _Fp>
   static inline _MaskMember __masked_load(_MaskMember __merge,
-					  _MaskMember __mask, const bool* __mem,
-					  _Fp) noexcept
+					  _MaskMember __mask,
+					  const bool* __mem) noexcept
   {
     _BitOps::__bit_iteration(__mask.to_ullong(),
 			     [&](auto __i) { __merge.set(__i, __mem[__i]); });
@@ -1946,20 +1941,16 @@ template <int _Np> struct _MaskImplFixedSize
   }
 
   // __store {{{2
-  template <typename _Fp>
-  static inline void __store(const _MaskMember __bitmask, bool* __mem,
-			     _Fp) noexcept
+  static inline void __store(const _MaskMember __bitmask, bool* __mem) noexcept
   {
     if constexpr (_Np == 1)
       __mem[0] = __bitmask[0];
     else
-      _FirstAbi<_UChar>::_CommonImpl::__store_bool_array(__bitmask, __mem,
-							 _Fp());
+      _FirstAbi<_UChar>::_CommonImpl::__store_bool_array(__bitmask, __mem);
   }
 
   // __masked_store {{{2
-  template <typename _Fp>
-  static inline void __masked_store(const _MaskMember __v, bool* __mem, _Fp,
+  static inline void __masked_store(const _MaskMember __v, bool* __mem,
 				    const _MaskMember __k) noexcept
   {
     _BitOps::__bit_iteration(__k, [&](auto __i) { __mem[__i] = __v[__i]; });

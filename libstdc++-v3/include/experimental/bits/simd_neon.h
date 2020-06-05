@@ -47,13 +47,15 @@ struct _CommonImplNeon : _CommonImplBuiltin
 template <typename _Abi> struct _SimdImplNeon : _SimdImplBuiltin<_Abi>
 {
   using _Base = _SimdImplBuiltin<_Abi>;
+  template <typename _Tp>
+  using _MaskMember = typename _Base::template _MaskMember<_Tp>;
   template <typename _Tp> static constexpr size_t _S_max_store_size = 16;
 
   // __masked_load {{{
-  template <typename _Tp, size_t _Np, typename _Up, typename _Fp>
+  template <typename _Tp, size_t _Np, typename _Up>
   static inline _SimdWrapper<_Tp, _Np>
-  __masked_load(_SimdWrapper<_Tp, _Np> __merge, _SimdWrapper<_Tp, _Np> __k,
-		const _Up* __mem, _Fp) noexcept
+  __masked_load(_SimdWrapper<_Tp, _Np> __merge, _MaskMember<_Tp> __k,
+		const _Up* __mem) noexcept
   {
     __execute_n_times<_Np>([&](auto __i) {
       if (__k[__i] != 0)
@@ -64,10 +66,10 @@ template <typename _Abi> struct _SimdImplNeon : _SimdImplBuiltin<_Abi>
 
   // }}}
   // __masked_store_nocvt {{{
-  template <typename _Tp, std::size_t _Np, typename _Fp>
+  template <typename _Tp, std::size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_store_nocvt(_SimdWrapper<_Tp, _Np> __v, _Tp* __mem, _Fp,
-		       _SimdWrapper<_Tp, _Np> __k)
+  __masked_store_nocvt(_SimdWrapper<_Tp, _Np> __v, _Tp* __mem,
+		       _MaskMember<_Tp> __k)
   {
     __execute_n_times<_Np>([&](auto __i) {
       if (__k[__i] != 0)
@@ -340,7 +342,7 @@ struct _MaskImplNeon : _MaskImplNeonMixin, _MaskImplBuiltin<_Abi>
   {
     const auto __kk
       = __vector_bitcast<char>(__k._M_data)
-	| ~__vector_bitcast<char>(_Abi::template __implicit_mask<_Tp>());
+	| ~__vector_bitcast<char>(_Abi::template _S_implicit_mask<_Tp>());
     if constexpr (sizeof(__k) == 16)
       {
 	const auto __x = __vector_bitcast<long long>(__kk);
@@ -359,7 +361,7 @@ struct _MaskImplNeon : _MaskImplNeonMixin, _MaskImplBuiltin<_Abi>
   {
     const auto __kk
       = __vector_bitcast<char>(__k._M_data)
-	| ~__vector_bitcast<char>(_Abi::template __implicit_mask<_Tp>());
+	| ~__vector_bitcast<char>(_Abi::template _S_implicit_mask<_Tp>());
     if constexpr (sizeof(__k) == 16)
       {
 	const auto __x = __vector_bitcast<long long>(__kk);
@@ -397,7 +399,7 @@ struct _MaskImplNeon : _MaskImplNeonMixin, _MaskImplBuiltin<_Abi>
       {
 	const auto __kk
 	  = __vector_bitcast<char>(__k._M_data)
-	    | ~__vector_bitcast<char>(_Abi::template __implicit_mask<_Tp>());
+	    | ~__vector_bitcast<char>(_Abi::template _S_implicit_mask<_Tp>());
 	using _Up = std::make_unsigned_t<__int_for_sizeof_t<decltype(__kk)>>;
 	return __bit_cast<_Up>(__kk) + 1 > 1;
       }

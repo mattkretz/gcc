@@ -707,8 +707,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       const _SimdWrapper<int, _Np> __e = __wrapper_bitcast<int, _Np>(
 	_Abi::_CommonImpl::_S_blend(_SimdWrapper<bool, _NI>(__isnonzero),
 				    _SimdWrapper<int, _NI>(), __exp_plus1));
-      simd_abi::deduce_t<int, _Np>::_CommonImpl::__store(
-	__e, __exp, overaligned<alignof(_IV)>);
+      simd_abi::deduce_t<int, _Np>::_CommonImpl::__store(__e, __exp);
       return {__private_init,
 	      _Abi::_CommonImpl::_S_blend(_SimdWrapper<bool, _Np>(__isnonzero),
 					  __v, __getmant_avx512(__v))};

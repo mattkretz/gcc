@@ -144,13 +144,38 @@ template <typename _Tp, typename _Abi> struct simd_size;
 // load/store flags {{{
 struct element_aligned_tag
 {
+  template <typename _Tp, typename _Up = typename _Tp::value_type>
+  static constexpr size_t _S_alignment = alignof(_Up);
+
+  template <typename _Tp, typename _Up>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _Up* _S_apply(_Up* __ptr)
+  {
+    return __ptr;
+  }
 };
 struct vector_aligned_tag
 {
+  template <typename _Tp, typename _Up = typename _Tp::value_type>
+  static constexpr size_t _S_alignment
+    = __next_power_of_2(sizeof(_Up) * _Tp::size());
+
+  template <typename _Tp, typename _Up>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _Up* _S_apply(_Up* __ptr)
+  {
+    return static_cast<_Up*>(
+      __builtin_assume_aligned(__ptr, _S_alignment<_Tp, _Up>));
+  }
 };
 template <size_t _Np> struct overaligned_tag
 {
+  template <typename _Tp, typename _Up = typename _Tp::value_type>
   static constexpr size_t _S_alignment = _Np;
+
+  template <typename _Tp, typename _Up>
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _Up* _S_apply(_Up* __ptr)
+  {
+    return static_cast<_Up*>(__builtin_assume_aligned(__ptr, _Np));
+  }
 };
 inline constexpr element_aligned_tag element_aligned = {};
 inline constexpr vector_aligned_tag vector_aligned = {};
@@ -248,41 +273,34 @@ struct __is_bitmask<_Tp, std::void_t<decltype(std::declval<unsigned&>()
 
 // }}}
 // __int_for_sizeof{{{
-template <size_t> struct __int_for_sizeof;
-template <> struct __int_for_sizeof<1>
-{
-  using type = signed char;
-  static_assert(sizeof(type) == 1);
-};
-template <> struct __int_for_sizeof<2>
-{
-  using type = signed short;
-  static_assert(sizeof(type) == 2);
-};
-template <> struct __int_for_sizeof<4>
-{
-  using type = signed int;
-  static_assert(sizeof(type) == 4);
-};
-template <> struct __int_for_sizeof<8>
-{
-  using type = signed long long;
-  static_assert(sizeof(type) == 8);
-};
-#ifdef __SIZEOF_INT128__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-template <> struct __int_for_sizeof<16>
+template <size_t _Bytes>
+constexpr auto
+__int_for_sizeof()
 {
-  using type = __int128;
-  static_assert(sizeof(type) == 16);
-};
-#pragma GCC diagnostic pop
+  if constexpr (_Bytes == sizeof(int))
+    return int();
+  else if constexpr (_Bytes == sizeof(_SChar))
+    return _SChar();
+  else if constexpr (_Bytes == sizeof(short))
+    return short();
+  else if constexpr (_Bytes == sizeof(long))
+    return long();
+  else if constexpr (_Bytes == sizeof(_LLong))
+    return _LLong();
+#ifdef __SIZEOF_INT128__
+  else if constexpr (_Bytes == sizeof(__int128))
+    return __int128();
 #endif // __SIZEOF_INT128__
+  else
+    static_assert(_Bytes != _Bytes, "this should be unreachable");
+}
+#pragma GCC diagnostic pop
 template <typename _Tp>
-using __int_for_sizeof_t = typename __int_for_sizeof<sizeof(_Tp)>::type;
+using __int_for_sizeof_t = decltype(__int_for_sizeof<sizeof(_Tp)>());
 template <size_t _Np>
-using __int_with_sizeof_t = typename __int_for_sizeof<_Np>::type;
+using __int_with_sizeof_t = decltype(__int_for_sizeof<_Np>());
 
 // }}}
 // __is_fixed_size_abi{{{
@@ -692,25 +710,6 @@ struct __converts_to_higher_integer_rank<_From, _To, false>
 			_To>
 {
 };
-
-// }}}
-// __is_aligned(_v){{{
-template <typename _Flag, size_t _Alignment> struct __is_aligned;
-template <size_t _Alignment>
-struct __is_aligned<vector_aligned_tag, _Alignment> : public true_type
-{
-};
-template <size_t _Alignment>
-struct __is_aligned<element_aligned_tag, _Alignment> : public false_type
-{
-};
-template <size_t _GivenAlignment, size_t _Alignment>
-struct __is_aligned<overaligned_tag<_GivenAlignment>, _Alignment>
-  : public std::integral_constant<bool, (_GivenAlignment % _Alignment == 0)>
-{
-};
-template <typename _Flag, size_t _Alignment>
-inline constexpr bool __is_aligned_v = __is_aligned<_Flag, _Alignment>::value;
 
 // }}}
 // __data(simd/simd_mask) {{{
@@ -1433,17 +1432,23 @@ __as_vector(_V __x)
 
 // }}}
 // __as_wrapper{{{
-template <typename _V>
+template <size_t _Np = 0, typename _V>
 _GLIBCXX_SIMD_INTRINSIC constexpr auto
 __as_wrapper(_V __x)
 {
   if constexpr (__is_vector_type_v<_V>)
     return _SimdWrapper<typename _VectorTraits<_V>::value_type,
-			_VectorTraits<_V>::_S_width>(__x);
+			(_Np > 0 ? _Np : _VectorTraits<_V>::_S_width)>(__x);
   else if constexpr (is_simd<_V>::value || is_simd_mask<_V>::value)
-    return __data(__x);
+    {
+      static_assert(_V::size() == _Np);
+      return __data(__x);
+    }
   else
-    return __x;
+    {
+      static_assert(_V::__size == _Np);
+      return __x;
+    }
 }
 
 // }}}
@@ -1757,7 +1762,12 @@ static constexpr struct
   _GLIBCXX_SIMD_INTRINSIC __v4di operator()(__v4di __a,
 					    __v4di __b) const noexcept
   {
-    return __builtin_ia32_andnotsi256(__a, __b);
+    if constexpr (__have_avx2)
+      return __builtin_ia32_andnotsi256(__a, __b);
+    else
+      return reinterpret_cast<__v4di>(
+	__builtin_ia32_andnpd256(reinterpret_cast<__v4df>(__a),
+				 reinterpret_cast<__v4df>(__b)));
   }
   _GLIBCXX_SIMD_INTRINSIC __v16sf operator()(__v16sf __a,
 					     __v16sf __b) const noexcept
@@ -2254,6 +2264,8 @@ _GLIBCXX_SIMD_PPC_INTRIN(signed short);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned short);
 _GLIBCXX_SIMD_PPC_INTRIN(signed int);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned int);
+_GLIBCXX_SIMD_PPC_INTRIN(signed long);
+_GLIBCXX_SIMD_PPC_INTRIN(unsigned long);
 _GLIBCXX_SIMD_PPC_INTRIN(signed long long);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned long long);
 #undef _GLIBCXX_SIMD_PPC_INTRIN
@@ -2709,7 +2721,7 @@ using resize_simd_t = typename resize_simd<_Np, _V>::type;
 // memory_alignment {{{2
 template <typename _Tp, typename _Up = typename _Tp::value_type>
 struct memory_alignment
-  : public _SizeConstant<__next_power_of_2(sizeof(_Up) * _Tp::size())>
+  : public _SizeConstant<vector_aligned_tag::_S_alignment<_Tp, _Up>>
 {
 };
 template <typename _Tp, typename _Up = typename _Tp::value_type>
@@ -3043,17 +3055,19 @@ public:
 
   template <typename _Up, typename _Flags>
   [[nodiscard]] _GLIBCXX_SIMD_INTRINSIC _V
-  copy_from(const _LoadStorePtr<_Up, value_type>* __mem, _Flags __f) const&&
+  copy_from(const _LoadStorePtr<_Up, value_type>* __mem, _Flags) const&&
   {
     return {__private_init,
-	    _Impl::__masked_load(__data(_M_value), __data(_M_k), __mem, __f)};
+	    _Impl::__masked_load(__data(_M_value), __data(_M_k),
+				 _Flags::template _S_apply<_V>(__mem))};
   }
 
   template <typename _Up, typename _Flags>
   _GLIBCXX_SIMD_INTRINSIC void copy_to(_LoadStorePtr<_Up, value_type>* __mem,
-				       _Flags __f) const&&
+				       _Flags) const&&
   {
-    _Impl::__masked_store(__data(_M_value), __mem, __f, __data(_M_k));
+    _Impl::__masked_store(__data(_M_value),
+			  _Flags::template _S_apply<_V>(__mem), __data(_M_k));
   }
 };
 
@@ -3202,10 +3216,11 @@ public:
   // intentionally hides const_where_expression::copy_from
   template <typename _Up, typename _Flags>
   _GLIBCXX_SIMD_INTRINSIC void
-  copy_from(const _LoadStorePtr<_Up, value_type>* __mem, _Flags __f) &&
+  copy_from(const _LoadStorePtr<_Up, value_type>* __mem, _Flags) &&
   {
     __data(_M_value)
-      = _Impl::__masked_load(__data(_M_value), __data(_M_k), __mem, __f);
+      = _Impl::__masked_load(__data(_M_value), __data(_M_k),
+			     _Flags::template _S_apply<_Tp>(__mem));
   }
 };
 
@@ -4252,7 +4267,12 @@ class simd_mask : public _SimdTraits<_Tp, _Abi>::_MaskBase
   // types, tags, and friends {{{
   using _Traits = _SimdTraits<_Tp, _Abi>;
   using _MemberType = typename _Traits::_MaskMember;
-  static constexpr _Tp* _S_type_tag = nullptr;
+  // We map all masks with equal element sizeof to a single integer type, the
+  // one given by __int_for_sizeof_t<_Tp>. This is the approach
+  // [[gnu::vector_size(N)]] types take as well and it reduces the number of
+  // template specializations in the implementation classes.
+  using _Ip = __int_for_sizeof_t<_Tp>;
+  static constexpr _Ip* _S_type_tag = nullptr;
   friend typename _Traits::_MaskBase;
   friend class simd<_Tp, _Abi>;       // to construct masks on return
   friend typename _Traits::_SimdImpl; // to construct masks on return and
@@ -4305,7 +4325,7 @@ public:
   // explicit broadcast constructor {{{
   _GLIBCXX_SIMD_ALWAYS_INLINE explicit _GLIBCXX_SIMD_CONSTEXPR
   simd_mask(value_type __x)
-    : _M_data(_Impl::template __broadcast<_Tp>(__x))
+    : _M_data(_Impl::template __broadcast<_Ip>(__x))
   {}
 
   // }}}
@@ -4333,14 +4353,16 @@ public:
   // load constructor {{{
   template <typename _Flags>
   _GLIBCXX_SIMD_ALWAYS_INLINE simd_mask(const value_type* __mem, _Flags)
-    : _M_data(_Impl::template __load<_Tp, _Flags>(__mem))
+    : _M_data(
+      _Impl::template __load<_Ip>(_Flags::template _S_apply<simd_mask>(__mem)))
   {}
   template <typename _Flags>
   _GLIBCXX_SIMD_ALWAYS_INLINE simd_mask(const value_type* __mem, simd_mask __k,
-					_Flags __f)
+					_Flags)
     : _M_data{}
   {
-    _M_data = _Impl::__masked_load(_M_data, __k._M_data, __mem, __f);
+    _M_data = _Impl::__masked_load(_M_data, __k._M_data,
+				   _Flags::template _S_apply<simd_mask>(__mem));
   }
 
   // }}}
@@ -4348,15 +4370,16 @@ public:
   template <typename _Flags>
   _GLIBCXX_SIMD_ALWAYS_INLINE void copy_from(const value_type* __mem, _Flags)
   {
-    _M_data = _Impl::template __load<_Tp, _Flags>(__mem);
+    _M_data = _Impl::template __load<_Ip>(
+      _Flags::template _S_apply<simd_mask>(__mem));
   }
 
   // }}}
   // stores [simd_mask.store] {{{
   template <typename _Flags>
-  _GLIBCXX_SIMD_ALWAYS_INLINE void copy_to(value_type* __mem, _Flags __f) const
+  _GLIBCXX_SIMD_ALWAYS_INLINE void copy_to(value_type* __mem, _Flags) const
   {
-    _Impl::__store(_M_data, __mem, __f);
+    _Impl::__store(_M_data, _Flags::template _S_apply<simd_mask>(__mem));
   }
 
   // }}}
@@ -4931,25 +4954,27 @@ public:
 
   // load constructor
   template <typename _Up, typename _Flags>
-  _GLIBCXX_SIMD_ALWAYS_INLINE simd(const _Up* __mem, _Flags __f)
-    : _M_data(_Impl::__load(__mem, __f, _S_type_tag))
+  _GLIBCXX_SIMD_ALWAYS_INLINE simd(const _Up* __mem, _Flags)
+    : _M_data(
+      _Impl::__load(_Flags::template _S_apply<simd>(__mem), _S_type_tag))
   {}
 
   // loads [simd.load]
   template <typename _Up, typename _Flags>
   _GLIBCXX_SIMD_ALWAYS_INLINE void copy_from(const _Vectorizable<_Up>* __mem,
-					     _Flags __f)
+					     _Flags)
   {
-    _M_data
-      = static_cast<decltype(_M_data)>(_Impl::__load(__mem, __f, _S_type_tag));
+    _M_data = static_cast<decltype(_M_data)>(
+      _Impl::__load(_Flags::template _S_apply<simd>(__mem), _S_type_tag));
   }
 
   // stores [simd.store]
   template <typename _Up, typename _Flags>
   _GLIBCXX_SIMD_ALWAYS_INLINE void copy_to(_Vectorizable<_Up>* __mem,
-					   _Flags __f) const
+					   _Flags) const
   {
-    _Impl::__store(_M_data, __mem, __f, _S_type_tag);
+    _Impl::__store(_M_data, _Flags::template _S_apply<simd>(__mem),
+		   _S_type_tag);
   }
 
   // scalar access
