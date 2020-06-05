@@ -1662,8 +1662,8 @@ __xor(_TW __a, _TW __b) noexcept
 {
   if constexpr (__is_vector_type_v<_TW> || __is_simd_wrapper_v<_TW>)
     {
-      using _TVT = _VectorTraits<_TW>;
-      using _Tp = typename _TVT::value_type;
+      using _Tp = typename conditional_t<__is_simd_wrapper_v<_TW>, _TW,
+					 _VectorTraitsImpl<_TW>>::value_type;
       if constexpr (std::is_floating_point_v<_Tp>)
 	{
 	  using _Ip = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
@@ -1687,8 +1687,8 @@ __or(_TW __a, _TW __b) noexcept
 {
   if constexpr (__is_vector_type_v<_TW> || __is_simd_wrapper_v<_TW>)
     {
-      using _TVT = _VectorTraits<_TW>;
-      using _Tp = typename _TVT::value_type;
+      using _Tp = typename conditional_t<__is_simd_wrapper_v<_TW>, _TW,
+					 _VectorTraitsImpl<_TW>>::value_type;
       if constexpr (std::is_floating_point_v<_Tp>)
 	{
 	  using _Ip = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
@@ -1712,8 +1712,8 @@ __and(_TW __a, _TW __b) noexcept
 {
   if constexpr (__is_vector_type_v<_TW> || __is_simd_wrapper_v<_TW>)
     {
-      using _TVT = _VectorTraits<_TW>;
-      using _Tp = typename _TVT::value_type;
+      using _Tp = typename conditional_t<__is_simd_wrapper_v<_TW>, _TW,
+					 _VectorTraitsImpl<_TW>>::value_type;
       if constexpr (std::is_floating_point_v<_Tp>)
 	{
 	  using _Ip = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
@@ -1803,9 +1803,9 @@ __andnot(_TW __a, _TW __b) noexcept
 {
   if constexpr (__is_vector_type_v<_TW> || __is_simd_wrapper_v<_TW>)
     {
-      using _TVT = _VectorTraits<_TW>;
+      using _TVT
+	= conditional_t<__is_simd_wrapper_v<_TW>, _TW, _VectorTraitsImpl<_TW>>;
       using _Tp = typename _TVT::value_type;
-      using _TV = typename _TVT::type;
 #if _GLIBCXX_SIMD_X86INTRIN && !defined __clang__
       if constexpr (sizeof(_TW) >= 16)
 	{
@@ -1818,7 +1818,7 @@ __andnot(_TW __a, _TW __b) noexcept
 	      if constexpr (is_convertible_v<decltype(__r), _TW>)
 		return __r;
 	      else
-		return reinterpret_cast<_TV>(__r);
+		return reinterpret_cast<typename _TVT::type>(__r);
 	    }
 	}
 #endif // _GLIBCXX_SIMD_X86INTRIN
