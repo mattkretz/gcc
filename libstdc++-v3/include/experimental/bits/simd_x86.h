@@ -1367,7 +1367,39 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
 	    [](auto... __quotients) {
 	      return __vector_convert<_R>(__quotients...);
 	    },
-	    [&__xf, &__yf](auto __i) { return __xf[__i] / __yf[__i]; });
+	    [&__xf, &__yf](auto __i) {
+#if __GCC_IEC_559 == 0
+	      // If -freciprocal-math is active, using the `/` operator is
+	      // incorrect because it may be translated to an imprecise
+	      // multiplication with reciprocal. We need to use inline assembly
+	      // to force a real division.
+	      _FloatV __r;
+	      if constexpr (__have_avx) // -mno-sse2avx is irrelevant because
+					// once -mavx is given, GCC emits VEX
+					// encoded vdivp[sd]
+		{
+		  if constexpr (sizeof(_Tp) == 4)
+		    asm("vdivpd\t{%2, %1, %0|%0, %1, %2}"
+			: "=x"(__r)
+			: "x"(__xf[__i]), "x"(__yf[__i]));
+		  else
+		    asm("vdivps\t{%2, %1, %0|%0, %1, %2}"
+			: "=x"(__r)
+			: "x"(__xf[__i]), "x"(__yf[__i]));
+		}
+	      else
+		{
+		  __r = __xf[__i];
+		  if constexpr (sizeof(_Tp) == 4)
+		    asm("divpd\t{%1, %0|%0, %1}" : "=x"(__r) : "x"(__yf[__i]));
+		  else
+		    asm("divps\t{%1, %0|%0, %1}" : "=x"(__r) : "x"(__yf[__i]));
+		}
+	      return __r;
+#else
+	      return __xf[__i] / __yf[__i];
+#endif
+	    });
 	}
     /* 64-bit int division is potentially optimizable via double division if
      * the value in __x is small enough and the conversion between
