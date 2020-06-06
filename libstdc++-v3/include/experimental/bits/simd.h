@@ -182,6 +182,85 @@ inline constexpr vector_aligned_tag vector_aligned = {};
 template <size_t _Np> inline constexpr overaligned_tag<_Np> overaligned = {};
 // }}}
 
+template <size_t _X> using _SizeConstant = integral_constant<size_t, _X>;
+// unrolled/pack execution helpers
+// __execute_n_times{{{
+template <typename _Fp, size_t... _I>
+_GLIBCXX_SIMD_INTRINSIC constexpr void
+__execute_on_index_sequence(_Fp&& __f, std::index_sequence<_I...>)
+{
+  ((void)__f(_SizeConstant<_I>()), ...);
+}
+
+template <typename _Fp>
+_GLIBCXX_SIMD_INTRINSIC constexpr void
+__execute_on_index_sequence(_Fp&&, std::index_sequence<>)
+{}
+
+template <size_t _Np, typename _Fp>
+_GLIBCXX_SIMD_INTRINSIC constexpr void
+__execute_n_times(_Fp&& __f)
+{
+  __execute_on_index_sequence(static_cast<_Fp&&>(__f),
+			      std::make_index_sequence<_Np>{});
+}
+
+// }}}
+// __generate_from_n_evaluations{{{
+template <typename _R, typename _Fp, size_t... _I>
+_GLIBCXX_SIMD_INTRINSIC constexpr _R
+__execute_on_index_sequence_with_return(_Fp&& __f, std::index_sequence<_I...>)
+{
+  return _R{__f(_SizeConstant<_I>())...};
+}
+
+template <size_t _Np, typename _R, typename _Fp>
+_GLIBCXX_SIMD_INTRINSIC constexpr _R
+__generate_from_n_evaluations(_Fp&& __f)
+{
+  return __execute_on_index_sequence_with_return<_R>(
+    static_cast<_Fp&&>(__f), std::make_index_sequence<_Np>{});
+}
+
+// }}}
+// __call_with_n_evaluations{{{
+template <size_t... _I, typename _F0, typename _FArgs>
+_GLIBCXX_SIMD_INTRINSIC constexpr auto
+__call_with_n_evaluations(std::index_sequence<_I...>, _F0&& __f0,
+			  _FArgs&& __fargs)
+{
+  return __f0(__fargs(_SizeConstant<_I>())...);
+}
+
+template <size_t _Np, typename _F0, typename _FArgs>
+_GLIBCXX_SIMD_INTRINSIC constexpr auto
+__call_with_n_evaluations(_F0&& __f0, _FArgs&& __fargs)
+{
+  return __call_with_n_evaluations(std::make_index_sequence<_Np>{},
+				   static_cast<_F0&&>(__f0),
+				   static_cast<_FArgs&&>(__fargs));
+}
+
+// }}}
+// __call_with_subscripts{{{
+template <size_t _First = 0, size_t... _It, typename _Tp, typename _Fp>
+_GLIBCXX_SIMD_INTRINSIC constexpr auto
+__call_with_subscripts(_Tp&& __x, index_sequence<_It...>, _Fp&& __fun)
+{
+  return __fun(__x[_First + _It]...);
+}
+
+template <size_t _Np, size_t _First = 0, typename _Tp, typename _Fp>
+_GLIBCXX_SIMD_INTRINSIC constexpr auto
+__call_with_subscripts(_Tp&& __x, _Fp&& __fun)
+{
+  return __call_with_subscripts<_First>(static_cast<_Tp&&>(__x),
+					std::make_index_sequence<_Np>(),
+					static_cast<_Fp&&>(__fun));
+}
+
+// }}}
+
 // vvv ---- type traits ---- vvv
 // integer type aliases{{{
 using _UChar = unsigned char;
@@ -252,9 +331,6 @@ template <typename _Ptr, typename _ValueType,
 using _LoadStorePtr = _Ptr;
 
 // }}}
-// _SizeConstant{{{
-template <size_t _X> using _SizeConstant = integral_constant<size_t, _X>;
-// }}}
 // __is_bitmask{{{
 template <typename _Tp, typename = std::void_t<>>
 struct __is_bitmask : false_type
@@ -293,6 +369,43 @@ __int_for_sizeof()
   else if constexpr (_Bytes == sizeof(__int128))
     return __int128();
 #endif // __SIZEOF_INT128__
+  else if constexpr (_Bytes % sizeof(int) == 0)
+    {
+      constexpr size_t _Np = _Bytes / sizeof(int);
+      struct _Ip
+      {
+	int _M_data[_Np];
+
+	_GLIBCXX_SIMD_INTRINSIC
+	constexpr _Ip operator&(_Ip __rhs) const
+	{
+	  return __generate_from_n_evaluations<_Np, _Ip>(
+	    [&](auto __i) { return __rhs._M_data[__i] & _M_data[__i]; });
+	}
+
+	_GLIBCXX_SIMD_INTRINSIC
+	constexpr _Ip operator|(_Ip __rhs) const
+	{
+	  return __generate_from_n_evaluations<_Np, _Ip>(
+	    [&](auto __i) { return __rhs._M_data[__i] | _M_data[__i]; });
+	}
+
+	_GLIBCXX_SIMD_INTRINSIC
+	constexpr _Ip operator^(_Ip __rhs) const
+	{
+	  return __generate_from_n_evaluations<_Np, _Ip>(
+	    [&](auto __i) { return __rhs._M_data[__i] ^ _M_data[__i]; });
+	}
+
+	_GLIBCXX_SIMD_INTRINSIC
+	constexpr _Ip operator~() const
+	{
+	  return __generate_from_n_evaluations<_Np, _Ip>(
+	    [&](auto __i) { return ~_M_data[__i]; });
+	}
+      };
+      return _Ip{};
+    }
   else
     static_assert(_Bytes != _Bytes, "this should be unreachable");
 }
@@ -512,82 +625,6 @@ public:
   _ExactBool(int) = delete;
   _GLIBCXX_SIMD_INTRINSIC constexpr operator bool() const { return _M_data; }
 };
-
-// }}}
-// __execute_n_times{{{
-template <typename _Fp, size_t... _I>
-_GLIBCXX_SIMD_INTRINSIC constexpr void
-__execute_on_index_sequence(_Fp&& __f, std::index_sequence<_I...>)
-{
-  [[maybe_unused]] auto&& __x = {(__f(_SizeConstant<_I>()), 0)...};
-}
-
-template <typename _Fp>
-_GLIBCXX_SIMD_INTRINSIC constexpr void
-__execute_on_index_sequence(_Fp&&, std::index_sequence<>)
-{}
-
-template <size_t _Np, typename _Fp>
-_GLIBCXX_SIMD_INTRINSIC constexpr void
-__execute_n_times(_Fp&& __f)
-{
-  __execute_on_index_sequence(static_cast<_Fp&&>(__f),
-			      std::make_index_sequence<_Np>{});
-}
-
-// }}}
-// __generate_from_n_evaluations{{{
-template <typename _R, typename _Fp, size_t... _I>
-_GLIBCXX_SIMD_INTRINSIC constexpr _R
-__execute_on_index_sequence_with_return(_Fp&& __f, std::index_sequence<_I...>)
-{
-  return _R{__f(_SizeConstant<_I>())...};
-}
-
-template <size_t _Np, typename _R, typename _Fp>
-_GLIBCXX_SIMD_INTRINSIC constexpr _R
-__generate_from_n_evaluations(_Fp&& __f)
-{
-  return __execute_on_index_sequence_with_return<_R>(
-    static_cast<_Fp&&>(__f), std::make_index_sequence<_Np>{});
-}
-
-// }}}
-// __call_with_n_evaluations{{{
-template <size_t... _I, typename _F0, typename _FArgs>
-_GLIBCXX_SIMD_INTRINSIC constexpr auto
-__call_with_n_evaluations(std::index_sequence<_I...>, _F0&& __f0,
-			  _FArgs&& __fargs)
-{
-  return __f0(__fargs(_SizeConstant<_I>())...);
-}
-
-template <size_t _Np, typename _F0, typename _FArgs>
-_GLIBCXX_SIMD_INTRINSIC constexpr auto
-__call_with_n_evaluations(_F0&& __f0, _FArgs&& __fargs)
-{
-  return __call_with_n_evaluations(std::make_index_sequence<_Np>{},
-				   static_cast<_F0&&>(__f0),
-				   static_cast<_FArgs&&>(__fargs));
-}
-
-// }}}
-// __call_with_subscripts{{{
-template <size_t _First = 0, size_t... _It, typename _Tp, typename _Fp>
-_GLIBCXX_SIMD_INTRINSIC constexpr auto
-__call_with_subscripts(_Tp&& __x, index_sequence<_It...>, _Fp&& __fun)
-{
-  return __fun(__x[_First + _It]...);
-}
-
-template <size_t _Np, size_t _First = 0, typename _Tp, typename _Fp>
-_GLIBCXX_SIMD_INTRINSIC constexpr auto
-__call_with_subscripts(_Tp&& __x, _Fp&& __fun)
-{
-  return __call_with_subscripts<_First>(static_cast<_Tp&&>(__x),
-					std::make_index_sequence<_Np>(),
-					static_cast<_Fp&&>(__fun));
-}
 
 // }}}
 // __may_alias{{{
