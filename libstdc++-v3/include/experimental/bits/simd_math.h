@@ -1249,10 +1249,21 @@ template <typename _Tp, typename _Abi>
 enable_if_t<std::is_floating_point_v<_Tp>, simd<_Tp, _Abi>>
 copysign(const simd<_Tp, _Abi>& __x, const simd<_Tp, _Abi>& __y)
 {
-  using _V = simd<_Tp, _Abi>;
-  using namespace std::experimental::__proposed::float_bitwise_operators;
-  _GLIBCXX_SIMD_USE_CONSTEXPR_API auto __signmask = _V(1) ^ _V(-1);
-  return (__x & (__x ^ __signmask)) | (__y & __signmask);
+  if constexpr (simd_size_v<_Tp, _Abi> == 1)
+    return std::copysign(__x[0], __y[0]);
+  else if constexpr (std::is_same_v<_Tp, long double> && sizeof(_Tp) == 12)
+    // Remove this case once __bit_cast is implemented via __builtin_bit_cast.
+    // It is necessary, because __signmask below cannot be computed at compile
+    // time.
+    return simd<_Tp, _Abi>(
+      [&](auto __i) { return std::copysign(__x[__i], __y[__i]); });
+  else
+    {
+      using _V = simd<_Tp, _Abi>;
+      using namespace std::experimental::__proposed::float_bitwise_operators;
+      _GLIBCXX_SIMD_USE_CONSTEXPR_API auto __signmask = _V(1) ^ _V(-1);
+      return (__x & (__x ^ __signmask)) | (__y & __signmask);
+    }
 }
 
 _GLIBCXX_SIMD_MATH_CALL2_(nextafter, _Tp)
