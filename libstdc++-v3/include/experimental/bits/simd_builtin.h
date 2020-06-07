@@ -2090,6 +2090,18 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_INTRINSIC static constexpr _TV _S_plus_minus(_TV __x,
 							     _UV __y) noexcept
   {
+#if defined __i386__ && !defined __SSE_MATH__
+    if constexpr (sizeof(__x) == 8)
+      { // operations on __x would use the FPU
+	static_assert(std::is_same_v<_TV, __vector_type_t<float, 2>>);
+	const auto __x4 = __vector_bitcast<float, 4>(__x);
+	if constexpr (std::is_same_v<_TV, _UV>)
+	  return __vector_bitcast<float, 2>(
+	    _S_plus_minus(__x4, __vector_bitcast<float, 4>(__y)));
+	else
+	  return __vector_bitcast<float, 2>(_S_plus_minus(__x4, __y));
+      }
+#endif
 #if __GCC_IEC_559 == 0
     if (__builtin_is_constant_evaluated()
 	|| (__builtin_constant_p(__x) && __builtin_constant_p(__y)))
@@ -2098,7 +2110,14 @@ template <typename _Abi> struct _SimdImplBuiltin
       return [&] {
 	__x += __y;
 	if constexpr(__have_sse)
-	  asm("" : "+x"(__x));
+	  {
+	    if constexpr (sizeof(__x) >= 16)
+	      asm("" : "+x"(__x));
+	    else if constexpr (std::is_same_v<__vector_type_t<float, 2>, _TV>)
+	      asm("" : "+x"(__x[0]), "+x"(__x[1]));
+	    else
+	      __assert_unreachable<_TV>();
+	  }
 	else if constexpr(__have_neon)
 	  asm("" : "+w"(__x));
 	else if constexpr (__have_power_vmx)
