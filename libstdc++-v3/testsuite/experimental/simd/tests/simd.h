@@ -10,13 +10,20 @@ test()
   // sizeof
   VERIFY(sizeof(V) >= sizeof(T) * V::size());
 
-  // V should not pad more than to the next-power-of-2 of V::size() values of
-  // type T giving us the upper bound on the sizeof
-  auto n = V::size();
-  n = ((n << 1) & ~n) & ~((n >> 1) | (n >> 3));
-  while (n & (n - 1))
+  // For fixed_size, V should not pad more than to the next-power-of-2 of
+  // sizeof(T) * V::size() (for ABI stability of V), giving us the upper bound
+  // on the sizeof. For non-fixed_size we give the implementation a bit more
+  // slack to trade space vs. efficiency.
+  auto n = sizeof(T) * V::size();
+  if (n & (n - 1))
     {
-      n &= n - 1;
+      n = ((n << 1) & ~n) & ~((n >> 1) | (n >> 3));
+      while (n & (n - 1))
+	n &= n - 1;
     }
-  VERIFY(sizeof(V) <= sizeof(T) * n);
+  if constexpr (!std::is_same_v<
+		  typename V::abi_type,
+		  std::experimental::simd_abi::fixed_size<V::size()>>)
+    n *= 2;
+  VERIFY(sizeof(V) <= n) << "\nsizeof(V): " << sizeof(V) << "\nn: " << n;
 }
