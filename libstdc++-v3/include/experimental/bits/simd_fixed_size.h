@@ -333,6 +333,8 @@ struct _SimdTuple<_Tp, _Abi0, _Abis...>
     return simd_size_v<_Tp, _Abi0> + _SecondType::size();
   }
   static constexpr size_t _S_first_size = simd_size_v<_Tp, _Abi0>;
+  static constexpr bool _S_is_homogeneous
+    = (std::is_same_v<_Abi0, _Abis> && ...);
 
   using _Base = _SimdTupleData<typename _SimdTraits<_Tp, _Abi0>::_SimdMember,
 			       _SimdTuple<_Tp, _Abis...>>;

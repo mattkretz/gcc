@@ -101,7 +101,7 @@ struct _SimdConverter<
   _GLIBCXX_SIMD_INTRINSIC constexpr _Ret
   operator()(_Arg __a, _More... __more) const noexcept
   {
-    return __convert<_V>(__a, __more...);
+    return __vector_convert<_V>(__a, __more...);
   }
 };
 
@@ -258,7 +258,7 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
     else if constexpr (_Ret::_S_tuple_size == 1
 		       && _Np % _Arg::_S_first_size != 0)
       {
-	static_assert(_Ret::_FirstAbi::_S_is_partial);
+	static_assert(_Ret::_FirstAbi::template _S_is_partial<_To>);
 	return _Ret{__generate_from_n_evaluations<
 	  _Np, typename _VectorTraits<typename _Ret::_FirstType>::type>(
 	  [&](auto __i) { return static_cast<_To>(__x[__i]); })};
@@ -299,13 +299,34 @@ struct _SimdConverter<_From, _Ap, _To, simd_abi::fixed_size<_Np>,
     _Np == simd_size_v<_From, _Ap>,
     "_SimdConverter to fixed_size only works for equal element counts");
 
-  _GLIBCXX_SIMD_INTRINSIC constexpr __fixed_size_storage_t<_To, _Np>
+  using _Ret = __fixed_size_storage_t<_To, _Np>;
+
+  _GLIBCXX_SIMD_INTRINSIC constexpr _Ret
   operator()(typename _SimdTraits<_From, _Ap>::_SimdMember __x) const noexcept
   {
-    _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
-		   simd_abi::fixed_size<_Np>>
-      __fixed_cvt;
-    return __fixed_cvt(__fixed_size_storage_t<_From, _Np>{__x});
+    if constexpr (_Ret::_S_tuple_size == 1)
+      return {__vector_convert<typename _Ret::_FirstType::_BuiltinType>(__x)};
+    else
+      {
+	using _FixedNp = simd_abi::fixed_size<_Np>;
+	_SimdConverter<_From, _FixedNp, _To, _FixedNp> __fixed_cvt;
+	using _FromFixedStorage = __fixed_size_storage_t<_From, _Np>;
+	if constexpr (_FromFixedStorage::_S_tuple_size == 1)
+	  return __fixed_cvt(_FromFixedStorage{__x});
+	else if constexpr (_FromFixedStorage::_S_tuple_size == 2)
+	  {
+	    _FromFixedStorage __tmp;
+	    static_assert(sizeof(__tmp) <= sizeof(__x));
+	    __builtin_memcpy(&__tmp.first, &__x, sizeof(__tmp.first));
+	    __builtin_memcpy(&__tmp.second.first,
+			     reinterpret_cast<const char*>(&__x)
+			       + sizeof(__tmp.first),
+			     sizeof(__tmp.second.first));
+	    return __fixed_cvt(__tmp);
+	  }
+	else
+	  __assert_unreachable<_From>();
+      }
   }
 };
 
@@ -319,13 +340,37 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To, _Ap,
     _Np == simd_size_v<_To, _Ap>,
     "_SimdConverter to fixed_size only works for equal element counts");
 
+  using _Arg = __fixed_size_storage_t<_From, _Np>;
+
   _GLIBCXX_SIMD_INTRINSIC constexpr typename _SimdTraits<_To, _Ap>::_SimdMember
-  operator()(__fixed_size_storage_t<_From, _Np> __x) const noexcept
+  operator()(_Arg __x) const noexcept
   {
-    _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
-		   simd_abi::fixed_size<_Np>>
-      __fixed_cvt;
-    return __fixed_cvt(__x).first;
+    if constexpr (_Arg::_S_tuple_size == 1)
+      return __vector_convert<__vector_type_t<_To, _Np>>(__x.first);
+    else if constexpr (_Arg::_S_is_homogeneous)
+      return __call_with_n_evaluations<_Arg::_S_tuple_size>(
+	[](auto... __members) {
+	  if constexpr ((std::is_convertible_v<decltype(__members),
+					       _To> && ...))
+	    return __vector_type_t<_To, _Np>{static_cast<_To>(__members)...};
+	  else
+	    return __vector_convert<__vector_type_t<_To, _Np>>(__members...);
+	},
+	[&](auto __i) { return __get_tuple_at<__i>(__x); });
+    else if constexpr (__fixed_size_storage_t<_To, _Np>::_S_tuple_size == 1)
+      {
+	_SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
+		       simd_abi::fixed_size<_Np>>
+	  __fixed_cvt;
+	return __fixed_cvt(__x).first;
+      }
+    else
+      {
+	const _SimdWrapper<_From, _Np> __xv
+	  = __generate_from_n_evaluations<_Np, __vector_type_t<_From, _Np>>(
+	    [&](auto __i) { return __x[__i]; });
+	return __vector_convert<__vector_type_t<_To, _Np>>(__xv);
+      }
   }
 };
 

@@ -662,6 +662,9 @@ struct _InvalidTraits
   using _SimdBase = _UnsupportedBase;
   using _MaskBase = _UnsupportedBase;
 
+  static constexpr size_t _S_full_size = 0;
+  static constexpr bool _S_is_partial = false;
+
   static constexpr size_t _S_simd_align = 1;
   struct _SimdImpl;
   struct _SimdMember
@@ -1371,9 +1374,14 @@ template <typename _Tp, size_t _Np>
 struct __vector_type_n<_Tp, _Np,
 		       enable_if_t<__is_vectorizable_v<_Tp> && _Np >= 2>>
 {
-  static constexpr size_t _Bytes = _Np * sizeof(_Tp) < __min_vector_size<_Tp>
-				     ? __min_vector_size<_Tp>
-				     : __next_power_of_2(_Np * sizeof(_Tp));
+  static constexpr size_t _Np2 = __next_power_of_2(_Np * sizeof(_Tp));
+  static constexpr size_t _Bytes =
+#ifdef __i386__
+    // Using [[gnu::vector_size(8)]] would wreak havoc on the FPU because those
+    // objects are passed via MMX registers and nothing ever calls EMMS.
+    _Np2 == 8 ? 16 :
+#endif
+	      _Np2 < __min_vector_size<_Tp> ? __min_vector_size<_Tp> : _Np2;
   using type [[__gnu__::__vector_size__(_Bytes)]] = _Tp;
 };
 
@@ -2229,58 +2237,16 @@ struct __intrinsic_type<
 #endif // _GLIBCXX_SIMD_HAVE_SSE_ABI
 // __intrinsic_type (ARM){{{
 #if _GLIBCXX_SIMD_HAVE_NEON
-#define _GLIBCXX_SIMD_NEON_INTRIN(_Tp)                                         \
-  template <>                                                                  \
-  struct __intrinsic_type<__remove_cvref_t<decltype(_Tp()[0])>, sizeof(_Tp),   \
-			  void>                                                \
-  {                                                                            \
-    using type = _Tp;                                                          \
-  }
-_GLIBCXX_SIMD_NEON_INTRIN(int8x8_t);
-_GLIBCXX_SIMD_NEON_INTRIN(int8x16_t);
-_GLIBCXX_SIMD_NEON_INTRIN(int16x4_t);
-_GLIBCXX_SIMD_NEON_INTRIN(int16x8_t);
-_GLIBCXX_SIMD_NEON_INTRIN(int32x2_t);
-_GLIBCXX_SIMD_NEON_INTRIN(int32x4_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint8x8_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint8x16_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint16x4_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint16x8_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint32x2_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint32x4_t);
-#if defined _ARM_FEATURE_FP16_VECTOR_ARITHMETIC
-_GLIBCXX_SIMD_NEON_INTRIN(float16x4_t);
-_GLIBCXX_SIMD_NEON_INTRIN(float16x8_t);
-#endif
-_GLIBCXX_SIMD_NEON_INTRIN(float32x2_t);
-_GLIBCXX_SIMD_NEON_INTRIN(float32x4_t);
-#if defined __aarch64__
-_GLIBCXX_SIMD_NEON_INTRIN(int64x1_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint64x1_t);
-_GLIBCXX_SIMD_NEON_INTRIN(float64x1_t);
-_GLIBCXX_SIMD_NEON_INTRIN(float64x2_t);
-#endif
-_GLIBCXX_SIMD_NEON_INTRIN(int64x2_t);
-_GLIBCXX_SIMD_NEON_INTRIN(uint64x2_t);
-#undef _GLIBCXX_SIMD_NEON_INTRIN
-
 template <typename _Tp, size_t _Bytes>
 struct __intrinsic_type<_Tp, _Bytes,
 			enable_if_t<__is_vectorizable_v<_Tp> && _Bytes <= 16>>
 {
   static constexpr int _VBytes = _Bytes <= 8 ? 8 : 16;
-  using _Tmp = conditional_t<
-    sizeof(_Tp) == 1, __remove_cvref_t<decltype(int8x16_t()[0])>,
-    conditional_t<
-      sizeof(_Tp) == 2, short,
-      conditional_t<
-	sizeof(_Tp) == 4, int,
-	conditional_t<sizeof(_Tp) == 8,
-		      __remove_cvref_t<decltype(int64x2_t()[0])>, void>>>>;
+  using _Ip = __int_for_sizeof_t<_Tp>;
   using _Up = conditional_t<
     is_floating_point_v<_Tp>, _Tp,
-    conditional_t<is_unsigned_v<_Tp>, make_unsigned_t<_Tmp>, _Tmp>>;
-  using type = typename __intrinsic_type<_Up, _VBytes>::type;
+    conditional_t<is_unsigned_v<_Tp>, make_unsigned_t<_Ip>, _Ip>>;
+  using type [[__gnu__::__vector_size__(_VBytes)]] = _Up;
 };
 #endif // _GLIBCXX_SIMD_HAVE_NEON
 
@@ -2440,8 +2406,11 @@ struct _SimdWrapper<
   static_assert(_Width >= 2); // 1 doesn't make sense, use _Tp directly then
   using _BuiltinType = __vector_type_t<_Tp, _Width>;
   using value_type = _Tp;
-  static constexpr size_t _S_width = sizeof(_BuiltinType) / sizeof(value_type);
+  static inline constexpr size_t _S_full_size = sizeof(_BuiltinType) / sizeof(value_type);
+  static inline constexpr size_t _S_width = _S_full_size;
+  static inline constexpr int _S_size = _Width;
   static inline constexpr int __size = _Width;
+  static inline constexpr bool _S_is_partial = _S_full_size != _S_size;
 
   _BuiltinType _M_data;
 
@@ -2578,8 +2547,12 @@ __vectorized_sizeof()
 	return 16;
       if constexpr (__have_sse && std::is_same_v<_Tp, float>)
 	return 16;
+      /* The following is too much trouble because of mixed MMX and x87 code.
+       * While nothing here explicitly calls MMX instructions of registers, they
+       * are still emitted but no EMMS cleanup is done.
       if constexpr (__have_mmx && sizeof(_Tp) <= 4 && std::is_integral_v<_Tp>)
 	return 8;
+       */
 
       // PowerPC:
       if constexpr (__have_power8vec || (__have_power_vmx && (sizeof(_Tp) < 8))
@@ -4170,6 +4143,9 @@ public:
 // __scalar_abi_wrapper {{{
 template <int _Bytes> struct __scalar_abi_wrapper
 {
+  template <typename _Tp> static constexpr size_t _S_full_size = 1;
+  template <typename _Tp> static constexpr size_t _S_size = 1;
+  template <typename _Tp> static constexpr size_t _S_is_partial = false;
   template <typename _Tp, typename _Abi = simd_abi::scalar>
   static constexpr bool _S_is_valid_v
     = _Abi::template _IsValid<_Tp>::value && sizeof(_Tp) == _Bytes;
@@ -4187,27 +4163,31 @@ template <int _Bytes> struct __decay_abi<__scalar_abi_wrapper<_Bytes>>
 };
 
 // }}}
-// __full_abi metafunction {{{1
-// Given an ABI tag A where A::_S_is_partial == true, define type to be such
-// that _S_is_partial == false and A::_S_full_size<T> == type::size<T> for all
-// valid T
-template <template <int> class _Abi, int _Bytes, typename _Tp> struct __full_abi
+// __find_next_valid_abi metafunction {{{1
+// Given an ABI tag A<N>, find an N2 < N such that A<N2>::_S_is_valid_v<_Tp> ==
+// true, N2 is a power-of-2, and A<N2>::_S_is_partial<_Tp> is false. Break
+// recursion at 2 elements in the resulting ABI tag. In this case
+// type::_S_is_valid_v<_Tp> may be false.
+template <template <int> class _Abi, int _Bytes, typename _Tp>
+struct __find_next_valid_abi
 {
   static constexpr auto __choose()
   {
-    using _High = _Abi<__next_power_of_2(_Bytes) / 2>;
-    if constexpr (_High::template _S_is_valid_v<
-		    _Tp> || _Bytes <= sizeof(_Tp) * 2)
-      return _High();
+    constexpr int _NextBytes = __next_power_of_2(_Bytes) / 2;
+    using _NextAbi = _Abi<_NextBytes>;
+    if constexpr (_NextBytes < sizeof(_Tp) * 2) // break recursion
+      return _Abi<_Bytes>();
+    else if constexpr (_NextAbi::template _S_is_partial<_Tp> == false
+		       && _NextAbi::template _S_is_valid_v<_Tp>)
+      return _NextAbi();
     else
-      return
-	typename __full_abi<_Abi, __next_power_of_2(_Bytes) / 2, _Tp>::type();
+      return __find_next_valid_abi<_Abi, _NextBytes, _Tp>::__choose();
   }
   using type = decltype(__choose());
 };
 
 template <int _Bytes, typename _Tp>
-struct __full_abi<__scalar_abi_wrapper, _Bytes, _Tp>
+struct __find_next_valid_abi<__scalar_abi_wrapper, _Bytes, _Tp>
 {
   using type = simd_abi::scalar;
 };
@@ -4236,19 +4216,30 @@ struct _AbiList<_A0, _Rest...>
 
   template <typename _Tp, int _Np> static constexpr auto __determine_best_abi()
   {
+    static_assert(_Np >= 1);
     constexpr int _Bytes = sizeof(_Tp) * _Np;
-    if constexpr (_A0<_Bytes>::template _S_is_valid_v<_Tp>)
-      return typename __decay_abi<_A0<_Bytes>>::type{};
+    if constexpr (_Np == 1)
+      return __make_dependent_t<_Tp, simd_abi::scalar>{};
     else
       {
-	using _B = typename __full_abi<_A0, _Bytes, _Tp>::type;
-	if constexpr (_B::template _S_is_valid_v<
-			_Tp> && _B::template size<_Tp> <= _Np)
-	  return _B{};
+	constexpr int __fullsize = _A0<_Bytes>::template _S_full_size<_Tp>;
+	// _A0<_Bytes> is good if:
+	// 1. The ABI tag is valid for _Tp
+	// 2. The storage overhead is no more than padding to fill the next
+	//    power-of-2 number of bytes
+	if constexpr (_A0<_Bytes>::template _S_is_valid_v<
+			_Tp> && __fullsize / 2 < _Np)
+	  return typename __decay_abi<_A0<_Bytes>>::type{};
 	else
-	  return typename _AbiList<_Rest...>::template _BestAbi<_Tp, _Np>{};
-      }
-  }
+	  {
+	    using _B = typename __find_next_valid_abi<_A0, _Bytes, _Tp>::type;
+	    if constexpr (_B::template _S_is_valid_v<
+			    _Tp> && _B::template size<_Tp> <= _Np)
+	      return _B{};
+	    else
+	      return typename _AbiList<_Rest...>::template _BestAbi<_Tp, _Np>{};
+	  }
+      }}
 
   template <typename _Tp, int _Np>
   using _BestAbi = decltype(__determine_best_abi<_Tp, _Np>());

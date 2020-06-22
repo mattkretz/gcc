@@ -1367,7 +1367,7 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
 	    [](auto... __quotients) {
 	      return __vector_convert<_R>(__quotients...);
 	    },
-	    [&__xf, &__yf](auto __i) {
+	    [&__xf, &__yf](auto __i) -> _SimdWrapper<_Float, __n_intermediate> {
 #if __GCC_IEC_559 == 0
 	      // If -freciprocal-math is active, using the `/` operator is
 	      // incorrect because it may be translated to an imprecise
@@ -1687,16 +1687,17 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
 	  }
 	else if constexpr (sizeof __ix == 16)
 	  {
-	    __y += 0x3f8 >> 3;
+	    using _Float4 = __vector_type_t<float, 4>;
+	    using _Int4 = __vector_type_t<int, 4>;
+	    using _UInt4 = __vector_type_t<unsigned, 4>;
+	    const _UInt4 __yu
+	      = reinterpret_cast<_UInt4>(__to_intrin(__y + (0x3f8 >> 3)));
 	    return __x
 		   * __intrin_bitcast<_V>(
-		     __vector_convert<__vector_type16_t<int>>(
-		       __vector_bitcast<float>(
-			 __vector_bitcast<unsigned>(__to_intrin(__y)) << 23))
-		     | (__vector_convert<__vector_type16_t<int>>(
-			  __vector_bitcast<float>(
-			    (__vector_bitcast<unsigned>(__to_intrin(__y)) >> 16)
-			    << 23))
+		     __vector_convert<_Int4>(_SimdWrapper<float, 4>(
+		       reinterpret_cast<_Float4>(__yu << 23)))
+		     | (__vector_convert<_Int4>(_SimdWrapper<float, 4>(
+			  reinterpret_cast<_Float4>((__yu >> 16) << 23)))
 			<< 16));
 	  }
 	else
@@ -1706,8 +1707,9 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
       // latency is suboptimal, but throughput is at full speedup
       return __intrin_bitcast<_V>(
 	__vector_bitcast<unsigned>(__ix)
-	* __vector_convert<__vector_type16_t<int>>(__vector_bitcast<float>(
-	  (__vector_bitcast<unsigned, 4>(__y) << 23) + 0x3f80'0000)));
+	* __vector_convert<__vector_type16_t<int>>(
+	  _SimdWrapper<float, 4>(__vector_bitcast<float>(
+	    (__vector_bitcast<unsigned, 4>(__y) << 23) + 0x3f80'0000))));
     else if constexpr (sizeof(_Up) == 8 && sizeof __ix == 16 && !__have_avx2)
       {
 	const auto __lo = _mm_sll_epi64(__ix, __iy);
@@ -4782,7 +4784,7 @@ struct _MaskImplX86 : _MaskImplX86Mixin, _MaskImplBuiltin<_Abi>
 	const _TI __a = reinterpret_cast<_TI>(__to_intrin(__data(__k)));
 	if constexpr (__have_sse4_1)
 	  {
-	    if constexpr (_Abi::_S_is_partial || sizeof(__k) < 16)
+	    if constexpr (_Abi::template _S_is_partial<_Tp> || sizeof(__k) < 16)
 	      {
 		_GLIBCXX_SIMD_USE_CONSTEXPR _TI __b
 		  = _Abi::template _S_implicit_mask_intrin<_Tp>();
@@ -4815,7 +4817,7 @@ struct _MaskImplX86 : _MaskImplX86Mixin, _MaskImplBuiltin<_Abi>
 	const _TI __a = reinterpret_cast<_TI>(__to_intrin(__data(__k)));
 	if constexpr (__have_sse4_1)
 	  {
-	    if constexpr (_Abi::_S_is_partial || sizeof(__k) < 16)
+	    if constexpr (_Abi::template _S_is_partial<_Tp> || sizeof(__k) < 16)
 	      {
 		_GLIBCXX_SIMD_USE_CONSTEXPR _TI __b
 		  = _Abi::template _S_implicit_mask_intrin<_Tp>();

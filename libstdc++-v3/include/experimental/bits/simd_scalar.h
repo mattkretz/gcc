@@ -55,7 +55,7 @@ struct simd_abi::_Scalar
 {
   template <typename _Tp> static constexpr size_t size = 1;
   template <typename _Tp> static constexpr size_t _S_full_size = 1;
-  static constexpr bool _S_is_partial = false;
+  template <typename _Tp> static constexpr bool _S_is_partial = false;
   struct _IsValidAbiTag : true_type
   {
   };

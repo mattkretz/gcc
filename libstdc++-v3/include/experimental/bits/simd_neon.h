@@ -84,7 +84,8 @@ template <typename _Abi> struct _SimdImplNeon : _SimdImplBuiltin<_Abi>
 					      _BinaryOperation&& __binary_op)
   {
     constexpr size_t _Np = __x.size();
-    if constexpr (sizeof(__x) == 16 && _Np >= 4 && !_Abi::_S_is_partial)
+    if constexpr (sizeof(__x) == 16 && _Np >= 4
+		  && !_Abi::template _S_is_partial<_Tp>)
       {
 	const auto __halves = split<simd<_Tp, simd_abi::_Neon<8>>>(__x);
 	const auto __y = __binary_op(__halves[0], __halves[1]);
