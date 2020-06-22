@@ -157,6 +157,37 @@ public:
   }
 };
 
+#if defined __i686__ && ! defined __SSE2_MATH__
+template <typename T>
+[[gnu::always_inline]] inline decltype(auto)
+x87_force_fp_truncation(const T& x)
+{
+  if constexpr (std::experimental::is_simd_v<T> && sizeof(T) < 16)
+    {
+      if constexpr (std::is_floating_point_v<typename T::value_type>)
+	{
+	  T y = x;
+	  asm("" : "+m"(y));
+	  return y;
+	}
+    }
+  else if constexpr (std::is_floating_point_v<T> && sizeof(T) <= 8)
+    {
+      T y = x;
+      asm("" : "+m"(y));
+      return y;
+    }
+  else
+    return x;
+}
+#define COMPARE(_a, _b)                                                        \
+  [&](auto&& _aa, auto&& _bb) {                                                \
+    return verify(std::experimental::all_of(_aa == _bb), verify::get_ip(),     \
+		  __FILE__, __LINE__, __PRETTY_FUNCTION__,                     \
+		  "all_of(" #_a " == " #_b ")", #_a " = ", _aa,                \
+		  "\n" #_b " = ", _bb);                                        \
+  }(x87_force_fp_truncation(_a), x87_force_fp_truncation(_b))
+#else
 #define COMPARE(_a, _b)                                                        \
   [&](auto&& _aa, auto&& _bb) {                                                \
     return verify(std::experimental::all_of(_aa == _bb), verify::get_ip(),     \
@@ -164,6 +195,7 @@ public:
 		  "all_of(" #_a " == " #_b ")", #_a " = ", _aa,                \
 		  "\n" #_b " = ", _bb);                                        \
   }((_a), (_b))
+#endif
 
 #define VERIFY(_test)                                                          \
   verify(_test, verify::get_ip(), __FILE__, __LINE__, __PRETTY_FUNCTION__,     \
