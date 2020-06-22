@@ -45,7 +45,7 @@ test()
 		  limits::min() / 3,
 		  limits::min(),
 		  limits::max()},
-		 {10000, -limits::max() / 2, limits::max() / 2},
+		 {10000},
 		 MAKE_TESTER(sqrt), MAKE_TESTER(erf), MAKE_TESTER(erfc),
 		 MAKE_TESTER(tgamma), MAKE_TESTER(lgamma), MAKE_TESTER(ceil),
 		 MAKE_TESTER(floor), MAKE_TESTER(trunc), MAKE_TESTER(round),
