@@ -239,7 +239,7 @@ test()
 		  1);
 
       test_values<V>({L::min() * 1024, T(1), T(), T(-1), L::max() / 1024,
-		      L::max() / 4, L::max(), L::lowest()},
+		      L::max() / 4.1, L::max(), L::lowest()},
 		     [&](V a) {
 		       V b = 2;
 		       V ref([&](auto i) { return a[i] / 2; });
@@ -247,8 +247,9 @@ test()
 		       where(a == 0, a) = 1;
 		       // -freciprocal-math together with flush-to-zero makes
 		       // the following range restriction necessary (i.e.
-		       // 1/|a| must be >= L::min())
-		       where(abs(a) >= 1 / L::min(), a) = 1;
+		       // 1/|a| must be >= L::min()). Intel vrcpps and vrcp14ps
+		       // need some extra slack (use 1.1 instead of 1).
+		       where(abs(a) >= T(1.1) / L::min(), a) = 1;
 		       ULP_COMPARE(a / a, V(1), 1) << "\na = " << a;
 		       ref = V([&](auto i) { return 2 / a[i]; });
 		       ULP_COMPARE(b / a, ref, 1) << "\na = " << a;
