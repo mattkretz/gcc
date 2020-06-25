@@ -410,45 +410,19 @@ __fold_input(const simd<double, _Abi>& __x)
 }
 
 // }}}
-// __extract_exponent_bits {{{
-template <typename _Abi>
-rebind_simd_t<int, simd<float, _Abi>>
-__extract_exponent_bits(const simd<float, _Abi>& __v)
+// __extract_exponent_as_int {{{
+template <typename _Tp, typename _Abi>
+rebind_simd_t<int, simd<_Tp, _Abi>>
+__extract_exponent_as_int(const simd<_Tp, _Abi>& __v)
 {
-  using namespace std::experimental::__proposed;
+  using _Vp = simd<_Tp, _Abi>;
+  using _Up = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
   using namespace std::experimental::__proposed::float_bitwise_operators;
-  _GLIBCXX_SIMD_USE_CONSTEXPR_API simd<float, _Abi> __exponent_mask
-    = std::numeric_limits<float>::infinity(); // 0x7f800000
-  return __bit_cast<rebind_simd_t<int, simd<float, _Abi>>>(__v
-							   & __exponent_mask);
-}
-
-template <typename _Abi>
-rebind_simd_t<int, simd<double, _Abi>>
-__extract_exponent_bits(const simd<double, _Abi>& __v)
-{
-  using namespace std::experimental::_P0918;
-  using namespace std::experimental::__proposed::float_bitwise_operators;
-  const simd<double, _Abi> __exponent_mask
-    = std::numeric_limits<double>::infinity(); // 0x7ff0000000000000
-  constexpr auto _Np = simd_size_v<double, _Abi> * 2;
-  constexpr auto _Max = simd_abi::max_fixed_size<int>;
-  if constexpr (_Np > _Max)
-    {
-      const auto __tup
-	= split<_Max / 2, (_Np - _Max) / 2>(__v & __exponent_mask);
-      return concat(
-	shuffle<strided<2, 1>>(
-	  __bit_cast<simd<int, simd_abi::deduce_t<int, _Max>>>(
-	    std::get<0>(__tup))),
-	shuffle<strided<2, 1>>(
-	  __bit_cast<simd<int, simd_abi::deduce_t<int, _Np - _Max>>>(
-	    std::get<1>(__tup))));
-    }
-  else
-    return shuffle<strided<2, 1>>(
-      __bit_cast<simd<int, simd_abi::deduce_t<int, _Np>>>(__v
-							  & __exponent_mask));
+  const _Vp __exponent_mask
+    = std::numeric_limits<_Tp>::infinity(); // 0x7f800000 or 0x7ff0000000000000
+  return static_simd_cast<rebind_simd_t<int, _Vp>>(
+    __bit_cast<rebind_simd_t<_Up, _Vp>>(__v & __exponent_mask)
+    >> (std::numeric_limits<_Tp>::digits - 1));
 }
 
 // }}}
@@ -730,14 +704,14 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __exponent_mask
 	= _Limits::infinity(); // 0x7f800000 or 0x7ff0000000000000
       _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __p5_1_exponent
-	= _Tp(sizeof(_Tp) == 4 ? -0x1.fffffep-1 : -0x1.fffffffffffffp-1);
+	= -(2 - _Limits::epsilon()) / 2; // 0xbf7fffff or 0xbfefffffffffffff
 
-      _V __mant = __p5_1_exponent & (__exponent_mask | __x);
-      const _IV __exponent_bits = __extract_exponent_bits(__x);
+      _V __mant = __p5_1_exponent & (__exponent_mask | __x); // +/-[.5, 1)
+      const _IV __exponent_bits = __extract_exponent_as_int(__x);
       if (_GLIBCXX_SIMD_IS_LIKELY(all_of(isnormal(__x))))
 	{
-	  *__exp = simd_cast<__samesize<int, _V>>(
-	    (__exponent_bits >> __exp_shift) - __exp_adjust);
+	  *__exp
+	    = simd_cast<__samesize<int, _V>>(__exponent_bits - __exp_adjust);
 	  return __mant;
 	}
 
@@ -759,7 +733,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
 	= __p5_1_exponent & (__exponent_mask | __scaled_subnormal);
       where(!isnormal(__x), __mant) = __mant_subnormal;
       where(__iszero_inf_nan, __mant) = __x;
-      _IV __e = __extract_exponent_bits(__scaled_subnormal);
+      _IV __e = __extract_exponent_as_int(__scaled_subnormal);
       using _MaskType = typename std::conditional_t<
 	sizeof(typename _V::mask_type) == sizeof(_IV), _V, _IV>::mask_type;
       const _MaskType __value_isnormal = isnormal(__x).__cvt();
@@ -770,7 +744,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
 	  | (__bit_cast<_IV>(static_simd_cast<_MaskType>(__exponent_bits == 0)
 			     & static_simd_cast<_MaskType>(__x != 0))
 	     & _IV(__exp_adjust + __exp_offset));
-      *__exp = simd_cast<__samesize<int, _V>>((__e >> __exp_shift) - __offset);
+      *__exp = simd_cast<__samesize<int, _V>>(__e - __offset);
       return __mant;
     }
 }
