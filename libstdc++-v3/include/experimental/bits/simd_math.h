@@ -741,13 +741,18 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
 	  return __mant;
 	}
 
-      // can't use isunordered(x*inf, x*0) because inf*0 raises invalid
+#if __FINITE_MATH_ONLY__
+      // at least one element of __x is 0 or subnormal, the rest is normal (inf
+      // and NaN are excluded by -ffinite-math-only)
+      const auto __iszero_inf_nan = __x == 0;
+#else
       const auto __as_int
 	= __bit_cast<rebind_simd_t<__int_for_sizeof_t<_Tp>, _V>>(abs(__x));
       const auto __inf = __bit_cast<rebind_simd_t<__int_for_sizeof_t<_Tp>, _V>>(
 	_V(std::numeric_limits<_Tp>::infinity()));
       const auto __iszero_inf_nan = static_simd_cast<typename _V::mask_type>(
 	__as_int == 0 || __as_int >= __inf);
+#endif
 
       const _V __scaled_subnormal = __x * __subnorm_scale;
       const _V __mant_subnormal
