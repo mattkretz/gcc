@@ -35,10 +35,10 @@ __convert_x86(_V __v)
 {
   static_assert(__is_vector_type_v<_V>);
   using _Tp = typename _Traits::value_type;
-  constexpr size_t _Np = _Traits::_S_width;
+  constexpr size_t _Np = _Traits::_S_full_size;
   [[maybe_unused]] const auto __intrin = __to_intrin(__v);
   using _Up = typename _VectorTraits<_To>::value_type;
-  constexpr size_t _M = _VectorTraits<_To>::_S_width;
+  constexpr size_t _M = _VectorTraits<_To>::_S_full_size;
 
   // [xyz]_to_[xyz] {{{2
   [[maybe_unused]] constexpr bool __x_to_x
@@ -861,11 +861,11 @@ __convert_x86(_V __v0, _V __v1)
 {
   static_assert(__is_vector_type_v<_V>);
   using _Tp = typename _Traits::value_type;
-  constexpr size_t _Np = _Traits::_S_width;
+  constexpr size_t _Np = _Traits::_S_full_size;
   [[maybe_unused]] const auto __i0 = __to_intrin(__v0);
   [[maybe_unused]] const auto __i1 = __to_intrin(__v1);
   using _Up = typename _VectorTraits<_To>::value_type;
-  constexpr size_t _M = _VectorTraits<_To>::_S_width;
+  constexpr size_t _M = _VectorTraits<_To>::_S_full_size;
 
   static_assert(2 * _Np <= _M, "__v1 would be discarded; use the one-argument "
 			       "__convert_x86 overload instead");
@@ -1395,13 +1395,13 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 {
   static_assert(__is_vector_type_v<_V>);
   using _Tp = typename _Traits::value_type;
-  constexpr size_t _Np = _Traits::_S_width;
+  constexpr size_t _Np = _Traits::_S_full_size;
   [[maybe_unused]] const auto __i0 = __to_intrin(__v0);
   [[maybe_unused]] const auto __i1 = __to_intrin(__v1);
   [[maybe_unused]] const auto __i2 = __to_intrin(__v2);
   [[maybe_unused]] const auto __i3 = __to_intrin(__v3);
   using _Up = typename _VectorTraits<_To>::value_type;
-  constexpr size_t _M = _VectorTraits<_To>::_S_width;
+  constexpr size_t _M = _VectorTraits<_To>::_S_full_size;
 
   static_assert(4 * _Np <= _M,
 		"__v2/__v3 would be discarded; use the two/one-argument "
@@ -1794,7 +1794,7 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3, _V __v4, _V __v5, _V __v6,
 {
   static_assert(__is_vector_type_v<_V>);
   using _Tp = typename _Traits::value_type;
-  constexpr size_t _Np = _Traits::_S_width;
+  constexpr size_t _Np = _Traits::_S_full_size;
   [[maybe_unused]] const auto __i0 = __to_intrin(__v0);
   [[maybe_unused]] const auto __i1 = __to_intrin(__v1);
   [[maybe_unused]] const auto __i2 = __to_intrin(__v2);
@@ -1804,7 +1804,7 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3, _V __v4, _V __v5, _V __v6,
   [[maybe_unused]] const auto __i6 = __to_intrin(__v6);
   [[maybe_unused]] const auto __i7 = __to_intrin(__v7);
   using _Up = typename _VectorTraits<_To>::value_type;
-  constexpr size_t _M = _VectorTraits<_To>::_S_width;
+  constexpr size_t _M = _VectorTraits<_To>::_S_full_size;
 
   static_assert(8 * _Np <= _M,
 		"__v4-__v7 would be discarded; use the four/two/one-argument "

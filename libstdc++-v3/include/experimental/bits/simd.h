@@ -1437,10 +1437,11 @@ struct _VectorTraitsImpl<_Tp, enable_if_t<__is_vector_type_v<_Tp>>>
 {
   using type = _Tp;
   using value_type = std::remove_reference_t<decltype(std::declval<_Tp>()[0])>;
-  static constexpr int _S_width = sizeof(_Tp) / sizeof(value_type);
-  using _Wrapper = _SimdWrapper<value_type, _S_width>;
-  template <typename _Up, int _W = _S_width>
-  static constexpr bool __is = std::is_same_v<value_type, _Up>&& _W == _S_width;
+  static constexpr int _S_full_size = sizeof(_Tp) / sizeof(value_type);
+  using _Wrapper = _SimdWrapper<value_type, _S_full_size>;
+  template <typename _Up, int _W = _S_full_size>
+  static constexpr bool __is
+    = std::is_same_v<value_type, _Up> && _W == _S_full_size;
 };
 template <typename _Tp, size_t _Np>
 struct _VectorTraitsImpl<_SimdWrapper<_Tp, _Np>,
@@ -1448,12 +1449,13 @@ struct _VectorTraitsImpl<_SimdWrapper<_Tp, _Np>,
 {
   using type = __vector_type_t<_Tp, _Np>;
   using value_type = _Tp;
-  static constexpr int _S_width = sizeof(type) / sizeof(value_type);
+  static constexpr int _S_full_size = sizeof(type) / sizeof(value_type);
   using _Wrapper = _SimdWrapper<_Tp, _Np>;
-  static constexpr bool _S_is_partial = (_Np == _S_width);
+  static constexpr bool _S_is_partial = (_Np == _S_full_size);
   static constexpr int _S_partial_width = _Np;
-  template <typename _Up, int _W = _S_width>
-  static constexpr bool __is = std::is_same_v<value_type, _Up>&& _W == _S_width;
+  template <typename _Up, int _W = _S_full_size>
+  static constexpr bool __is
+    = std::is_same_v<value_type, _Up> && _W == _S_full_size;
 };
 
 template <typename _Tp, typename = typename _VectorTraitsImpl<_Tp>::type>
@@ -1483,7 +1485,7 @@ __as_wrapper(_V __x)
 {
   if constexpr (__is_vector_type_v<_V>)
     return _SimdWrapper<typename _VectorTraits<_V>::value_type,
-			(_Np > 0 ? _Np : _VectorTraits<_V>::_S_width)>(__x);
+			(_Np > 0 ? _Np : _VectorTraits<_V>::_S_full_size)>(__x);
   else if constexpr (is_simd<_V>::value || is_simd_mask<_V>::value)
     {
       static_assert(_V::size() == _Np);
@@ -1491,7 +1493,7 @@ __as_wrapper(_V __x)
     }
   else
     {
-      static_assert(_V::__size == _Np);
+      static_assert(_V::_S_size == _Np);
       return __x;
     }
 }
@@ -1622,7 +1624,7 @@ __bit_cast(const _From __x)
 // __to_intrin {{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>,
 	  typename _R
-	  = __intrinsic_type_t<typename _TVT::value_type, _TVT::_S_width>>
+	  = __intrinsic_type_t<typename _TVT::value_type, _TVT::_S_full_size>>
 _GLIBCXX_SIMD_INTRINSIC constexpr _R
 __to_intrin(_Tp __x)
 {
@@ -1682,8 +1684,8 @@ _GLIBCXX_SIMD_INTRINSIC constexpr _V
 __generate_vector(_Gp&& __gen)
 {
   if constexpr (__is_vector_type_v<_V>)
-    return __generate_vector_impl<typename _VVT::value_type, _VVT::_S_width>(
-      static_cast<_Gp&&>(__gen), std::make_index_sequence<_VVT::_S_width>());
+    return __generate_vector_impl<typename _VVT::value_type, _VVT::_S_full_size>(
+      static_cast<_Gp&&>(__gen), std::make_index_sequence<_VVT::_S_full_size>());
   else
     return __generate_vector_impl<typename _VVT::value_type,
 				  _VVT::_S_partial_width>(
@@ -1892,7 +1894,7 @@ __not(_Tp __a) noexcept
 // __concat{{{
 template <typename _Tp, typename _TVT = _VectorTraits<_Tp>,
 	  typename _R
-	  = __vector_type_t<typename _TVT::value_type, _TVT::_S_width * 2>>
+	  = __vector_type_t<typename _TVT::value_type, _TVT::_S_full_size * 2>>
 constexpr _R
 __concat(_Tp a_, _Tp b_)
 {
@@ -1907,7 +1909,7 @@ __concat(_Tp a_, _Tp b_)
   const auto __b = __vector_bitcast<_W>(b_);
   using _Up = __vector_type_t<_W, sizeof(_R) / sizeof(_W)>;
 #else
-  constexpr int input_width = _TVT::_S_width;
+  constexpr int input_width = _TVT::_S_full_size;
   const _Tp& __a = a_;
   const _Tp& __b = b_;
   using _Up = _R;
@@ -1946,7 +1948,7 @@ template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
 struct _ZeroExtendProxy
 {
   using value_type = typename _TVT::value_type;
-  static constexpr size_t _Np = _TVT::_S_width;
+  static constexpr size_t _Np = _TVT::_S_full_size;
   const _Tp __x;
 
   template <typename _To, typename _ToVT = _VectorTraits<_To>,
@@ -1954,7 +1956,7 @@ struct _ZeroExtendProxy
 	    = enable_if_t<is_same_v<typename _ToVT::value_type, value_type>>>
   _GLIBCXX_SIMD_INTRINSIC operator _To() const
   {
-    constexpr size_t _ToN = _ToVT::_S_width;
+    constexpr size_t _ToN = _ToVT::_S_full_size;
     if constexpr (_ToN == _Np)
       return __x;
     else if constexpr (_ToN == 2 * _Np)
@@ -2034,7 +2036,7 @@ __zero_extend(_Tp __x)
 template <
   int _Offset, int _SplitBy, typename _Tp, typename _TVT = _VectorTraits<_Tp>,
   typename _R
-  = __vector_type_t<typename _TVT::value_type, _TVT::_S_width / _SplitBy>>
+  = __vector_type_t<typename _TVT::value_type, _TVT::_S_full_size / _SplitBy>>
 _GLIBCXX_SIMD_INTRINSIC constexpr _R
 __extract(_Tp __in)
 {
@@ -2063,9 +2065,9 @@ __extract(_Tp __in)
       using _Up = __vector_type_t<_W, __return_width>;
       const auto __x = __vector_bitcast<_W>(__in);
 #else
-    constexpr int __return_width = _TVT::_S_width / _SplitBy;
+    constexpr int __return_width = _TVT::_S_full_size / _SplitBy;
     using _Up = _R;
-    const __vector_type_t<value_type, _TVT::_S_width>& __x
+    const __vector_type_t<value_type, _TVT::_S_full_size>& __x
       = __in; // only needed for _Tp = _SimdWrapper<value_type, _Np>
 #endif
       constexpr int _O = _Offset * __return_width;
@@ -2301,9 +2303,9 @@ struct _SimdWrapper<
 {
   using _BuiltinType = typename __bool_storage_member_type<_Width>::type;
   using value_type = bool;
-  static constexpr size_t _S_width = sizeof(_BuiltinType) * CHAR_BIT;
+  static constexpr size_t _S_full_size = sizeof(_BuiltinType) * CHAR_BIT;
 
-  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<bool, _S_width>
+  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<bool, _S_full_size>
   __as_full_vector() const
   {
     return _M_data;
@@ -2407,14 +2409,12 @@ struct _SimdWrapper<
   using _BuiltinType = __vector_type_t<_Tp, _Width>;
   using value_type = _Tp;
   static inline constexpr size_t _S_full_size = sizeof(_BuiltinType) / sizeof(value_type);
-  static inline constexpr size_t _S_width = _S_full_size;
   static inline constexpr int _S_size = _Width;
-  static inline constexpr int __size = _Width;
   static inline constexpr bool _S_is_partial = _S_full_size != _S_size;
 
   _BuiltinType _M_data;
 
-  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<_Tp, _S_width>
+  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<_Tp, _S_full_size>
   __as_full_vector() const
   {
     return _M_data;
@@ -2658,7 +2658,7 @@ struct __simd_size_impl<
   _Tp, _Abi,
   enable_if_t<std::conjunction_v<__is_vectorizable<_Tp>,
 				 std::experimental::is_abi_tag<_Abi>>>>
-  : _SizeConstant<_Abi::template size<_Tp>>
+  : _SizeConstant<_Abi::template _S_size<_Tp>>
 {
 };
 
@@ -3696,7 +3696,8 @@ auto
 __split_wrapper(_SizeList<_Sizes...>, const _SimdTuple<_Tp, _As...>& __x)
 {
   return std::experimental::split<_Sizes...>(
-    fixed_size_simd<_Tp, _SimdTuple<_Tp, _As...>::size()>(__private_init, __x));
+    fixed_size_simd<_Tp, _SimdTuple<_Tp, _As...>::_S_size()>(__private_init,
+							     __x));
 }
 
 // }}}
@@ -4234,7 +4235,7 @@ struct _AbiList<_A0, _Rest...>
 	  {
 	    using _B = typename __find_next_valid_abi<_A0, _Bytes, _Tp>::type;
 	    if constexpr (_B::template _S_is_valid_v<
-			    _Tp> && _B::template size<_Tp> <= _Np)
+			    _Tp> && _B::template _S_size<_Tp> <= _Np)
 	      return _B{};
 	    else
 	      return typename _AbiList<_Rest...>::template _BestAbi<_Tp, _Np>{};

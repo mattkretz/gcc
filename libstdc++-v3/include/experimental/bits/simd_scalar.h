@@ -53,7 +53,7 @@ struct _MaskImplScalar;
 // simd_abi::_Scalar {{{
 struct simd_abi::_Scalar
 {
-  template <typename _Tp> static constexpr size_t size = 1;
+  template <typename _Tp> static constexpr size_t _S_size = 1;
   template <typename _Tp> static constexpr size_t _S_full_size = 1;
   template <typename _Tp> static constexpr bool _S_is_partial = false;
   struct _IsValidAbiTag : true_type
@@ -550,12 +550,6 @@ struct _SimdImplScalar
   _GLIBCXX_SIMD_INTRINSIC static _Tp __remquo(_Tp __x, _Tp __y, _ST<int>* __z)
   {
     return std::remquo(__x, __y, &__z->first);
-  }
-  template <typename _Tp>
-  [[deprecated]] _GLIBCXX_SIMD_INTRINSIC static _Tp __remquo(_Tp __x, _Tp __y,
-							     int* __z)
-  {
-    return std::remquo(__x, __y, __z);
   }
 
   template <typename _Tp>

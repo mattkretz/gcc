@@ -46,7 +46,7 @@ struct _SimdConverter<_From, _Abi, _To, simd_abi::scalar,
 		      std::enable_if_t<!std::is_same_v<_Abi, simd_abi::scalar>>>
 {
   using _Arg = typename _Abi::template __traits<_From>::_SimdMember;
-  static constexpr size_t _S_n = _Arg::_S_width;
+  static constexpr size_t _S_n = _Arg::_S_full_size;
 
   _GLIBCXX_SIMD_INTRINSIC constexpr std::array<_To, _S_n>
   __all(_Arg __a) const noexcept
@@ -71,7 +71,7 @@ struct _SimdConverter<_From, simd_abi::scalar, _To, _Abi,
   _GLIBCXX_SIMD_INTRINSIC constexpr _Ret
   operator()(_From __a, _More... __more) const noexcept
   {
-    static_assert(sizeof...(_More) + 1 == _Abi::template size<_To>);
+    static_assert(sizeof...(_More) + 1 == _Abi::template _S_size<_To>);
     static_assert(std::conjunction_v<std::is_same<_From, _More>...>);
     return __make_vector<_To>(__a, __more...);
   }
@@ -186,7 +186,7 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
 	const auto __multiple_return_chunks
 	  = __convert_all<__vector_type_t<_To, _Ret::_S_first_size>>(__x.first);
 	constexpr auto __converted = __multiple_return_chunks.size()
-				     * _Ret::_FirstAbi::template size<_To>;
+				     * _Ret::_FirstAbi::template _S_size<_To>;
 	constexpr auto __remaining = _Np - __converted;
 	if constexpr (_Arg::_S_tuple_size == 1 && __remaining == 0)
 	  return __to_simd_tuple<_To, _Np>(__multiple_return_chunks);
