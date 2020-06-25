@@ -5214,9 +5214,8 @@ __data(simd<_Tp, _Ap>& __x)
 }
 // }}}
 
-namespace __proposed {
-namespace float_bitwise_operators {
-// float_bitwise_operators {{{
+namespace __float_bitwise_operators {
+// __float_bitwise_operators {{{
 template <typename _Tp, typename _Ap>
 _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_SIMD_CONSTEXPR simd<_Tp, _Ap>
 operator^(const simd<_Tp, _Ap>& __a, const simd<_Tp, _Ap>& __b)
@@ -5238,8 +5237,7 @@ operator&(const simd<_Tp, _Ap>& __a, const simd<_Tp, _Ap>& __b)
   return {__private_init, _Ap::_SimdImpl::__bit_and(__data(__a), __data(__b))};
 }
 // }}}
-} // namespace float_bitwise_operators
-} // namespace __proposed
+} // namespace __float_bitwise_operators
 
 _GLIBCXX_SIMD_END_NAMESPACE
 

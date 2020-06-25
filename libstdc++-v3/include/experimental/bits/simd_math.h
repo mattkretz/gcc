@@ -417,7 +417,7 @@ __extract_exponent_as_int(const simd<_Tp, _Abi>& __v)
 {
   using _Vp = simd<_Tp, _Abi>;
   using _Up = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
-  using namespace std::experimental::__proposed::float_bitwise_operators;
+  using namespace std::experimental::__float_bitwise_operators;
   const _Vp __exponent_mask
     = std::numeric_limits<_Tp>::infinity(); // 0x7f800000 or 0x7ff0000000000000
   return static_simd_cast<rebind_simd_t<int, _Vp>>(
@@ -493,7 +493,7 @@ cos(const simd<_Tp, _Abi>& __x)
       //        1 | sinSeries, -
       //        2 | cosSeries, -
       //        3 | sinSeries, +
-      using namespace std::experimental::__proposed::float_bitwise_operators;
+      using namespace std::experimental::__float_bitwise_operators;
       const _V __sign_flip
 	= _V(-0.f) & static_simd_cast<_V>((1 + __f._M_quadrant) << 30);
 
@@ -540,7 +540,7 @@ sin(const simd<_Tp, _Abi>& __x)
       //        1 | cosSeries
       //        2 | sinSeries, sign flip
       //        3 | cosSeries, sign flip
-      using namespace std::experimental::__proposed::float_bitwise_operators;
+      using namespace std::experimental::__float_bitwise_operators;
       const auto __sign_flip
 	= (__x ^ static_simd_cast<_V>(1 - __f._M_quadrant)) & _V(_Tp(-0.));
 
@@ -695,7 +695,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       using _IV = rebind_simd_t<int, _V>;
       using _Limits = std::numeric_limits<_Tp>;
       using namespace std::experimental::__proposed;
-      using namespace std::experimental::__proposed::float_bitwise_operators;
+      using namespace std::experimental::__float_bitwise_operators;
 
       constexpr int __exp_shift = sizeof(_Tp) == 4 ? 23 : 20;
       constexpr int __exp_adjust = sizeof(_Tp) == 4 ? 0x7e : 0x3fe;
@@ -984,7 +984,7 @@ __hypot(_VV __x, _VV __y)
       // dp. It still needs the Annex F fixups though and isn't faster on
       // Skylake-AVX512 (not even for SSE and AVX vectors, and really bad for
       // AVX-512).
-      using namespace __proposed::float_bitwise_operators;
+      using namespace __float_bitwise_operators;
       using _Limits = std::numeric_limits<_Tp>;
       _V __absx = abs(__x);          // no error
       _V __absy = abs(__y);          // no error
@@ -1102,7 +1102,7 @@ __hypot(_VV __x, _VV __y, _VV __z)
     }
   else
     {
-      using namespace __proposed::float_bitwise_operators;
+      using namespace __float_bitwise_operators;
       using _Limits = std::numeric_limits<_Tp>;
       const _V __absx = abs(__x);                 // no error
       const _V __absy = abs(__y);                 // no error
@@ -1257,7 +1257,7 @@ copysign(const simd<_Tp, _Abi>& __x, const simd<_Tp, _Abi>& __y)
   else
     {
       using _V = simd<_Tp, _Abi>;
-      using namespace std::experimental::__proposed::float_bitwise_operators;
+      using namespace std::experimental::__float_bitwise_operators;
       _GLIBCXX_SIMD_USE_CONSTEXPR_API auto __signmask = _V(1) ^ _V(-1);
       return (__x & (__x ^ __signmask)) | (__y & __signmask);
     }
