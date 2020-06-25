@@ -866,14 +866,10 @@ test()
 
       if constexpr (vi8<schar>::size() <= simd_abi::max_fixed_size<short>)
 	{
-	  COMPARE((is_substitution_failure<vi8<char>, vi8<short>>),
-		  std::is_unsigned_v<char>);
-	  COMPARE((is_substitution_failure<vi8<char>, vi8<int>>),
-		  std::is_unsigned_v<char>);
-	  COMPARE((is_substitution_failure<vi8<char>, vi8<long>>),
-		  std::is_unsigned_v<char>);
-	  COMPARE((is_substitution_failure<vi8<char>, vi8<llong>>),
-		  std::is_unsigned_v<char>);
+	  VERIFY(!(is_substitution_failure<vi8<char>, vi8<short>>));
+	  VERIFY(!(is_substitution_failure<vi8<char>, vi8<int>>));
+	  VERIFY(!(is_substitution_failure<vi8<char>, vi8<long>>));
+	  VERIFY(!(is_substitution_failure<vi8<char>, vi8<llong>>));
 	  COMPARE((is_substitution_failure<vi8<char>, vi8<ushort>>),
 		  std::is_signed_v<char>);
 	  COMPARE((is_substitution_failure<vi8<char>, vi8<uint>>),
