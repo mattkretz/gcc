@@ -1174,9 +1174,9 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      // becomes 0 (should be min/2 instead) and thus loses the
 	      // information from __lo.
 	      const _V __scale = (__hi_exp ^ __inf) * _Tp(.5);
-	      _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __mant_mask
+	      constexpr _Tp __mant_mask
 		= _Limits::min() - _Limits::denorm_min();
-	      const _V __h1 = (__hi & __mant_mask) | _V(1);
+	      const _V __h1 = (__hi & _V(__mant_mask)) | _V(1);
 	      __l0 *= __scale;
 	      __l1 *= __scale;
 	      const _V __lo
