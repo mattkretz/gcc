@@ -3,6 +3,43 @@
 #include "bits/metahelpers.h"
 #include "bits/test_values.h"
 
+// 3-arg std::hypot needs to be fixed, this is a better reference:
+template <typename T>
+[[gnu::optimize("-fno-unsafe-math-optimizations")]]
+T
+hypot3(T x, T y, T z)
+{
+  using limits = std::numeric_limits<T>;
+  x = std::abs(x);
+  y = std::abs(y);
+  z = std::abs(z);
+  auto too_small = [](T a, T b, T c) { return a + b == b && a + c == c; };
+  if (std::isinf(x) || std::isinf(y) || std::isinf(z))
+    return limits::infinity();
+  else if (std::isnan(x) || std::isnan(y) || std::isnan(z))
+    return limits::quiet_NaN();
+  else if (x == y && y == z)
+    return x * std::sqrt(T(3));
+  else if (z == 0 && y == 0)
+    return x;
+  else if (x == 0 && z == 0)
+    return y;
+  else if (x == 0 && y == 0)
+    return z;
+  else
+    {
+      T hi = std::max(std::max(x, y), z);
+      T lo0 = std::min(std::max(x, y), z);
+      T lo1 = std::min(x, y);
+      int e = 0;
+      hi = std::frexp(hi, &e);
+      lo0 = std::ldexp(lo0, -e);
+      lo1 = std::ldexp(lo1, -e);
+      T lo = lo0 * lo0 + lo1 * lo1;
+      return std::ldexp(std::sqrt(hi * hi + lo), e);
+    }
+}
+
 template <typename V>
 void
 test()
@@ -13,52 +50,6 @@ test()
 
   using T = typename V::value_type;
   using limits = std::numeric_limits<T>;
-  // 3-arg std::hypot needs to be fixed, this is a better reference:
-  auto&& hypot3 = [](T x, T y, T z) -> T {
-    x = std::abs(x);
-    y = std::abs(y);
-    z = std::abs(z);
-    if (std::isinf(x) || std::isinf(y) || std::isinf(z))
-      {
-	return limits::infinity();
-      }
-    else if (std::isnan(x) || std::isnan(y) || std::isnan(z))
-      {
-	return limits::quiet_NaN();
-      }
-    else if (x == y && y == z)
-      {
-	return x * std::sqrt(T(3));
-      }
-    else if (z == 0 && y == 0)
-      return x;
-    else if (x == 0 && z == 0)
-      return y;
-    else if (x == 0 && y == 0)
-      return z;
-    else if (x == 0)
-      return std::hypot(y, z);
-    else if (y == 0)
-      return std::hypot(x, z);
-    else if (z == 0)
-      return std::hypot(x, y);
-    else
-      {
-	long double hi = std::max(std::max(x, y), z);
-	long double lo0 = std::min(std::max(x, y), z);
-	long double lo1 = std::min(x, y);
-	if (std::isinf(x * x + y * y + z * z) || 0 == (lo0 * lo0 + lo1 * lo1))
-	  {
-	    lo0 /= hi;
-	    lo1 /= hi;
-	    return std::abs(hi) * std::sqrt(1 + (lo0 * lo0 + lo1 * lo1));
-	  }
-	else
-	  {
-	    return std::sqrt(hi * hi + (lo0 * lo0 + lo1 * lo1));
-	  }
-      }
-  };
   test_values_3arg<V>(
     {
 #ifdef __STDC_IEC_559__
