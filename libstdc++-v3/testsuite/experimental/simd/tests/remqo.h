@@ -18,9 +18,11 @@ test()
       limits::denorm_min(), limits::min() / 3, -0.,
 #endif
       +0., limits::min(), limits::max()},
-    {10000, -limits::max() / 2, limits::max() / 2}, [](const V a, const V b) {
+    {10000}, [](V a, V b) {
+      if constexpr (!limits::is_iec559)
+	where(b == 0, b) = 1;
       using IV = std::experimental::fixed_size_simd<int, V::size()>;
-      IV quo = {}; // the type is wrong, this should fail
+      IV quo = {};
       const V totest = remquo(a, b, &quo);
       auto&& expected
 	= [&](const auto& v, const auto& w) -> std::pair<const V, const IV> {
