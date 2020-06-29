@@ -1140,6 +1140,29 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	  // round __hi down to the next power-of-2:
 	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(_Limits::infinity());
 
+	  if constexpr (_V::size() > 1 && __have_neon && !__have_neon_a32)
+	    { // With ARMv7 NEON, we have no subnormals and must use slightly
+	      // different strategy
+	      const _V __hi_exp = __hi & __inf;
+	      _V __scale_back = __hi_exp;
+	      // For large exponents (max & max/2) the inversion comes too close
+	      // to subnormals. Subtract 3 from the exponent:
+	      where(__hi_exp > 1, __scale_back) = __hi_exp * _Tp(0.125);
+	      // Invert and adjust for the off-by-one error of inversion via
+	      // xor:
+	      const _V __scale = (__scale_back ^ __inf) * _Tp(.5);
+	      const _V __h1 = __hi * __scale;
+	      __l0 *= __scale;
+	      __l1 *= __scale;
+	      _V __lo
+		= __l0 * __l0 + __l1 * __l1; // add the two smaller values first
+	      asm("":"+m"(__lo));
+	      _V __r = __scale_back * sqrt(__h1 * __h1 + __lo);
+	      // Fix up hypot(0, 0, 0) to not be NaN:
+	      where(__hi == 0, __r) = 0;
+	      return __r;
+	    }
+
 	  if (_GLIBCXX_SIMD_IS_LIKELY(all_of(isnormal(__x))
 				      && all_of(isnormal(__y))
 				      && all_of(isnormal(__z))))
