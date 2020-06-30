@@ -40,26 +40,6 @@ struct _SimdConverter<_From, simd_abi::scalar, _To, simd_abi::scalar,
 };
 
 // }}}
-// _SimdConverter "native" -> scalar {{{
-template <typename _From, typename _To, typename _Abi>
-struct _SimdConverter<_From, _Abi, _To, simd_abi::scalar,
-		      std::enable_if_t<!std::is_same_v<_Abi, simd_abi::scalar>>>
-{
-  using _Arg = typename _Abi::template __traits<_From>::_SimdMember;
-  static constexpr size_t _S_n = _Arg::_S_full_size;
-
-  _GLIBCXX_SIMD_INTRINSIC constexpr std::array<_To, _S_n>
-  __all(_Arg __a) const noexcept
-  {
-    return __call_with_subscripts(
-      __a, make_index_sequence<_S_n>(),
-      [&](auto... __values) constexpr -> std::array<_To, _S_n> {
-	return {static_cast<_To>(__values)...};
-      });
-  }
-};
-
-// }}}
 // _SimdConverter scalar -> "native" {{{
 template <typename _From, typename _To, typename _Abi>
 struct _SimdConverter<_From, simd_abi::scalar, _To, _Abi,
@@ -91,11 +71,6 @@ struct _SimdConverter<
   using _Arg = typename _AFrom::template __traits<_From>::_SimdMember;
   using _Ret = typename _ATo::template __traits<_To>::_SimdMember;
   using _V = __vector_type_t<_To, simd_size_v<_To, _ATo>>;
-
-  _GLIBCXX_SIMD_INTRINSIC constexpr auto __all(_Arg __a) const noexcept
-  {
-    return __convert_all<_V>(__a);
-  }
 
   template <typename... _More>
   _GLIBCXX_SIMD_INTRINSIC constexpr _Ret
