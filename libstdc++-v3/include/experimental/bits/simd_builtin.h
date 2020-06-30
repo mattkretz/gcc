@@ -106,19 +106,19 @@ __shift_elements_right(_Tp __v)
     return _Tp();
 #if _GLIBCXX_SIMD_X86INTRIN // {{{
   else if constexpr (__have_sse && __shift == 8
-		     && _TVT::template __is<float, 4>)
+		     && _TVT::template _S_is<float, 4>)
     return _mm_movehl_ps(__iv, __iv);
   else if constexpr (__have_sse2 && __shift == 8
-		     && _TVT::template __is<double, 2>)
+		     && _TVT::template _S_is<double, 2>)
     return _mm_unpackhi_pd(__iv, __iv);
   else if constexpr (__have_sse2 && sizeof(_Tp) == 16)
     return reinterpret_cast<typename _TVT::type>(
       _mm_srli_si128(reinterpret_cast<__m128i>(__iv), __shift));
   else if constexpr (__shift == 16 && sizeof(_Tp) == 32)
     {
-      /*if constexpr (__have_avx && _TVT::template __is<double, 4>)
+      /*if constexpr (__have_avx && _TVT::template _S_is<double, 4>)
 	return _mm256_permute2f128_pd(__iv, __iv, 0x81);
-      else if constexpr (__have_avx && _TVT::template __is<float, 8>)
+      else if constexpr (__have_avx && _TVT::template _S_is<float, 8>)
 	return _mm256_permute2f128_ps(__iv, __iv, 0x81);
       else if constexpr (__have_avx)
 	return reinterpret_cast<typename _TVT::type>(
@@ -1008,7 +1008,7 @@ template <int _UsedBytes> struct simd_abi::_VecBuiltin
   }
 
   template <typename _TW, typename _TVT = _VectorTraits<_TW>>
-  _GLIBCXX_SIMD_INTRINSIC static constexpr _TW __masked(_TW __x)
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _TW _S_masked(_TW __x)
   {
     using _Tp = typename _TVT::value_type;
     if constexpr (!_S_is_partial<_Tp>)
@@ -1136,26 +1136,26 @@ public:
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __masked(_SimdWrapper<_Tp, _Np> __x)
+  _S_masked(_SimdWrapper<_Tp, _Np> __x)
   {
     if constexpr (is_same_v<_Tp, bool>)
       if constexpr (_Np < 8 || (_Np & (_Np - 1)) != 0)
-	return _MaskImpl::__bit_and(__x, _SimdWrapper<_Tp, _Np>(
-					   __bool_storage_member_type_t<_Np>(
-					     (1ULL << _Np) - 1)));
+	return _MaskImpl::_S_bit_and(__x, _SimdWrapper<_Tp, _Np>(
+					    __bool_storage_member_type_t<_Np>(
+					      (1ULL << _Np) - 1)));
       else
 	return __x;
     else
-      return __masked(__x._M_data);
+      return _S_masked(__x._M_data);
   }
 
   template <typename _TV>
-  _GLIBCXX_SIMD_INTRINSIC static constexpr _TV __masked(_TV __x)
+  _GLIBCXX_SIMD_INTRINSIC static constexpr _TV _S_masked(_TV __x)
   {
     using _Tp = typename _VectorTraits<_TV>::value_type;
     static_assert(
       !__is_bitmask_v<_TV>,
-      "_VecBltnBtmsk::__masked cannot work on bitmasks, since it doesn't "
+      "_VecBltnBtmsk::_S_masked cannot work on bitmasks, since it doesn't "
       "know the number of elements. Use _SimdWrapper<bool, N> instead.");
     if constexpr (_S_is_partial<_Tp>)
       {
@@ -1203,11 +1203,11 @@ public:
 // _CommonImplBuiltin {{{
 struct _CommonImplBuiltin
 {
-  // __converts_via_decomposition{{{
+  // _S_converts_via_decomposition{{{
   // This lists all cases where a __vector_convert needs to fall back to
   // conversion of individual scalars (i.e. decompose the input vector into
-  // scalars, convert, compose output vector). In those cases, __masked_load &
-  // __masked_store prefer to use the __bit_iteration implementation.
+  // scalars, convert, compose output vector). In those cases, _S_masked_load &
+  // _S_masked_store prefer to use the _S_bit_iteration implementation.
   template <typename _From, typename _To, size_t _ToSize>
   static inline constexpr bool __converts_via_decomposition_v
     = sizeof(_From) != sizeof(_To);
@@ -1257,9 +1257,9 @@ struct _CommonImplBuiltin
   }
 
   // }}}
-  // __store {{{
+  // _S_store {{{
   template <size_t _ReqBytes = 0, typename _TV>
-  _GLIBCXX_SIMD_INTRINSIC static void __store(_TV __x, void* __addr)
+  _GLIBCXX_SIMD_INTRINSIC static void _S_store(_TV __x, void* __addr)
   {
     constexpr size_t _Bytes = _ReqBytes == 0 ? sizeof(__x) : _ReqBytes;
     static_assert(sizeof(__x) >= _Bytes);
@@ -1295,29 +1295,29 @@ struct _CommonImplBuiltin
   }
 
   template <typename _Tp, size_t _Np>
-  _GLIBCXX_SIMD_INTRINSIC static void __store(_SimdWrapper<_Tp, _Np> __x,
-					      void* __addr)
+  _GLIBCXX_SIMD_INTRINSIC static void _S_store(_SimdWrapper<_Tp, _Np> __x,
+					       void* __addr)
   {
-    __store<_Np * sizeof(_Tp)>(__x._M_data, __addr);
+    _S_store<_Np * sizeof(_Tp)>(__x._M_data, __addr);
   }
 
   // }}}
-  // __store_bool_array(_BitMask) {{{
+  // _S_store_bool_array(_BitMask) {{{
   template <size_t _Np, bool _Sanitized>
   _GLIBCXX_SIMD_INTRINSIC static constexpr void
-  __store_bool_array(_BitMask<_Np, _Sanitized> __x, bool* __mem)
+  _S_store_bool_array(_BitMask<_Np, _Sanitized> __x, bool* __mem)
   {
     if constexpr (_Np == 1)
       __mem[0] = __x[0];
     else if constexpr (_Np == 2)
       {
 	short __bool2 = (__x._M_to_bits() * 0x81) & 0x0101;
-	__store<_Np>(__bool2, __mem);
+	_S_store<_Np>(__bool2, __mem);
       }
     else if constexpr (_Np == 3)
       {
 	int __bool3 = (__x._M_to_bits() * 0x4081) & 0x010101;
-	__store<_Np>(__bool3, __mem);
+	_S_store<_Np>(__bool3, __mem);
       }
     else
       {
@@ -1330,7 +1330,7 @@ struct _CommonImplBuiltin
 		= (__x.template _M_extract<__offset>()._M_to_bits()
 		   * 0x40810204081ULL)
 		  & 0x0101010101010101ULL;
-	      __store<__remaining>(__bool7, __mem + __offset);
+	      _S_store<__remaining>(__bool7, __mem + __offset);
 	    }
 	  else if constexpr (__remaining >= 4)
 	    {
@@ -1338,7 +1338,7 @@ struct _CommonImplBuiltin
 	      if constexpr (__remaining > 7)
 		__bits &= 0xf;
 	      const int __bool4 = (__bits * 0x204081) & 0x01010101;
-	      __store<4>(__bool4, __mem + __offset);
+	      _S_store<4>(__bool4, __mem + __offset);
 	    }
 	});
       }
@@ -1377,32 +1377,32 @@ template <typename _Abi> struct _SimdImplBuiltin
   using _SuperImpl = typename _Abi::_SimdImpl;
   using _MaskImpl = typename _Abi::_MaskImpl;
 
-  // __make_simd(_SimdWrapper/__intrinsic_type_t) {{{2
+  // _M_make_simd(_SimdWrapper/__intrinsic_type_t) {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static simd<_Tp, _Abi>
-  __make_simd(_SimdWrapper<_Tp, _Np> __x)
+  _M_make_simd(_SimdWrapper<_Tp, _Np> __x)
   {
     return {__private_init, __x};
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static simd<_Tp, _Abi>
-  __make_simd(__intrinsic_type_t<_Tp, _Np> __x)
+  _M_make_simd(__intrinsic_type_t<_Tp, _Np> __x)
   {
     return {__private_init, __vector_bitcast<_Tp>(__x)};
   }
 
-  // __broadcast {{{2
+  // _S_broadcast {{{2
   template <typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdMember<_Tp>
-  __broadcast(_Tp __x) noexcept
+  _S_broadcast(_Tp __x) noexcept
   {
     return __vector_broadcast<_S_full_size<_Tp>>(__x);
   }
 
-  // __generator {{{2
+  // _S_generator {{{2
   template <typename _Fp, typename _Tp>
-  inline static constexpr _SimdMember<_Tp> __generator(_Fp&& __gen,
-						       _TypeTag<_Tp>)
+  inline static constexpr _SimdMember<_Tp> _S_generator(_Fp&& __gen,
+							_TypeTag<_Tp>)
   {
     return __generate_vector<_Tp, _S_full_size<_Tp>>([&](auto __i) constexpr {
       if constexpr (__i < _S_size<_Tp>)
@@ -1412,10 +1412,10 @@ template <typename _Abi> struct _SimdImplBuiltin
     });
   }
 
-  // __load {{{2
+  // _S_load {{{2
   template <typename _Tp, typename _Up>
-  _GLIBCXX_SIMD_INTRINSIC static _SimdMember<_Tp> __load(const _Up* __mem,
-							 _TypeTag<_Tp>) noexcept
+  _GLIBCXX_SIMD_INTRINSIC static _SimdMember<_Tp>
+  _S_load(const _Up* __mem, _TypeTag<_Tp>) noexcept
   {
     constexpr size_t _Np = _S_size<_Tp>;
     constexpr size_t __max_load_size
@@ -1470,22 +1470,22 @@ template <typename _Abi> struct _SimdImplBuiltin
 	});
   }
 
-  // __masked_load {{{2
+  // _S_masked_load {{{2
   template <typename _Tp, size_t _Np, typename _Up>
   static inline _SimdWrapper<_Tp, _Np>
-  __masked_load(_SimdWrapper<_Tp, _Np> __merge, _MaskMember<_Tp> __k,
-		const _Up* __mem) noexcept
+  _S_masked_load(_SimdWrapper<_Tp, _Np> __merge, _MaskMember<_Tp> __k,
+		 const _Up* __mem) noexcept
   {
-    _BitOps::__bit_iteration(_MaskImpl::__to_bits(__k), [&](auto __i) {
-      __merge.__set(__i, static_cast<_Tp>(__mem[__i]));
+    _BitOps::_S_bit_iteration(_MaskImpl::_S_to_bits(__k), [&](auto __i) {
+      __merge._M_set(__i, static_cast<_Tp>(__mem[__i]));
     });
     return __merge;
   }
 
-  // __store {{{2
+  // _S_store {{{2
   template <typename _Tp, typename _Up>
-  _GLIBCXX_SIMD_INTRINSIC static void __store(_SimdMember<_Tp> __v, _Up* __mem,
-					      _TypeTag<_Tp>) noexcept
+  _GLIBCXX_SIMD_INTRINSIC static void _S_store(_SimdMember<_Tp> __v, _Up* __mem,
+					       _TypeTag<_Tp>) noexcept
   {
     // TODO: converting int -> "smaller int" can be optimized with AVX512
     constexpr size_t _Np = _S_size<_Tp>;
@@ -1496,9 +1496,9 @@ template <typename _Abi> struct _SimdImplBuiltin
 	__mem[__i] = __v[__i];
       });
     else if constexpr (std::is_same_v<_Up, _Tp>)
-      _CommonImpl::__store(__v, __mem);
+      _CommonImpl::_S_store(__v, __mem);
     else if constexpr (sizeof(_Up) * _Np <= __max_store_size)
-      _CommonImpl::__store(_SimdWrapper<_Up, _Np>(__convert<_Up>(__v)), __mem);
+      _CommonImpl::_S_store(_SimdWrapper<_Up, _Np>(__convert<_Up>(__v)), __mem);
     else
       {
 	constexpr size_t __vsize = __max_store_size / sizeof(_Up);
@@ -1509,32 +1509,32 @@ template <typename _Abi> struct _SimdImplBuiltin
 	const std::array<_V, __stores> __converted
 	  = __convert_all<_V, __stores>(__v);
 	__execute_n_times<__full_stores>([&](auto __i) constexpr {
-	  _CommonImpl::__store(__converted[__i], __mem + __i * __vsize);
+	  _CommonImpl::_S_store(__converted[__i], __mem + __i * __vsize);
 	});
 	if constexpr (__full_stores < __stores)
-	  _CommonImpl::template __store<(_Np - __full_stores * __vsize)
+	  _CommonImpl::template _S_store<(_Np - __full_stores * __vsize)
 					* sizeof(_Up)>(
 	    __converted[__full_stores], __mem + __full_stores * __vsize);
       }
   }
 
-  // __masked_store_nocvt {{{2
+  // _S_masked_store_nocvt {{{2
   template <typename _Tp, std::size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_store_nocvt(_SimdWrapper<_Tp, _Np> __v, _Tp* __mem,
-		       _MaskMember<_Tp> __k)
+  _S_masked_store_nocvt(_SimdWrapper<_Tp, _Np> __v, _Tp* __mem,
+			_MaskMember<_Tp> __k)
   {
-    _BitOps::__bit_iteration(
-      _MaskImpl::__to_bits(__k), [&](auto __i) constexpr {
+    _BitOps::_S_bit_iteration(
+      _MaskImpl::_S_to_bits(__k), [&](auto __i) constexpr {
 	__mem[__i] = __v[__i];
       });
   }
 
-  // __masked_store {{{2
+  // _S_masked_store {{{2
   template <typename _TW, typename _TVT = _VectorTraits<_TW>,
 	    typename _Tp = typename _TVT::value_type, typename _Up>
-  static inline void __masked_store(const _TW __v, _Up* __mem,
-				    const _MaskMember<_Tp> __k) noexcept
+  static inline void _S_masked_store(const _TW __v, _Up* __mem,
+				     const _MaskMember<_Tp> __k) noexcept
   {
     constexpr size_t _TV_size = _S_size<_Tp>;
     [[maybe_unused]] const auto __vi = __to_intrin(__v);
@@ -1552,8 +1552,8 @@ template <typename _Abi> struct _SimdImplBuiltin
 	  else
 	    return __wrapper_bitcast<__int_for_sizeof_t<_Up>>(__k);
 	}();
-	_SuperImpl::__masked_store_nocvt(__wrapper_bitcast<_Up>(__v), __mem,
-					 __kk);
+	_SuperImpl::_S_masked_store_nocvt(__wrapper_bitcast<_Up>(__v), __mem,
+					  __kk);
       }
     else if constexpr (__vectorized_sizeof<_Up>() > sizeof(_Up)
 		       && !_CommonImpl::template __converts_via_decomposition_v<
@@ -1569,9 +1569,9 @@ template <typename _Abi> struct _SimdImplBuiltin
 	if constexpr (_UW_size == _TV_size) // one convert+store
 	  {
 	    const _UW __converted = __convert<_UW>(__v);
-	    _SuperImpl::__masked_store_nocvt(
+	    _SuperImpl::_S_masked_store_nocvt(
 	      __converted, __mem,
-	      _UAbi::_MaskImpl::template __convert<__int_for_sizeof_t<_Up>>(
+	      _UAbi::_MaskImpl::template _S_convert<__int_for_sizeof_t<_Up>>(
 		__k));
 	  }
 	else
@@ -1583,38 +1583,38 @@ template <typename _Abi> struct _SimdImplBuiltin
 	    const std::array<_UV, _NAllStores> __converted
 	      = __convert_all<_UV, _NAllStores>(__v);
 	    __execute_n_times<_NFullStores>([&](auto __i) {
-	      _SuperImpl::__masked_store_nocvt(
+	      _SuperImpl::_S_masked_store_nocvt(
 		_UW(__converted[__i]), __mem + __i * _UW_size,
-		_UAbi::_MaskImpl::template __convert<__int_for_sizeof_t<_Up>>(
+		_UAbi::_MaskImpl::template _S_convert<__int_for_sizeof_t<_Up>>(
 		  __extract_part<__i, _NParts>(__k.__as_full_vector())));
 	    });
 	    if constexpr (_NAllStores > _NFullStores) // one partial at the end
-	      _SuperImpl::__masked_store_nocvt(
+	      _SuperImpl::_S_masked_store_nocvt(
 		_UW(__converted[_NFullStores]), __mem + _NFullStores * _UW_size,
-		_UAbi::_MaskImpl::template __convert<__int_for_sizeof_t<_Up>>(
+		_UAbi::_MaskImpl::template _S_convert<__int_for_sizeof_t<_Up>>(
 		  __extract_part<_NFullStores, _NParts>(
 		    __k.__as_full_vector())));
 	  }
       }
     else
-      _BitOps::__bit_iteration(
-	_MaskImpl::__to_bits(__k), [&](auto __i) constexpr {
+      _BitOps::_S_bit_iteration(
+	_MaskImpl::_S_to_bits(__k), [&](auto __i) constexpr {
 	  __mem[__i] = static_cast<_Up>(__v[__i]);
 	});
   }
 
-  // __complement {{{2
+  // _S_complement {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __complement(_SimdWrapper<_Tp, _Np> __x) noexcept
+  _S_complement(_SimdWrapper<_Tp, _Np> __x) noexcept
   {
     return ~__x._M_data;
   }
 
-  // __unary_minus {{{2
+  // _S_unary_minus {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __unary_minus(_SimdWrapper<_Tp, _Np> __x) noexcept
+  _S_unary_minus(_SimdWrapper<_Tp, _Np> __x) noexcept
   {
     // GCC doesn't use the psign instructions, but pxor & psub seem to be just
     // as good a choice as pcmpeqd & psign. So meh.
@@ -1624,25 +1624,25 @@ template <typename _Abi> struct _SimdImplBuiltin
   // arithmetic operators {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __plus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_plus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data + __y._M_data;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __minus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_minus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data - __y._M_data;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __multiplies(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_multiplies(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data * __y._M_data;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __divides(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_divides(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     // Note that division by 0 is always UB, so we must ensure we avoid the
     // case for partial registers
@@ -1653,7 +1653,7 @@ template <typename _Abi> struct _SimdImplBuiltin
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __modulus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_modulus(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     if constexpr (!_Abi::template _S_is_partial<_Tp>)
       return __x._M_data % __y._M_data;
@@ -1662,31 +1662,31 @@ template <typename _Abi> struct _SimdImplBuiltin
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_and(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_bit_and(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __and(__x, __y);
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_or(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_bit_or(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __or(__x, __y);
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_xor(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_bit_xor(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __xor(__x, __y);
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __bit_shift_left(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_bit_shift_left(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data << __y._M_data;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __bit_shift_right(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_bit_shift_right(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
 #ifdef _GLIBCXX_SIMD_WORKAROUND_XXX_5
     if constexpr (sizeof(_Tp) == 8)
@@ -1700,70 +1700,70 @@ template <typename _Abi> struct _SimdImplBuiltin
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_shift_left(_SimdWrapper<_Tp, _Np> __x, int __y)
+  _S_bit_shift_left(_SimdWrapper<_Tp, _Np> __x, int __y)
   {
     return __x._M_data << __y;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_shift_right(_SimdWrapper<_Tp, _Np> __x, int __y)
+  _S_bit_shift_right(_SimdWrapper<_Tp, _Np> __x, int __y)
   {
     return __x._M_data >> __y;
   }
 
   // compares {{{2
-  // __equal_to {{{3
+  // _S_equal_to {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __equal_to(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_equal_to(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data == __y._M_data;
   }
 
-  // __not_equal_to {{{3
+  // _S_not_equal_to {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __not_equal_to(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_not_equal_to(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data != __y._M_data;
   }
 
-  // __less {{{3
+  // _S_less {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __less(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_less(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data < __y._M_data;
   }
 
-  // __less_equal {{{3
+  // _S_less_equal {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __less_equal(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_less_equal(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
     return __x._M_data <= __y._M_data;
   }
 
-  // negation {{{2
+  // _S_negate {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __negate(_SimdWrapper<_Tp, _Np> __x) noexcept
+  _S_negate(_SimdWrapper<_Tp, _Np> __x) noexcept
   {
     return !__x._M_data;
   }
 
-  // __min, __max, __minmax {{{2
+  // _S_min, _S_max, _S_minmax {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_NORMAL_MATH
     _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-    __min(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
+    _S_min(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
   {
     return __a._M_data < __b._M_data ? __a._M_data : __b._M_data;
   }
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_NORMAL_MATH
     _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-    __max(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
+    _S_max(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
   {
     return __a._M_data > __b._M_data ? __a._M_data : __b._M_data;
   }
@@ -1772,7 +1772,7 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_NORMAL_MATH
     _GLIBCXX_SIMD_INTRINSIC static constexpr std::pair<_SimdWrapper<_Tp, _Np>,
 						       _SimdWrapper<_Tp, _Np>>
-    __minmax(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
+    _S_minmax(_SimdWrapper<_Tp, _Np> __a, _SimdWrapper<_Tp, _Np> __b)
   {
     return {__a._M_data < __b._M_data ? __a._M_data : __b._M_data,
 	    __a._M_data < __b._M_data ? __b._M_data : __a._M_data};
@@ -1782,7 +1782,7 @@ template <typename _Abi> struct _SimdImplBuiltin
   template <size_t _Np, size_t... _Is, size_t... _Zeros, typename _Tp,
 	    typename _BinaryOperation>
   _GLIBCXX_SIMD_INTRINSIC static _Tp
-  __reduce_partial(std::index_sequence<_Is...>, std::index_sequence<_Zeros...>,
+  _S_reduce_partial(std::index_sequence<_Is...>, std::index_sequence<_Zeros...>,
 		   simd<_Tp, _Abi> __x, _BinaryOperation&& __binary_op)
   {
     using _V = __vector_type_t<_Tp, _Np / 2>;
@@ -1792,7 +1792,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     using _FullSimd = __deduced_simd<_Tp, _VectorTraits<_V>::_S_full_size>;
     using _HalfSimd = __deduced_simd<_Tp, _Np / 2>;
     const auto __xx = __as_vector(__x);
-    return _HalfSimd::abi_type::_SimdImpl::__reduce(
+    return _HalfSimd::abi_type::_SimdImpl::_S_reduce(
       static_cast<_HalfSimd>(__as_vector(__binary_op(
 	static_cast<_FullSimd>(__intrin_bitcast<_V>(__xx)),
 	static_cast<_FullSimd>(__intrin_bitcast<_V>(
@@ -1803,7 +1803,7 @@ template <typename _Abi> struct _SimdImplBuiltin
 
   template <typename _Tp, typename _BinaryOperation>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _Tp
-  __reduce(simd<_Tp, _Abi> __x, _BinaryOperation&& __binary_op)
+  _S_reduce(simd<_Tp, _Abi> __x, _BinaryOperation&& __binary_op)
   {
     constexpr size_t _Np = simd_size_v<_Tp, _Abi>;
     if constexpr (_Np == 1)
@@ -1823,8 +1823,8 @@ template <typename _Abi> struct _SimdImplBuiltin
 					  std::plus<>>)
 	  {
 	    using _Ap = simd_abi::deduce_t<_Tp, __full_size>;
-	    return _Ap::_SimdImpl::__reduce(
-	      simd<_Tp, _Ap>(__private_init, _Abi::__masked(__as_vector(__x))),
+	    return _Ap::_SimdImpl::_S_reduce(
+	      simd<_Tp, _Ap>(__private_init, _Abi::_S_masked(__as_vector(__x))),
 	      __binary_op);
 	  }
 	else if constexpr (std::is_same_v<__remove_cvref_t<_BinaryOperation>,
@@ -1840,7 +1840,7 @@ template <typename _Abi> struct _SimdImplBuiltin
 	    const _TW __x_padded_with_ones
 	      = _Ap::_CommonImpl::_S_blend(__implicit_mask_full, __one,
 					   __x_full);
-	    return _Ap::_SimdImpl::__reduce(
+	    return _Ap::_SimdImpl::_S_reduce(
 	      simd<_Tp, _Ap>(__private_init, __x_padded_with_ones),
 	      __binary_op);
 	  }
@@ -1848,14 +1848,14 @@ template <typename _Abi> struct _SimdImplBuiltin
 	  {
 	    using _Ap = simd_abi::deduce_t<_Tp, _Np - 1>;
 	    return __binary_op(
-	      simd<_Tp, simd_abi::scalar>(_Ap::_SimdImpl::__reduce(
+	      simd<_Tp, simd_abi::scalar>(_Ap::_SimdImpl::_S_reduce(
 		simd<_Tp, _Ap>(__intrin_bitcast<__vector_type_t<_Tp, _Np - 1>>(
 		  __as_vector(__x))),
 		__binary_op)),
 	      simd<_Tp, simd_abi::scalar>(__x[_Np - 1]))[0];
 	  }
 	else
-	  return __reduce_partial<_Np>(
+	  return _S_reduce_partial<_Np>(
 	    std::make_index_sequence<_Np / 2>(),
 	    std::make_index_sequence<__full_size - _Np / 2>(), __x,
 	    __binary_op);
@@ -1865,20 +1865,21 @@ template <typename _Abi> struct _SimdImplBuiltin
 	if constexpr (_Np == 16)
 	  {
 	    const auto __y = __data(__x);
-	    __x = __binary_op(
-	      __make_simd<_Tp, _Np>(__vector_permute<0, 0, 1, 1, 2, 2, 3, 3, 4,
-						     4, 5, 5, 6, 6, 7, 7>(__y)),
-	      __make_simd<_Tp, _Np>(
-		__vector_permute<8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14,
-				 14, 15, 15>(__y)));
+	    __x = __binary_op(_M_make_simd<_Tp, _Np>(
+				__vector_permute<0, 0, 1, 1, 2, 2, 3, 3, 4, 4,
+						 5, 5, 6, 6, 7, 7>(__y)),
+			      _M_make_simd<_Tp, _Np>(
+				__vector_permute<8, 8, 9, 9, 10, 10, 11, 11, 12,
+						 12, 13, 13, 14, 14, 15, 15>(
+				  __y)));
 	  }
 	if constexpr (_Np >= 8)
 	  {
 	    const auto __y = __vector_bitcast<short>(__data(__x));
 	    __x
-	      = __binary_op(__make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
+	      = __binary_op(_M_make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
 			      __vector_permute<0, 0, 1, 1, 2, 2, 3, 3>(__y))),
-			    __make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
+			    _M_make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
 			      __vector_permute<4, 4, 5, 5, 6, 6, 7, 7>(__y))));
 	  }
 	if constexpr (_Np >= 4)
@@ -1886,13 +1887,13 @@ template <typename _Abi> struct _SimdImplBuiltin
 	    using _Up
 	      = std::conditional_t<std::is_floating_point_v<_Tp>, float, int>;
 	    const auto __y = __vector_bitcast<_Up>(__data(__x));
-	    __x = __binary_op(__x, __make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
+	    __x = __binary_op(__x, _M_make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
 				     __vector_permute<3, 2, 1, 0>(__y))));
 	  }
 	using _Up
 	  = std::conditional_t<std::is_floating_point_v<_Tp>, double, _LLong>;
 	const auto __y = __vector_bitcast<_Up>(__data(__x));
-	__x = __binary_op(__x, __make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
+	__x = __binary_op(__x, _M_make_simd<_Tp, _Np>(__vector_bitcast<_Tp>(
 				 __vector_permute<1, 1>(__y))));
 	return __x[0];
       } //}}}
@@ -1902,7 +1903,7 @@ template <typename _Abi> struct _SimdImplBuiltin
 	static_assert((_Np & (_Np - 1)) == 0); // _Np must be a power of 2
 	using _Ap = simd_abi::deduce_t<_Tp, _Np / 2>;
 	using _V = std::experimental::simd<_Tp, _Ap>;
-	return _Ap::_SimdImpl::__reduce(
+	return _Ap::_SimdImpl::_S_reduce(
 	  __binary_op(_V(__private_init, __extract<0, 2>(__as_vector(__x))),
 		      _V(__private_init, __extract<1, 2>(__as_vector(__x)))),
 	  static_cast<_BinaryOperation&&>(__binary_op));
@@ -1913,7 +1914,7 @@ template <typename _Abi> struct _SimdImplBuiltin
   // frexp, modf and copysign implemented in simd_math.h
 #define _GLIBCXX_SIMD_MATH_FALLBACK(__name)                                    \
   template <typename _Tp, typename... _More>                                   \
-  static _Tp __##__name(const _Tp& __x, const _More&... __more)                \
+  static _Tp _S_##__name(const _Tp& __x, const _More&... __more)               \
   {                                                                            \
     return __generate_vector<_Tp>(                                             \
       [&](auto __i) { return std::__name(__x[__i], __more[__i]...); });        \
@@ -1921,8 +1922,8 @@ template <typename _Abi> struct _SimdImplBuiltin
 
 #define _GLIBCXX_SIMD_MATH_FALLBACK_MASKRET(__name)                            \
   template <typename _Tp, typename... _More>                                   \
-  static                                                                       \
-    typename _Tp::mask_type __##__name(const _Tp& __x, const _More&... __more) \
+  static typename _Tp::mask_type _S_##__name(const _Tp& __x,                   \
+					     const _More&... __more)           \
   {                                                                            \
     return __generate_vector<_Tp>(                                             \
       [&](auto __i) { return std::__name(__x[__i], __more[__i]...); });        \
@@ -1930,12 +1931,12 @@ template <typename _Abi> struct _SimdImplBuiltin
 
 #define _GLIBCXX_SIMD_MATH_FALLBACK_FIXEDRET(_RetTp, __name)                   \
   template <typename _Tp, typename... _More>                                   \
-  static auto __##__name(const _Tp& __x, const _More&... __more)               \
+  static auto _S_##__name(const _Tp& __x, const _More&... __more)              \
   {                                                                            \
     return __fixed_size_storage_t<_RetTp,                                      \
 				  _VectorTraits<_Tp>::_S_partial_width>::      \
-      __generate([&](auto __meta) constexpr {                                  \
-	return __meta.__generator(                                             \
+      _S_generate([&](auto __meta) constexpr {                                 \
+	return __meta._S_generator(                                            \
 	  [&](auto __i) {                                                      \
 	    return std::__name(__x[__meta._S_offset + __i],                    \
 			       __more[__meta._S_offset + __i]...);             \
@@ -1990,13 +1991,13 @@ template <typename _Abi> struct _SimdImplBuiltin
   _GLIBCXX_SIMD_MATH_FALLBACK(remainder)
 
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  static _Tp __remquo(const _Tp __x, const _Tp __y,
-		      __fixed_size_storage_t<int, _TVT::_S_partial_width>* __z)
+  static _Tp _S_remquo(const _Tp __x, const _Tp __y,
+		       __fixed_size_storage_t<int, _TVT::_S_partial_width>* __z)
   {
     return __generate_vector<_Tp>([&](auto __i) {
       int __tmp;
       auto __r = std::remquo(__x[__i], __y[__i], &__tmp);
-      __z->__set(__i, __tmp);
+      __z->_M_set(__i, __tmp);
       return __r;
     });
   }
@@ -2010,65 +2011,65 @@ template <typename _Abi> struct _SimdImplBuiltin
 
   template <typename _Tp, size_t _Np>
   static constexpr _MaskMember<_Tp>
-  __isgreater(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
+  _S_isgreater(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
   {
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __xn = __vector_bitcast<_Ip>(__x);
     const auto __yn = __vector_bitcast<_Ip>(__y);
     const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
     const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
-    return __andnot(_SuperImpl::__isunordered(__x, __y)._M_data, __xp > __yp);
+    return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp > __yp);
   }
   template <typename _Tp, size_t _Np>
   static constexpr _MaskMember<_Tp>
-  __isgreaterequal(_SimdWrapper<_Tp, _Np> __x,
+  _S_isgreaterequal(_SimdWrapper<_Tp, _Np> __x,
+		    _SimdWrapper<_Tp, _Np> __y) noexcept
+  {
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __xn = __vector_bitcast<_Ip>(__x);
+    const auto __yn = __vector_bitcast<_Ip>(__y);
+    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp >= __yp);
+  }
+  template <typename _Tp, size_t _Np>
+  static constexpr _MaskMember<_Tp>
+  _S_isless(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
+  {
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __xn = __vector_bitcast<_Ip>(__x);
+    const auto __yn = __vector_bitcast<_Ip>(__y);
+    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp < __yp);
+  }
+  template <typename _Tp, size_t _Np>
+  static constexpr _MaskMember<_Tp>
+  _S_islessequal(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
+  {
+    using _Ip = __int_for_sizeof_t<_Tp>;
+    const auto __xn = __vector_bitcast<_Ip>(__x);
+    const auto __yn = __vector_bitcast<_Ip>(__y);
+    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp <= __yp);
+  }
+  template <typename _Tp, size_t _Np>
+  static constexpr _MaskMember<_Tp>
+  _S_islessgreater(_SimdWrapper<_Tp, _Np> __x,
 		   _SimdWrapper<_Tp, _Np> __y) noexcept
   {
-    using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __xn = __vector_bitcast<_Ip>(__x);
-    const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
-    return __andnot(_SuperImpl::__isunordered(__x, __y)._M_data, __xp >= __yp);
-  }
-  template <typename _Tp, size_t _Np>
-  static constexpr _MaskMember<_Tp>
-  __isless(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
-  {
-    using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __xn = __vector_bitcast<_Ip>(__x);
-    const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
-    return __andnot(_SuperImpl::__isunordered(__x, __y)._M_data, __xp < __yp);
-  }
-  template <typename _Tp, size_t _Np>
-  static constexpr _MaskMember<_Tp>
-  __islessequal(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
-  {
-    using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __xn = __vector_bitcast<_Ip>(__x);
-    const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
-    return __andnot(_SuperImpl::__isunordered(__x, __y)._M_data, __xp <= __yp);
-  }
-  template <typename _Tp, size_t _Np>
-  static constexpr _MaskMember<_Tp>
-  __islessgreater(_SimdWrapper<_Tp, _Np> __x,
-		  _SimdWrapper<_Tp, _Np> __y) noexcept
-  {
-    return __andnot(_SuperImpl::__isunordered(__x, __y),
-		    _SuperImpl::__not_equal_to(__x, __y));
+    return __andnot(_SuperImpl::_S_isunordered(__x, __y),
+		    _SuperImpl::_S_not_equal_to(__x, __y));
   }
 
 #undef _GLIBCXX_SIMD_MATH_FALLBACK
 #undef _GLIBCXX_SIMD_MATH_FALLBACK_MASKRET
 #undef _GLIBCXX_SIMD_MATH_FALLBACK_FIXEDRET
-  // __abs {{{3
+  // _S_abs {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __abs(_SimdWrapper<_Tp, _Np> __x) noexcept
+  _S_abs(_SimdWrapper<_Tp, _Np> __x) noexcept
   {
     // if (__builtin_is_constant_evaluated())
     //  {
@@ -2147,9 +2148,9 @@ template <typename _Abi> struct _SimdImplBuiltin
   }
 
   // }}}
-  // __nearbyint {{{3
+  // _S_nearbyint {{{3
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  _GLIBCXX_SIMD_INTRINSIC static _Tp __nearbyint(_Tp __x_) noexcept
+  _GLIBCXX_SIMD_INTRINSIC static _Tp _S_nearbyint(_Tp __x_) noexcept
   {
     using value_type = typename _TVT::value_type;
     using _V = typename _TVT::type;
@@ -2164,17 +2165,17 @@ template <typename _Abi> struct _SimdImplBuiltin
     return __absx < __shifter_abs ? __shifted : __x;
   }
 
-  // __rint {{{3
+  // _S_rint {{{3
   template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-  _GLIBCXX_SIMD_INTRINSIC static _Tp __rint(_Tp __x) noexcept
+  _GLIBCXX_SIMD_INTRINSIC static _Tp _S_rint(_Tp __x) noexcept
   {
-    return _SuperImpl::__nearbyint(__x);
+    return _SuperImpl::_S_nearbyint(__x);
   }
 
-  // __trunc {{{3
+  // _S_trunc {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __trunc(_SimdWrapper<_Tp, _Np> __x)
+  _S_trunc(_SimdWrapper<_Tp, _Np> __x)
   {
     using _V = __vector_type_t<_Tp, _Np>;
     const _V __absx = __and(__x._M_data, _S_absmask<_V>);
@@ -2186,24 +2187,24 @@ template <typename _Abi> struct _SimdImplBuiltin
 			      : __x._M_data;
   }
 
-  // __round {{{3
+  // _S_round {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __round(_SimdWrapper<_Tp, _Np> __x)
+  _S_round(_SimdWrapper<_Tp, _Np> __x)
   {
-    const auto __abs_x = _SuperImpl::__abs(__x);
-    const auto __t_abs = _SuperImpl::__trunc(__abs_x)._M_data;
+    const auto __abs_x = _SuperImpl::_S_abs(__x);
+    const auto __t_abs = _SuperImpl::_S_trunc(__abs_x)._M_data;
     const auto __r_abs // round(abs(x)) =
       = __t_abs + (__abs_x._M_data - __t_abs >= _Tp(.5) ? _Tp(1) : 0);
     return __or(__xor(__abs_x._M_data, __x._M_data), __r_abs);
   }
 
-  // __floor {{{3
+  // _S_floor {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __floor(_SimdWrapper<_Tp, _Np> __x)
+  _S_floor(_SimdWrapper<_Tp, _Np> __x)
   {
-    const auto __y = _SuperImpl::__trunc(__x)._M_data;
+    const auto __y = _SuperImpl::_S_trunc(__x)._M_data;
     const auto __negative_input
       = __vector_bitcast<_Tp>(__x._M_data < __vector_broadcast<_Np, _Tp>(0));
     const auto __mask
@@ -2212,12 +2213,12 @@ template <typename _Abi> struct _SimdImplBuiltin
 		__and(__mask, __y - __vector_broadcast<_Np, _Tp>(1)));
   }
 
-  // __ceil {{{3
+  // _S_ceil {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __ceil(_SimdWrapper<_Tp, _Np> __x)
+  _S_ceil(_SimdWrapper<_Tp, _Np> __x)
   {
-    const auto __y = _SuperImpl::__trunc(__x)._M_data;
+    const auto __y = _SuperImpl::_S_trunc(__x)._M_data;
     const auto __negative_input
       = __vector_bitcast<_Tp>(__x._M_data < __vector_broadcast<_Np, _Tp>(0));
     const auto __inv_mask
@@ -2226,10 +2227,10 @@ template <typename _Abi> struct _SimdImplBuiltin
 		__andnot(__inv_mask, __y + __vector_broadcast<_Np, _Tp>(1)));
   }
 
-  // __isnan {{{3
+  // _S_isnan {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isnan([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+  _S_isnan([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
     return {}; // false
@@ -2237,7 +2238,7 @@ template <typename _Abi> struct _SimdImplBuiltin
     return ~(__x._M_data == __x._M_data);
 #elif defined __STDC_IEC_559__
     using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
     const auto __infn = __vector_bitcast<_Ip>(
       __vector_broadcast<_Np>(numeric_limits<_Tp>::infinity()));
     return __infn < __absn;
@@ -2246,10 +2247,10 @@ template <typename _Abi> struct _SimdImplBuiltin
 #endif
   }
 
-  // __isfinite {{{3
+  // _S_isfinite {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isfinite([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+  _S_isfinite([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
     using _UV = typename _MaskMember<_Tp>::_BuiltinType;
@@ -2258,25 +2259,25 @@ template <typename _Abi> struct _SimdImplBuiltin
 #else
     // if all exponent bits are set, __x is either inf or NaN
     using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
     const auto __maxn = __vector_bitcast<_Ip>(
       __vector_broadcast<_Np>(std::numeric_limits<_Tp>::max()));
     return __absn <= __maxn;
 #endif
   }
 
-  // __isunordered {{{3
+  // _S_isunordered {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isunordered(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+  _S_isunordered(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
   {
-    return __or(__isnan(__x), __isnan(__y));
+    return __or(_S_isnan(__x), _S_isnan(__y));
   }
 
-  // __signbit {{{3
+  // _S_signbit {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __signbit(_SimdWrapper<_Tp, _Np> __x)
+  _S_signbit(_SimdWrapper<_Tp, _Np> __x)
   {
     using _Ip = __int_for_sizeof_t<_Tp>;
     return __vector_bitcast<_Ip>(__x) < 0;
@@ -2285,22 +2286,22 @@ template <typename _Abi> struct _SimdImplBuiltin
     // compares are more likely to be efficient than SRA.
   }
 
-  // __isinf {{{3
+  // _S_isinf {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isinf([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+  _S_isinf([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
   {
 #if __FINITE_MATH_ONLY__
     return {}; // false
 #else
-    return _SuperImpl::template __equal_to<_Tp, _Np>(
-      _SuperImpl::__abs(__x),
+    return _SuperImpl::template _S_equal_to<_Tp, _Np>(
+      _SuperImpl::_S_abs(__x),
       __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
     // alternative:
     // compare to inf using the corresponding integer type
     /*
        return
-       __vector_bitcast<_Tp>(__vector_bitcast<__int_for_sizeof_t<_Tp>>(__abs(__x)._M_data)
+       __vector_bitcast<_Tp>(__vector_bitcast<__int_for_sizeof_t<_Tp>>(_S_abs(__x)._M_data)
        ==
        __vector_bitcast<__int_for_sizeof_t<_Tp>>(__vector_broadcast<_Np>(
        std::numeric_limits<_Tp>::infinity())));
@@ -2308,13 +2309,13 @@ template <typename _Abi> struct _SimdImplBuiltin
 #endif
   }
 
-  // __isnormal {{{3
+  // _S_isnormal {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __isnormal(_SimdWrapper<_Tp, _Np> __x)
+  _S_isnormal(_SimdWrapper<_Tp, _Np> __x)
   {
     using _Ip = __int_for_sizeof_t<_Tp>;
-    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::__abs(__x));
+    const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
     const auto __minn = __vector_bitcast<_Ip>(
       __vector_broadcast<_Np>(std::numeric_limits<_Tp>::min()));
 #if __FINITE_MATH_ONLY__
@@ -2326,13 +2327,14 @@ template <typename _Abi> struct _SimdImplBuiltin
 #endif
   }
 
-  // __fpclassify {{{3
+  // _S_fpclassify {{{3
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static __fixed_size_storage_t<int, _Np>
-  __fpclassify(_SimdWrapper<_Tp, _Np> __x)
+  _S_fpclassify(_SimdWrapper<_Tp, _Np> __x)
   {
     using _I = __int_for_sizeof_t<_Tp>;
-    const auto __xn = __vector_bitcast<_I>(__to_intrin(_SuperImpl::__abs(__x)));
+    const auto __xn
+      = __vector_bitcast<_I>(__to_intrin(_SuperImpl::_S_abs(__x)));
     constexpr size_t _NI = sizeof(__xn) / sizeof(_I);
     _GLIBCXX_SIMD_USE_CONSTEXPR auto __minn = __vector_bitcast<_I>(
       __vector_broadcast<_NI>(std::numeric_limits<_Tp>::min()));
@@ -2403,14 +2405,14 @@ template <typename _Abi> struct _SimdImplBuiltin
       __assert_unreachable<_Tp>();
   }
 
-  // __increment & __decrement{{{2
+  // _S_increment & _S_decrement{{{2
   template <typename _Tp, size_t _Np>
-  _GLIBCXX_SIMD_INTRINSIC static void __increment(_SimdWrapper<_Tp, _Np>& __x)
+  _GLIBCXX_SIMD_INTRINSIC static void _S_increment(_SimdWrapper<_Tp, _Np>& __x)
   {
     __x = __x._M_data + 1;
   }
   template <typename _Tp, size_t _Np>
-  _GLIBCXX_SIMD_INTRINSIC static void __decrement(_SimdWrapper<_Tp, _Np>& __x)
+  _GLIBCXX_SIMD_INTRINSIC static void _S_decrement(_SimdWrapper<_Tp, _Np>& __x)
   {
     __x = __x._M_data - 1;
   }
@@ -2418,16 +2420,16 @@ template <typename _Abi> struct _SimdImplBuiltin
   // smart_reference access {{{2
   template <typename _Tp, size_t _Np, typename _Up>
   _GLIBCXX_SIMD_INTRINSIC constexpr static void
-  __set(_SimdWrapper<_Tp, _Np>& __v, int __i, _Up&& __x) noexcept
+  _S_set(_SimdWrapper<_Tp, _Np>& __v, int __i, _Up&& __x) noexcept
   {
-    __v.__set(__i, static_cast<_Up&&>(__x));
+    __v._M_set(__i, static_cast<_Up&&>(__x));
   }
 
-  // __masked_assign{{{2
+  // _S_masked_assign{{{2
   template <typename _Tp, typename _K, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
-		  __id<_SimdWrapper<_Tp, _Np>> __rhs)
+  _S_masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
+		   __id<_SimdWrapper<_Tp, _Np>> __rhs)
   {
     if (__k._M_is_constprop_none_of())
       return;
@@ -2439,8 +2441,8 @@ template <typename _Abi> struct _SimdImplBuiltin
 
   template <typename _Tp, typename _K, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
-		  __id<_Tp> __rhs)
+  _S_masked_assign(_SimdWrapper<_K, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
+		   __id<_Tp> __rhs)
   {
     if (__k._M_is_constprop_none_of())
       return;
@@ -2462,12 +2464,12 @@ template <typename _Abi> struct _SimdImplBuiltin
 				      __vector_broadcast<_Np>(__rhs)));
   }
 
-  // __masked_cassign {{{2
+  // _S_masked_cassign {{{2
   template <typename _Op, typename _Tp, typename _K, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_cassign(const _SimdWrapper<_K, _Np> __k,
-		   _SimdWrapper<_Tp, _Np>& __lhs,
-		   const __id<_SimdWrapper<_Tp, _Np>> __rhs, _Op __op)
+  _S_masked_cassign(const _SimdWrapper<_K, _Np> __k,
+		    _SimdWrapper<_Tp, _Np>& __lhs,
+		    const __id<_SimdWrapper<_Tp, _Np>> __rhs, _Op __op)
   {
     if (__k._M_is_constprop_none_of())
       return;
@@ -2480,23 +2482,23 @@ template <typename _Abi> struct _SimdImplBuiltin
 
   template <typename _Op, typename _Tp, typename _K, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_cassign(const _SimdWrapper<_K, _Np> __k,
-		   _SimdWrapper<_Tp, _Np>& __lhs, const __id<_Tp> __rhs,
-		   _Op __op)
+  _S_masked_cassign(const _SimdWrapper<_K, _Np> __k,
+		    _SimdWrapper<_Tp, _Np>& __lhs, const __id<_Tp> __rhs,
+		    _Op __op)
   {
-    __masked_cassign(__k, __lhs, __vector_broadcast<_Np>(__rhs), __op);
+    _S_masked_cassign(__k, __lhs, __vector_broadcast<_Np>(__rhs), __op);
   }
 
-  // __masked_unary {{{2
+  // _S_masked_unary {{{2
   template <template <typename> class _Op, typename _Tp, typename _K,
 	    size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-  __masked_unary(const _SimdWrapper<_K, _Np> __k,
-		 const _SimdWrapper<_Tp, _Np> __v)
+  _S_masked_unary(const _SimdWrapper<_K, _Np> __k,
+		  const _SimdWrapper<_Tp, _Np> __v)
   {
     if (__k._M_is_constprop_none_of())
       return __v;
-    auto __vv = __make_simd(__v);
+    auto __vv = _M_make_simd(__v);
     _Op<decltype(__vv)> __op;
     if (__k._M_is_constprop_all_of())
       return __data(__op(__vv));
@@ -2512,10 +2514,10 @@ struct _MaskImplBuiltinMixin
 {
   template <typename _Tp> using _TypeTag = _Tp*;
 
-  // __to_maskvector {{{
+  // _S_to_maskvector {{{
   template <typename _Up, size_t _ToN = 1>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Up, _ToN>
-  __to_maskvector(bool __x)
+  _S_to_maskvector(bool __x)
   {
     static_assert(is_same_v<_Up, __int_for_sizeof_t<_Up>>);
     return __x ? __vector_type_t<_Up, _ToN>{~_Up()}
@@ -2525,7 +2527,7 @@ struct _MaskImplBuiltinMixin
   template <typename _Up, size_t _UpN = 0, size_t _Np, bool _Sanitized,
 	    size_t _ToN = _UpN == 0 ? _Np : _UpN>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Up, _ToN>
-  __to_maskvector(_BitMask<_Np, _Sanitized> __x)
+  _S_to_maskvector(_BitMask<_Np, _Sanitized> __x)
   {
     static_assert(is_same_v<_Up, __int_for_sizeof_t<_Up>>);
     return __generate_vector<__vector_type_t<_Up, _ToN>>([&](
@@ -2540,7 +2542,7 @@ struct _MaskImplBuiltinMixin
   template <typename _Up, size_t _UpN = 0, typename _Tp, size_t _Np,
 	    size_t _ToN = _UpN == 0 ? _Np : _UpN>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Up, _ToN>
-  __to_maskvector(_SimdWrapper<_Tp, _Np> __x)
+  _S_to_maskvector(_SimdWrapper<_Tp, _Np> __x)
   {
     static_assert(is_same_v<_Up, __int_for_sizeof_t<_Up>>);
     using _TW = _SimdWrapper<_Tp, _Np>;
@@ -2548,7 +2550,7 @@ struct _MaskImplBuiltinMixin
     if constexpr (sizeof(_Up) == sizeof(_Tp) && sizeof(_TW) == sizeof(_UW))
       return __wrapper_bitcast<_Up, _ToN>(__x);
     else if constexpr (is_same_v<_Tp, bool>) // bits -> vector
-      return __to_maskvector<_Up, _ToN>(_BitMask<_Np>(__x._M_data));
+      return _S_to_maskvector<_Up, _ToN>(_BitMask<_Np>(__x._M_data));
     else
       { // vector -> vector
 	/*
@@ -2588,10 +2590,10 @@ struct _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __to_bits {{{
+  // _S_to_bits {{{
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SanitizedBitMask<_Np>
-  __to_bits(_SimdWrapper<_Tp, _Np> __x)
+  _S_to_bits(_SimdWrapper<_Tp, _Np> __x)
   {
     static_assert(!is_same_v<_Tp, bool>);
     static_assert(_Np <= CHAR_BIT * sizeof(_ULLong));
@@ -2610,8 +2612,8 @@ struct _MaskImplBuiltinMixin
 // _MaskImplBuiltin {{{1
 template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
 {
-  using _MaskImplBuiltinMixin::__to_bits;
-  using _MaskImplBuiltinMixin::__to_maskvector;
+  using _MaskImplBuiltinMixin::_S_to_bits;
+  using _MaskImplBuiltinMixin::_S_to_maskvector;
 
   // member types {{{
   template <typename _Tp>
@@ -2624,19 +2626,19 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   static constexpr size_t _S_size = simd_size_v<_Tp, _Abi>;
 
   // }}}
-  // __broadcast {{{
+  // _S_broadcast {{{
   template <typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __broadcast(bool __x)
+  _S_broadcast(bool __x)
   {
     return __x ? _Abi::template _S_implicit_mask<_Tp>() : _MaskMember<_Tp>();
   }
 
   // }}}
-  // __load {{{
+  // _S_load {{{
   template <typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _MaskMember<_Tp>
-  __load(const bool* __mem)
+  _S_load(const bool* __mem)
   {
     using _I = __int_for_sizeof_t<_Tp>;
     if constexpr (sizeof(_Tp) == sizeof(bool))
@@ -2653,46 +2655,46 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __convert {{{
+  // _S_convert {{{
   template <typename _Tp, size_t _Np, bool _Sanitized>
   _GLIBCXX_SIMD_INTRINSIC static constexpr auto
-  __convert(_BitMask<_Np, _Sanitized> __x)
+  _S_convert(_BitMask<_Np, _Sanitized> __x)
   {
     if constexpr (__is_builtin_bitmask_abi<_Abi>())
       return _SimdWrapper<bool, simd_size_v<_Tp, _Abi>>(__x._M_to_bits());
     else
-      return _SuperImpl::template __to_maskvector<__int_for_sizeof_t<_Tp>,
-						  _S_size<_Tp>>(
+      return _SuperImpl::template _S_to_maskvector<__int_for_sizeof_t<_Tp>,
+						   _S_size<_Tp>>(
 	__x._M_sanitized());
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr auto
-  __convert(_SimdWrapper<bool, _Np> __x)
+  _S_convert(_SimdWrapper<bool, _Np> __x)
   {
     if constexpr (__is_builtin_bitmask_abi<_Abi>())
       return _SimdWrapper<bool, simd_size_v<_Tp, _Abi>>(__x._M_data);
     else
-      return _SuperImpl::template __to_maskvector<__int_for_sizeof_t<_Tp>,
-						  _S_size<_Tp>>(
+      return _SuperImpl::template _S_to_maskvector<__int_for_sizeof_t<_Tp>,
+						   _S_size<_Tp>>(
 	_BitMask<_Np>(__x._M_data)._M_sanitized());
   }
 
   template <typename _Tp, typename _Up, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr auto
-  __convert(_SimdWrapper<_Up, _Np> __x)
+  _S_convert(_SimdWrapper<_Up, _Np> __x)
   {
     if constexpr (__is_builtin_bitmask_abi<_Abi>())
       return _SimdWrapper<bool, simd_size_v<_Tp, _Abi>>(
-	_SuperImpl::__to_bits(__x));
+	_SuperImpl::_S_to_bits(__x));
     else
-      return _SuperImpl::template __to_maskvector<__int_for_sizeof_t<_Tp>,
-						  _S_size<_Tp>>(__x);
+      return _SuperImpl::template _S_to_maskvector<__int_for_sizeof_t<_Tp>,
+						   _S_size<_Tp>>(__x);
   }
 
   template <typename _Tp, typename _Up, typename _UAbi>
   _GLIBCXX_SIMD_INTRINSIC static constexpr auto
-  __convert(simd_mask<_Up, _UAbi> __x)
+  _S_convert(simd_mask<_Up, _UAbi> __x)
   {
     if constexpr (__is_builtin_bitmask_abi<_Abi>())
       {
@@ -2704,76 +2706,77 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
 	else if constexpr (__is_fixed_size_abi_v<_UAbi>) // bitset -> bits
 	  return _R(__data(__x)._M_to_bits());
 	else // vector -> bits
-	  return _R(_UAbi::_MaskImpl::__to_bits(__data(__x))._M_to_bits());
+	  return _R(_UAbi::_MaskImpl::_S_to_bits(__data(__x))._M_to_bits());
       }
     else
-      return _SuperImpl::template __to_maskvector<__int_for_sizeof_t<_Tp>,
-						  _S_size<_Tp>>(__data(__x));
+      return _SuperImpl::template _S_to_maskvector<__int_for_sizeof_t<_Tp>,
+						   _S_size<_Tp>>(__data(__x));
   }
 
   // }}}
-  // __masked_load {{{2
+  // _S_masked_load {{{2
   template <typename _Tp, size_t _Np>
   static inline _SimdWrapper<_Tp, _Np>
-  __masked_load(_SimdWrapper<_Tp, _Np> __merge, _SimdWrapper<_Tp, _Np> __mask,
-		const bool* __mem) noexcept
+  _S_masked_load(_SimdWrapper<_Tp, _Np> __merge, _SimdWrapper<_Tp, _Np> __mask,
+		 const bool* __mem) noexcept
   {
     // AVX(2) has 32/64 bit maskload, but nothing at 8 bit granularity
     auto __tmp = __wrapper_bitcast<__int_for_sizeof_t<_Tp>>(__merge);
-    _BitOps::__bit_iteration(_SuperImpl::__to_bits(__mask),
-			     [&](auto __i) { __tmp.__set(__i, -__mem[__i]); });
+    _BitOps::_S_bit_iteration(_SuperImpl::_S_to_bits(__mask), [&](auto __i) {
+      __tmp._M_set(__i, -__mem[__i]);
+    });
     __merge = __wrapper_bitcast<_Tp>(__tmp);
     return __merge;
   }
 
-  // __store {{{2
+  // _S_store {{{2
   template <typename _Tp, size_t _Np>
-  _GLIBCXX_SIMD_INTRINSIC static void __store(_SimdWrapper<_Tp, _Np> __v,
-					      bool* __mem) noexcept
+  _GLIBCXX_SIMD_INTRINSIC static void _S_store(_SimdWrapper<_Tp, _Np> __v,
+					       bool* __mem) noexcept
   {
     __execute_n_times<_Np>([&](auto __i) constexpr { __mem[__i] = __v[__i]; });
   }
 
-  // __masked_store {{{2
+  // _S_masked_store {{{2
   template <typename _Tp, size_t _Np>
-  static inline void __masked_store(const _SimdWrapper<_Tp, _Np> __v,
-				    bool* __mem,
-				    const _SimdWrapper<_Tp, _Np> __k) noexcept
+  static inline void _S_masked_store(const _SimdWrapper<_Tp, _Np> __v,
+				     bool* __mem,
+				     const _SimdWrapper<_Tp, _Np> __k) noexcept
   {
-    _BitOps::__bit_iteration(
-      _SuperImpl::__to_bits(__k), [&](auto __i) constexpr {
+    _BitOps::_S_bit_iteration(
+      _SuperImpl::_S_to_bits(__k), [&](auto __i) constexpr {
 	__mem[__i] = __v[__i];
       });
   }
 
-  // __from_bitmask{{{2
+  // _S_from_bitmask{{{2
   template <size_t _Np, typename _Tp>
   _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-  __from_bitmask(_SanitizedBitMask<_Np> __bits, _TypeTag<_Tp>)
+  _S_from_bitmask(_SanitizedBitMask<_Np> __bits, _TypeTag<_Tp>)
   {
-    return _SuperImpl::template __to_maskvector<_Tp, _S_size<_Tp>>(__bits);
+    return _SuperImpl::template _S_to_maskvector<_Tp, _S_size<_Tp>>(__bits);
   }
 
   // logical and bitwise operators {{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __logical_and(const _SimdWrapper<_Tp, _Np>& __x,
-		const _SimdWrapper<_Tp, _Np>& __y)
+  _S_logical_and(const _SimdWrapper<_Tp, _Np>& __x,
+		 const _SimdWrapper<_Tp, _Np>& __y)
   {
     return __and(__x._M_data, __y._M_data);
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __logical_or(const _SimdWrapper<_Tp, _Np>& __x,
-	       const _SimdWrapper<_Tp, _Np>& __y)
+  _S_logical_or(const _SimdWrapper<_Tp, _Np>& __x,
+		const _SimdWrapper<_Tp, _Np>& __y)
   {
     return __or(__x._M_data, __y._M_data);
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_not(const _SimdWrapper<_Tp, _Np>& __x)
+  _S_bit_not(const _SimdWrapper<_Tp, _Np>& __x)
   {
     if constexpr(_Abi::template _S_is_partial<_Tp>)
       return __andnot(__x, __wrapper_bitcast<_Tp>(
@@ -2784,34 +2787,35 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_and(const _SimdWrapper<_Tp, _Np>& __x,
-	    const _SimdWrapper<_Tp, _Np>& __y)
+  _S_bit_and(const _SimdWrapper<_Tp, _Np>& __x,
+	     const _SimdWrapper<_Tp, _Np>& __y)
   {
     return __and(__x._M_data, __y._M_data);
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_or(const _SimdWrapper<_Tp, _Np>& __x, const _SimdWrapper<_Tp, _Np>& __y)
+  _S_bit_or(const _SimdWrapper<_Tp, _Np>& __x,
+	    const _SimdWrapper<_Tp, _Np>& __y)
   {
     return __or(__x._M_data, __y._M_data);
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static constexpr _SimdWrapper<_Tp, _Np>
-  __bit_xor(const _SimdWrapper<_Tp, _Np>& __x,
-	    const _SimdWrapper<_Tp, _Np>& __y)
+  _S_bit_xor(const _SimdWrapper<_Tp, _Np>& __x,
+	     const _SimdWrapper<_Tp, _Np>& __y)
   {
     return __xor(__x._M_data, __y._M_data);
   }
 
   // smart_reference access {{{2
   template <typename _Tp, size_t _Np>
-  static constexpr void __set(_SimdWrapper<_Tp, _Np>& __k, int __i,
-			      bool __x) noexcept
+  static constexpr void _S_set(_SimdWrapper<_Tp, _Np>& __k, int __i,
+			       bool __x) noexcept
   {
     if constexpr (std::is_same_v<_Tp, bool>)
-      __k.__set(__i, __x);
+      __k._M_set(__i, __x);
     else
       {
 	static_assert(std::is_same_v<_Tp, __int_for_sizeof_t<_Tp>>);
@@ -2830,19 +2834,19 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
       }
   }
 
-  // __masked_assign{{{2
+  // _S_masked_assign{{{2
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_assign(_SimdWrapper<_Tp, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
-		  __id<_SimdWrapper<_Tp, _Np>> __rhs)
+  _S_masked_assign(_SimdWrapper<_Tp, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
+		   __id<_SimdWrapper<_Tp, _Np>> __rhs)
   {
     __lhs = _CommonImpl::_S_blend(__k, __lhs, __rhs);
   }
 
   template <typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC static void
-  __masked_assign(_SimdWrapper<_Tp, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
-		  bool __rhs)
+  _S_masked_assign(_SimdWrapper<_Tp, _Np> __k, _SimdWrapper<_Tp, _Np>& __lhs,
+		   bool __rhs)
   {
     if (__builtin_constant_p(__rhs))
       {
@@ -2857,9 +2861,9 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   //}}}2
-  // __all_of {{{
+  // _S_all_of {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static bool __all_of(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static bool _S_all_of(simd_mask<_Tp, _Abi> __k)
   {
     return __call_with_subscripts(
       __data(__k), make_index_sequence<_S_size<_Tp>>(),
@@ -2867,9 +2871,9 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __any_of {{{
+  // _S_any_of {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static bool __any_of(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static bool _S_any_of(simd_mask<_Tp, _Abi> __k)
   {
     return __call_with_subscripts(
       __data(__k), make_index_sequence<_S_size<_Tp>>(),
@@ -2877,9 +2881,9 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __none_of {{{
+  // _S_none_of {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static bool __none_of(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static bool _S_none_of(simd_mask<_Tp, _Abi> __k)
   {
     return __call_with_subscripts(
       __data(__k), make_index_sequence<_S_size<_Tp>>(),
@@ -2887,18 +2891,18 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __some_of {{{
+  // _S_some_of {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static bool __some_of(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static bool _S_some_of(simd_mask<_Tp, _Abi> __k)
   {
-    const int __n_true = __popcount(__k);
+    const int __n_true = _S_popcount(__k);
     return __n_true > 0 && __n_true < int(_S_size<_Tp>);
   }
 
   // }}}
-  // __popcount {{{
+  // _S_popcount {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static int __popcount(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static int _S_popcount(simd_mask<_Tp, _Abi> __k)
   {
     using _I = __int_for_sizeof_t<_Tp>;
     if constexpr (std::is_default_constructible_v<simd<_I, _Abi>>)
@@ -2910,19 +2914,19 @@ template <typename _Abi> struct _MaskImplBuiltin : _MaskImplBuiltinMixin
   }
 
   // }}}
-  // __find_first_set {{{
+  // _S_find_first_set {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static int __find_first_set(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static int _S_find_first_set(simd_mask<_Tp, _Abi> __k)
   {
-    return _BitOps::__firstbit(_SuperImpl::__to_bits(__data(__k))._M_to_bits());
+    return _BitOps::_S_firstbit(_SuperImpl::_S_to_bits(__data(__k))._M_to_bits());
   }
 
   // }}}
-  // __find_last_set {{{
+  // _S_find_last_set {{{
   template <typename _Tp>
-  _GLIBCXX_SIMD_INTRINSIC static int __find_last_set(simd_mask<_Tp, _Abi> __k)
+  _GLIBCXX_SIMD_INTRINSIC static int _S_find_last_set(simd_mask<_Tp, _Abi> __k)
   {
-    return _BitOps::__lastbit(_SuperImpl::__to_bits(__data(__k))._M_to_bits());
+    return _BitOps::_S_lastbit(_SuperImpl::_S_to_bits(__data(__k))._M_to_bits());
   }
 
   // }}}

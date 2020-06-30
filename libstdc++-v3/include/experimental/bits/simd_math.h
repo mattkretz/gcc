@@ -66,7 +66,7 @@ struct __math_return_type
     std::experimental::simd<_Tp, _Abi> __x)                                    \
   {                                                                            \
     return {std::experimental::__private_init,                                 \
-	    _Abi::_SimdImpl::__##__name(std::experimental::__data(__x))};      \
+	    _Abi::_SimdImpl::_S_##__name(std::experimental::__data(__x))};     \
   }
 
 // }}}
@@ -138,8 +138,8 @@ struct __extra_argument_type
     const typename _Arg2::type& __y)                                           \
   {                                                                            \
     return {std::experimental::__private_init,                                 \
-	    _Abi::_SimdImpl::__##__name(std::experimental::__data(__x),        \
-					_Arg2::__data(__y))};                  \
+	    _Abi::_SimdImpl::_S_##__name(std::experimental::__data(__x),       \
+					 _Arg2::__data(__y))};                 \
   }                                                                            \
   template <typename _Up, typename _Tp, typename _Abi>                         \
   _GLIBCXX_SIMD_INTRINSIC std::experimental::__math_return_type_t<             \
@@ -178,9 +178,9 @@ struct __extra_argument_type
     typename _Arg3::type __z)                                                  \
   {                                                                            \
     return {std::experimental::__private_init,                                 \
-	    _Abi::_SimdImpl::__##__name(std::experimental::__data(__x),        \
-					_Arg2::__data(__y),                    \
-					_Arg3::__data(__z))};                  \
+	    _Abi::_SimdImpl::_S_##__name(std::experimental::__data(__x),       \
+					 _Arg2::__data(__y),                   \
+					 _Arg3::__data(__z))};                 \
   }                                                                            \
   template <typename _Tp, typename _Up, typename _V, typename...,              \
 	    typename _TT = __remove_cvref_t<_Tp>,                              \
@@ -269,7 +269,7 @@ __zero_low_bits(simd<_Tp, _Abi> __x)
   const simd<_Tp, _Abi> __bitmask = __bit_cast<_Tp>(
     ~std::make_unsigned_t<__int_for_sizeof_t<_Tp>>() << _Bits);
   return {__private_init,
-	  _Abi::_SimdImpl::__bit_and(__data(__x), __data(__bitmask))};
+	  _Abi::_SimdImpl::_S_bit_and(__data(__x), __data(__bitmask))};
 }
 
 // }}}
@@ -479,7 +479,7 @@ cos(const simd<_Tp, _Abi>& __x)
 {
   using _V = simd<_Tp, _Abi>;
   if constexpr (__is_scalar_abi<_Abi>() || __is_fixed_size_abi_v<_Abi>)
-    return {__private_init, _Abi::_SimdImpl::__cos(__data(__x))};
+    return {__private_init, _Abi::_SimdImpl::_S_cos(__data(__x))};
   else
     {
       if constexpr (is_same_v<_Tp, float>)
@@ -526,7 +526,7 @@ sin(const simd<_Tp, _Abi>& __x)
 {
   using _V = simd<_Tp, _Abi>;
   if constexpr (__is_scalar_abi<_Abi>() || __is_fixed_size_abi_v<_Abi>)
-    return {__private_init, _Abi::_SimdImpl::__sin(__data(__x))};
+    return {__private_init, _Abi::_SimdImpl::_S_sin(__data(__x))};
   else
     {
       if constexpr (is_same_v<_Tp, float>)
@@ -665,7 +665,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
   else if constexpr (__is_fixed_size_abi_v<_Abi>)
     {
       return {__private_init,
-	      _Abi::_SimdImpl::__frexp(__data(__x), __data(*__exp))};
+	      _Abi::_SimdImpl::_S_frexp(__data(__x), __data(*__exp))};
 #if _GLIBCXX_SIMD_X86INTRIN
     }
   else if constexpr (__have_avx512f)
@@ -675,13 +675,13 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       constexpr size_t _NI = _Np < 4 ? 4 : _Np;
       const auto __v = __data(__x);
       const auto __isnonzero
-	= _Abi::_SimdImpl::__isnonzerovalue_mask(__v._M_data);
+	= _Abi::_SimdImpl::_S_isnonzerovalue_mask(__v._M_data);
       const _SimdWrapper<int, _NI> __exp_plus1
 	= 1 + __convert<_SimdWrapper<int, _NI>>(__getexp(__v))._M_data;
       const _SimdWrapper<int, _Np> __e = __wrapper_bitcast<int, _Np>(
 	_Abi::_CommonImpl::_S_blend(_SimdWrapper<bool, _NI>(__isnonzero),
 				    _SimdWrapper<int, _NI>(), __exp_plus1));
-      simd_abi::deduce_t<int, _Np>::_CommonImpl::__store(__e, __exp);
+      simd_abi::deduce_t<int, _Np>::_CommonImpl::_S_store(__e, __exp);
       return {__private_init,
 	      _Abi::_CommonImpl::_S_blend(_SimdWrapper<bool, _Np>(__isnonzero),
 					  __v, __getmant_avx512(__v))};
@@ -769,7 +769,7 @@ logb(const simd<_Tp, _Abi>& __x)
   else if constexpr (__is_fixed_size_abi_v<_Abi>)
     {
       return {__private_init,
-	      __data(__x).__apply_per_chunk([](auto __impl, auto __xx) {
+	      __data(__x)._M_apply_per_chunk([](auto __impl, auto __xx) {
 		using _V = typename decltype(__impl)::simd_type;
 		return __data(
 		  std::experimental::logb(_V(__private_init, __xx)));
@@ -802,7 +802,7 @@ logb(const simd<_Tp, _Abi>& __x)
       using namespace std::experimental::__proposed;
       auto __is_normal = isnormal(__x);
 
-      // work on __abs(__x) to reflect the return value on Linux for negative
+      // work on abs(__x) to reflect the return value on Linux for negative
       // inputs (domain-error => implementation-defined value is returned)
       const _V abs_x = abs(__x);
 
@@ -868,14 +868,14 @@ enable_if_t<!std::is_floating_point_v<_Tp> && std::is_signed_v<_Tp>,
 	    simd<_Tp, _Abi>>
 abs(const simd<_Tp, _Abi>& __x)
 {
-  return {__private_init, _Abi::_SimdImpl::__abs(__data(__x))};
+  return {__private_init, _Abi::_SimdImpl::_S_abs(__data(__x))};
 }
 template <typename _Tp, typename _Abi>
 enable_if_t<!std::is_floating_point_v<_Tp> && std::is_signed_v<_Tp>,
 	    simd<_Tp, _Abi>>
 fabs(const simd<_Tp, _Abi>& __x)
 {
-  return {__private_init, _Abi::_SimdImpl::__abs(__data(__x))};
+  return {__private_init, _Abi::_SimdImpl::_S_abs(__data(__x))};
 }
 
 // the following are overloads for functions in <cstdlib> and not covered by
@@ -955,7 +955,7 @@ _GLIBCXX_SIMD_INTRINSIC _R
 __fixed_size_apply(_ToApply&& __apply, const _Tp& __arg0, const _Tps&... __args)
 {
   return {__private_init,
-	  __data(__arg0).__apply_per_chunk(
+	  __data(__arg0)._M_apply_per_chunk(
 	    [&](auto __impl, const auto&... __inner) {
 	      using _V = typename decltype(__impl)::simd_type;
 	      return __data(__apply(_V(__private_init, __inner)...));
@@ -1306,7 +1306,7 @@ enable_if_t<std::is_floating_point_v<_Tp>, _R>
 isinf(std::experimental::simd<_Tp, _Abi> __x)
 {
   return {std::experimental::__private_init,
-	  _Abi::_SimdImpl::__isinf(std::experimental::__data(__x))};
+	  _Abi::_SimdImpl::_S_isinf(std::experimental::__data(__x))};
 }
 template <typename _Tp, typename _Abi, typename...,
 	  typename _R
@@ -1315,7 +1315,7 @@ enable_if_t<std::is_floating_point_v<_Tp>, _R>
 isnan(std::experimental::simd<_Tp, _Abi> __x)
 {
   return {std::experimental::__private_init,
-	  _Abi::_SimdImpl::__isnan(std::experimental::__data(__x))};
+	  _Abi::_SimdImpl::_S_isnan(std::experimental::__data(__x))};
 }
 _GLIBCXX_SIMD_MATH_CALL_(isnormal)
 
@@ -1332,7 +1332,7 @@ signbit(std::experimental::simd<_Tp, _Abi> __x)
     }
   else
     return {std::experimental::__private_init,
-	    _Abi::_SimdImpl::__signbit(std::experimental::__data(__x))};
+	    _Abi::_SimdImpl::_S_signbit(std::experimental::__data(__x))};
 }
 
 _GLIBCXX_SIMD_MATH_CALL2_(isgreater, _Tp)
