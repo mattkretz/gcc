@@ -419,31 +419,6 @@ struct _SimdTuple<_Tp, _Abi0, _Abis...>
 	  static_cast<_Fp&&>(__fun), __more.second...)};
   }
 
-  template <size_t _Size, size_t _Offset = 0,
-	    typename _R = __fixed_size_storage_t<_Tp, _Size>>
-  _GLIBCXX_SIMD_INTRINSIC constexpr _R __extract_tuple_with_size() const
-  {
-    if constexpr (_Size == _S_first_size && _Offset == 0)
-      return {first};
-    else if constexpr (_Size > _S_first_size && _Offset == 0
-		       && _S_tuple_size > 1)
-      return {
-	first,
-	second.template __extract_tuple_with_size<_Size - _S_first_size>()};
-    else if constexpr (_Size == 1)
-      return {operator[](_SizeConstant<_Offset>())};
-    else if constexpr (_R::_S_tuple_size == 1)
-      {
-	static_assert(_Offset % _Size == 0);
-	static_assert(_S_first_size % _Size == 0);
-	return {typename _R::_FirstType(
-	  __private_init,
-	  __extract_part<_Offset / _Size, _S_first_size / _Size>(first))};
-      }
-    else
-      __assert_unreachable<_SizeConstant<_Size>>();
-  }
-
   template <typename _Tup>
   _GLIBCXX_SIMD_INTRINSIC constexpr decltype(auto)
   __extract_argument(_Tup&& __tup) const
