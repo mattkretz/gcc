@@ -28,6 +28,7 @@
 #if __cplusplus >= 201703L
 
 #include "simd_detail.h"
+#include "numeric_traits.h"
 #include <bitset>
 #include <climits>
 #ifdef _GLIBCXX_DEBUG_UB
@@ -36,7 +37,6 @@
 #include <cstring>
 #include <functional>
 #include <iosfwd>
-#include <limits>
 #include <utility>
 
 #if _GLIBCXX_SIMD_X86INTRIN
@@ -710,10 +710,9 @@ struct __is_narrowing_conversion;
 template <typename _From, typename _To>
 struct __is_narrowing_conversion<_From, _To, true, true>
   : public __bool_constant<(
-      std::numeric_limits<_From>::digits > std::numeric_limits<_To>::digits
-      || std::numeric_limits<_From>::max() > std::numeric_limits<_To>::max()
-      || std::numeric_limits<_From>::lowest()
-	   < std::numeric_limits<_To>::lowest()
+      __digits<_From>::value > __digits<_To>::value
+      || __finite_max<_From>::value > __finite_max<_To>::value
+      || __finite_min<_From>::value < __finite_min<_To>::value
       || (std::is_signed<_From>::value && std::is_unsigned<_To>::value))>
 {
 };

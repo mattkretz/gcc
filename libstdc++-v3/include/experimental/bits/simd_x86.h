@@ -2774,14 +2774,12 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
       else
 	{
 	  const auto __xx = __vector_bitcast<_I>(__x._M_data);
-	  [[maybe_unused]] constexpr _I __signmask =
-	    std::numeric_limits<_I>::min();
+	  [[maybe_unused]] constexpr _I __signmask = __finite_min_v<_I>;
 	  if constexpr ((sizeof(_Tp) == 4 &&
 			 (__have_avx2 || sizeof(__x) == 16)) ||
 			__have_avx512vl)
 	    {
-	      return __vector_bitcast<_Tp>(__xx >>
-					   std::numeric_limits<_I>::digits);
+	      return __vector_bitcast<_Tp>(__xx >> __digits_v<_I>);
 	    }
 	  else if constexpr ((__have_avx2 ||
 			      (__have_ssse3 && sizeof(__x) == 16)))
@@ -2831,9 +2829,8 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
       {
 	using _Up = typename _Traits::value_type;
 	constexpr size_t _Np = _Traits::_S_full_size;
-	const auto __a
-	  = __x * std::numeric_limits<_Up>::infinity(); // NaN if __x == 0
-	const auto __b = __x * _Up();                   // NaN if __x == inf
+	const auto __a = __x * __infinity_v<_Up>; // NaN if __x == 0
+	const auto __b = __x * _Up();             // NaN if __x == inf
 	if constexpr (__have_avx512vl && __is_sse_ps<_Up, _Np>())
 	  return _mm_cmp_ps_mask(__to_intrin(__a), __to_intrin(__b),
 				 _CMP_ORD_Q);
@@ -2899,8 +2896,8 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
       {
 	// if all exponent bits are set, __x is either inf or NaN
 	using _I = __int_for_sizeof_t<_Tp>;
-	const auto __inf = __vector_bitcast<_I>(
-	  __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
+	const auto __inf
+	  = __vector_bitcast<_I>(__vector_broadcast<_Np>(__infinity_v<_Tp>));
 	return _S_less<_I, _Np>(__vector_bitcast<_I>(__x) & __inf, __inf);
       }
     else
@@ -3005,13 +3002,13 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
       {
 	using _I = __int_for_sizeof_t<_Tp>;
 	const auto absn = __vector_bitcast<_I>(_S_abs(__x));
-	const auto minn = __vector_bitcast<_I>(
-	  __vector_broadcast<_Np>(std::numeric_limits<_Tp>::min()));
+	const auto minn
+	  = __vector_bitcast<_I>(__vector_broadcast<_Np>(__norm_min_v<_Tp>));
 #if __FINITE_MATH_ONLY__
 	return _S_less_equal<_I, _Np>(minn, absn);
 #else
-	const auto infn = __vector_bitcast<_I>(
-	  __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
+	const auto infn
+	  = __vector_bitcast<_I>(__vector_broadcast<_Np>(__infinity_v<_Tp>));
 	return __and(_S_less_equal<_I, _Np>(minn, absn),
 		     _S_less<_I, _Np>(absn, infn));
 #endif

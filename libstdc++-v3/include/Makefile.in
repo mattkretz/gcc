@@ -1112,6 +1112,7 @@ experimental_bits_builddir = ./experimental/bits
 experimental_bits_headers = \
 	${experimental_bits_srcdir}/lfts_config.h \
 	${experimental_bits_srcdir}/net.h \
+	${experimental_bits_srcdir}/numeric_traits.h \
 	${experimental_bits_srcdir}/shared_ptr.h \
 	${experimental_bits_srcdir}/simd.h \
 	${experimental_bits_srcdir}/simd_builtin.h \

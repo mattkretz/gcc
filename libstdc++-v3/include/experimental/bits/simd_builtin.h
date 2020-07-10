@@ -2016,8 +2016,8 @@ template <typename _Abi> struct _SimdImplBuiltin
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __xn = __vector_bitcast<_Ip>(__x);
     const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    const auto __xp = __xn < 0 ? -(__xn & __finite_max_v<_Ip>) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & __finite_max_v<_Ip>) : __yn;
     return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp > __yp);
   }
   template <typename _Tp, size_t _Np>
@@ -2028,8 +2028,8 @@ template <typename _Abi> struct _SimdImplBuiltin
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __xn = __vector_bitcast<_Ip>(__x);
     const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    const auto __xp = __xn < 0 ? -(__xn & __finite_max_v<_Ip>) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & __finite_max_v<_Ip>) : __yn;
     return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp >= __yp);
   }
   template <typename _Tp, size_t _Np>
@@ -2039,19 +2039,20 @@ template <typename _Abi> struct _SimdImplBuiltin
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __xn = __vector_bitcast<_Ip>(__x);
     const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    const auto __xp = __xn < 0 ? -(__xn & __finite_max_v<_Ip>) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & __finite_max_v<_Ip>) : __yn;
     return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp < __yp);
   }
   template <typename _Tp, size_t _Np>
   static constexpr _MaskMember<_Tp>
-  _S_islessequal(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y) noexcept
+    _S_islessequal(_SimdWrapper<_Tp, _Np> __x,
+		   _SimdWrapper<_Tp, _Np> __y) noexcept
   {
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __xn = __vector_bitcast<_Ip>(__x);
     const auto __yn = __vector_bitcast<_Ip>(__y);
-    const auto __xp = __xn < 0 ? -(__xn & numeric_limits<_Ip>::max()) : __xn;
-    const auto __yp = __yn < 0 ? -(__yn & numeric_limits<_Ip>::max()) : __yn;
+    const auto __xp = __xn < 0 ? -(__xn & __finite_max_v<_Ip>) : __xn;
+    const auto __yp = __yn < 0 ? -(__yn & __finite_max_v<_Ip>) : __yn;
     return __andnot(_SuperImpl::_S_isunordered(__x, __y)._M_data, __xp <= __yp);
   }
   template <typename _Tp, size_t _Np>
@@ -2156,10 +2157,9 @@ template <typename _Abi> struct _SimdImplBuiltin
     using _V = typename _TVT::type;
     const _V __x = __x_;
     const _V __absx = __and(__x, _S_absmask<_V>);
-    static_assert(CHAR_BIT * sizeof(1ull)
-		  >= std::numeric_limits<value_type>::digits);
+    static_assert(__CHAR_BIT__ * sizeof(1ull) >= __digits_v<value_type>);
     _GLIBCXX_SIMD_USE_CONSTEXPR _V __shifter_abs
-      = _V() + (1ull << (std::numeric_limits<value_type>::digits - 1));
+      = _V() + (1ull << (__digits_v<value_type> - 1));
     const _V __shifter = __or(__and(_S_signmask<_V>, __x), __shifter_abs);
     const _V __shifted = _S_plus_minus(__x, __shifter);
     return __absx < __shifter_abs ? __shifted : __x;
@@ -2179,8 +2179,8 @@ template <typename _Abi> struct _SimdImplBuiltin
   {
     using _V = __vector_type_t<_Tp, _Np>;
     const _V __absx = __and(__x._M_data, _S_absmask<_V>);
-    static_assert(CHAR_BIT * sizeof(1ull) >= std::numeric_limits<_Tp>::digits);
-    constexpr _Tp __shifter = 1ull << (std::numeric_limits<_Tp>::digits - 1);
+    static_assert(__CHAR_BIT__ * sizeof(1ull) >= __digits_v<_Tp>);
+    constexpr _Tp __shifter = 1ull << (__digits_v<_Tp> - 1);
     _V __truncated = _S_plus_minus(__absx, __shifter);
     __truncated -= __truncated > __absx ? _V() + 1 : _V();
     return __absx < __shifter ? __or(__xor(__absx, __x._M_data), __truncated)
@@ -2239,8 +2239,8 @@ template <typename _Abi> struct _SimdImplBuiltin
 #elif defined __STDC_IEC_559__
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-    const auto __infn = __vector_bitcast<_Ip>(
-      __vector_broadcast<_Np>(numeric_limits<_Tp>::infinity()));
+    const auto __infn
+      = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__infinity_v<_Tp>));
     return __infn < __absn;
 #else
 #error "Not implemented: how to support SNaN but non-IEC559 floating-point?"
@@ -2260,8 +2260,8 @@ template <typename _Abi> struct _SimdImplBuiltin
     // if all exponent bits are set, __x is either inf or NaN
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-    const auto __maxn = __vector_bitcast<_Ip>(
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::max()));
+    const auto __maxn
+      = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
     return __absn <= __maxn;
 #endif
   }
@@ -2294,9 +2294,9 @@ template <typename _Abi> struct _SimdImplBuiltin
 #if __FINITE_MATH_ONLY__
     return {}; // false
 #else
-    return _SuperImpl::template _S_equal_to<_Tp, _Np>(
-      _SuperImpl::_S_abs(__x),
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::infinity()));
+    return _SuperImpl::template _S_equal_to<_Tp, _Np>(_SuperImpl::_S_abs(__x),
+						      __vector_broadcast<_Np>(
+							__infinity_v<_Tp>));
     // alternative:
     // compare to inf using the corresponding integer type
     /*
@@ -2304,7 +2304,7 @@ template <typename _Abi> struct _SimdImplBuiltin
        __vector_bitcast<_Tp>(__vector_bitcast<__int_for_sizeof_t<_Tp>>(_S_abs(__x)._M_data)
        ==
        __vector_bitcast<__int_for_sizeof_t<_Tp>>(__vector_broadcast<_Np>(
-       std::numeric_limits<_Tp>::infinity())));
+       __infinity_v<_Tp>)));
        */
 #endif
   }
@@ -2316,13 +2316,13 @@ template <typename _Abi> struct _SimdImplBuiltin
   {
     using _Ip = __int_for_sizeof_t<_Tp>;
     const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-    const auto __minn = __vector_bitcast<_Ip>(
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::min()));
+    const auto __minn
+      = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__norm_min_v<_Tp>));
 #if __FINITE_MATH_ONLY__
     return __absn >= __minn;
 #else
-    const auto __maxn = __vector_bitcast<_Ip>(
-      __vector_broadcast<_Np>(std::numeric_limits<_Tp>::max()));
+    const auto __maxn
+      = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
     return __minn <= __absn && __absn <= __maxn;
 #endif
   }
@@ -2336,10 +2336,10 @@ template <typename _Abi> struct _SimdImplBuiltin
     const auto __xn
       = __vector_bitcast<_I>(__to_intrin(_SuperImpl::_S_abs(__x)));
     constexpr size_t _NI = sizeof(__xn) / sizeof(_I);
-    _GLIBCXX_SIMD_USE_CONSTEXPR auto __minn = __vector_bitcast<_I>(
-      __vector_broadcast<_NI>(std::numeric_limits<_Tp>::min()));
-    _GLIBCXX_SIMD_USE_CONSTEXPR auto __infn = __vector_bitcast<_I>(
-      __vector_broadcast<_NI>(std::numeric_limits<_Tp>::infinity()));
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __minn
+      = __vector_bitcast<_I>(__vector_broadcast<_NI>(__norm_min_v<_Tp>));
+    _GLIBCXX_SIMD_USE_CONSTEXPR auto __infn
+      = __vector_bitcast<_I>(__vector_broadcast<_NI>(__infinity_v<_Tp>));
 
     _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_normal
       = __vector_broadcast<_NI, _I>(FP_NORMAL);

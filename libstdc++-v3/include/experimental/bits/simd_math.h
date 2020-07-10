@@ -419,10 +419,10 @@ __extract_exponent_as_int(const simd<_Tp, _Abi>& __v)
   using _Up = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
   using namespace std::experimental::__float_bitwise_operators;
   const _Vp __exponent_mask
-    = std::numeric_limits<_Tp>::infinity(); // 0x7f800000 or 0x7ff0000000000000
+    = __infinity_v<_Tp>; // 0x7f800000 or 0x7ff0000000000000
   return static_simd_cast<rebind_simd_t<int, _Vp>>(
     __bit_cast<rebind_simd_t<_Up, _Vp>>(__v & __exponent_mask)
-    >> (std::numeric_limits<_Tp>::digits - 1));
+    >> (__digits_v<_Tp> - 1));
 }
 
 // }}}
@@ -693,7 +693,6 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       static_assert(sizeof(_Tp) == 4 || sizeof(_Tp) == 8);
       using _V = simd<_Tp, _Abi>;
       using _IV = rebind_simd_t<int, _V>;
-      using _Limits = std::numeric_limits<_Tp>;
       using namespace std::experimental::__proposed;
       using namespace std::experimental::__float_bitwise_operators;
 
@@ -702,9 +701,9 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       constexpr int __exp_offset = sizeof(_Tp) == 4 ? 0x70 : 0x200;
       constexpr _Tp __subnorm_scale = sizeof(_Tp) == 4 ? 0x1p112 : 0x1p512;
       _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __exponent_mask
-	= _Limits::infinity(); // 0x7f800000 or 0x7ff0000000000000
+	= __infinity_v<_Tp>; // 0x7f800000 or 0x7ff0000000000000
       _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __p5_1_exponent
-	= -(2 - _Limits::epsilon()) / 2; // 0xbf7fffff or 0xbfefffffffffffff
+	= -(2 - __epsilon_v<_Tp>) / 2; // 0xbf7fffff or 0xbfefffffffffffff
 
       _V __mant = __p5_1_exponent & (__exponent_mask | __x); // +/-[.5, 1)
       const _IV __exponent_bits = __extract_exponent_as_int(__x);
@@ -723,7 +722,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       const auto __as_int
 	= __bit_cast<rebind_simd_t<__int_for_sizeof_t<_Tp>, _V>>(abs(__x));
       const auto __inf = __bit_cast<rebind_simd_t<__int_for_sizeof_t<_Tp>, _V>>(
-	_V(std::numeric_limits<_Tp>::infinity()));
+	_V(__infinity_v<_Tp>));
       const auto __iszero_inf_nan = static_simd_cast<typename _V::mask_type>(
 	__as_int == 0 || __as_int >= __inf);
 #endif
@@ -812,8 +811,8 @@ logb(const simd<_Tp, _Abi>& __x)
 	using namespace std::experimental::__proposed;
 	using _IV = rebind_simd_t<
 	  std::conditional_t<sizeof(_Tp) == sizeof(_LLong), _LLong, int>, _V>;
-	return (__bit_cast<_IV>(__v) >> (std::numeric_limits<_Tp>::digits - 1))
-	       - (std::numeric_limits<_Tp>::max_exponent - 1);
+	return (__bit_cast<_IV>(__v) >> (__digits_v<_Tp> - 1))
+	       - (__max_exponent_v<_Tp> - 1);
       };
       _V __r = static_simd_cast<_V>(__exponent(abs_x));
       if (_GLIBCXX_SIMD_IS_LIKELY(all_of(__is_normal)))
@@ -823,9 +822,9 @@ logb(const simd<_Tp, _Abi>& __x)
       const auto __is_zero = __x == 0;
       const auto __is_nan = isnan(__x);
       const auto __is_inf = isinf(__x);
-      where(__is_zero, __r) = -std::numeric_limits<_Tp>::infinity();
+      where(__is_zero, __r) = -__infinity_v<_Tp>;
       where(__is_nan, __r) = __x;
-      where(__is_inf, __r) = std::numeric_limits<_Tp>::infinity();
+      where(__is_inf, __r) = __infinity_v<_Tp>;
       __is_normal |= __is_zero || __is_nan || __is_inf;
       if (all_of(__is_normal))
 	// at this point everything but subnormals is handled
@@ -985,14 +984,13 @@ __hypot(_VV __x, _VV __y)
       // Skylake-AVX512 (not even for SSE and AVX vectors, and really bad for
       // AVX-512).
       using namespace __float_bitwise_operators;
-      using _Limits = std::numeric_limits<_Tp>;
       _V __absx = abs(__x);          // no error
       _V __absy = abs(__y);          // no error
       _V __hi = max(__absx, __absy); // no error
       _V __lo = min(__absy, __absx); // no error
 
       // round __hi down to the next power-of-2:
-      _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(_Limits::infinity());
+      _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(__infinity_v<_Tp>);
 
       if constexpr (__have_neon && !__have_neon_a32)
 	{ // With ARMv7 NEON, we have no subnormals and must use slightly
@@ -1022,7 +1020,7 @@ __hypot(_VV __x, _VV __y)
 	  // from __lo.
 	  const _V __scale = (__hi_exp ^ __inf) * _Tp(.5);
 	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __mant_mask
-	    = _Limits::min() - _Limits::denorm_min();
+	    = __norm_min_v<_Tp> - __denorm_min_v<_Tp>;
 	  const _V __h1 = (__hi & __mant_mask) | _V(1);
 	  const _V __l1 = __lo * __scale;
 	  return __hi_exp * sqrt(__h1 * __h1 + __l1 * __l1);
@@ -1032,15 +1030,16 @@ __hypot(_VV __x, _VV __y)
 	  // slower path to support subnormals
 	  // if __hi is subnormal, avoid scaling by inf & final mul by 0 (which
 	  // yields NaN) by using min()
-	  _V __scale = _V(1 / _Limits::min());
+	  _V __scale = _V(1 / __norm_min_v<_Tp>);
 	  // invert exponent w/o error and w/o using the slow divider unit:
 	  // xor inverts the exponent but off by 1. Multiplication with .5
 	  // adjusts for the discrepancy.
-	  where(__hi >= _Limits::min(), __scale)
+	  where(__hi >= __norm_min_v<_Tp>, __scale)
 	    = ((__hi & __inf) ^ __inf) * _Tp(.5);
 	  // adjust final exponent for subnormal inputs
-	  _V __hi_exp = _Limits::min();
-	  where(__hi >= _Limits::min(), __hi_exp) = __hi & __inf; // no error
+	  _V __hi_exp = __norm_min_v<_Tp>;
+	  where(__hi >= __norm_min_v<_Tp>, __hi_exp)
+	    = __hi & __inf;                                       // no error
 	  _V __h1 = __hi * __scale;                               // no error
 	  _V __l1 = __lo * __scale;                               // no error
 
@@ -1052,14 +1051,14 @@ __hypot(_VV __x, _VV __y)
 	  // the naive fixup goes like this:
 	  //
 	  // where(__l1 == 0, __r)                      = __hi;
-	  // where(isunordered(__x, __y), __r)          = _Limits::quiet_NaN();
+	  // where(isunordered(__x, __y), __r)          = __quiet_NaN_v<_Tp>;
 	  // where(isinf(__absx) || isinf(__absy), __r) = __inf;
 	  //
 	  // The fixup can be prepared in parallel with the sqrt, requiring a
 	  // single blend step after hi_exp * sqrt, reducing latency and
 	  // throughput:
 	  _V __fixup = __hi; // __lo == 0
-	  where(isunordered(__x, __y), __fixup) = _Limits::quiet_NaN();
+	  where(isunordered(__x, __y), __fixup) = __quiet_NaN_v<_Tp>;
 	  where(isinf(__absx) || isinf(__absy), __fixup) = __inf;
 	  where(!(__lo == 0 || isunordered(__x, __y)
 		  || (isinf(__absx) || isinf(__absy))),
@@ -1103,26 +1102,23 @@ __hypot(_VV __x, _VV __y, _VV __z)
   else
     {
       using namespace __float_bitwise_operators;
-      using _Limits = std::numeric_limits<_Tp>;
       const _V __absx = abs(__x);                 // no error
       const _V __absy = abs(__y);                 // no error
       const _V __absz = abs(__z);                 // no error
       _V __hi = max(max(__absx, __absy), __absz); // no error
       _V __l0 = min(__absz, max(__absx, __absy)); // no error
       _V __l1 = min(__absy, __absx);              // no error
-      if constexpr (numeric_limits<_Tp>::digits == 64
-		    && numeric_limits<_Tp>::max_exponent == 0x4000
-		    && numeric_limits<_Tp>::min_exponent == -0x3FFD
-		    && _V::size() == 1)
+      if constexpr (__digits_v<_Tp> == 64 && __max_exponent_v<_Tp> == 0x4000
+		    && __min_exponent_v<_Tp> == -0x3FFD && _V::size() == 1)
 	{ // Seems like x87 fp80, where bit 63 is always 1 unless subnormal or
 	  // NaN. In this case the bit-tricks don't work, they require IEC559
 	  // binary32 or binary64 format.
 #ifdef __STDC_IEC_559__
 	  // fixup for Annex F requirements
 	  if (isinf(__absx[0]) || isinf(__absy[0]) || isinf(__absz[0]))
-	    return _Limits::infinity();
+	    return __infinity_v<_Tp>;
 	  else if (isunordered(__absx[0], __absy[0] + __absz[0]))
-	    return _Limits::quiet_NaN();
+	    return __quiet_NaN_v<_Tp>;
 	  else if (__l0[0] == 0 && __l1[0] == 0)
 	    return __hi;
 #endif
@@ -1138,7 +1134,7 @@ __hypot(_VV __x, _VV __y, _VV __z)
       else
 	{
 	  // round __hi down to the next power-of-2:
-	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(_Limits::infinity());
+	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(__infinity_v<_Tp>);
 
 	  if constexpr (_V::size() > 1 && __have_neon && !__have_neon_a32)
 	    { // With ARMv7 NEON, we have no subnormals and must use slightly
@@ -1175,7 +1171,7 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      // information from __lo.
 	      const _V __scale = (__hi_exp ^ __inf) * _Tp(.5);
 	      constexpr _Tp __mant_mask
-		= _Limits::min() - _Limits::denorm_min();
+		= __norm_min_v<_Tp> - __denorm_min_v<_Tp>;
 	      const _V __h1 = (__hi & _V(__mant_mask)) | _V(1);
 	      __l0 *= __scale;
 	      __l1 *= __scale;
@@ -1188,15 +1184,15 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      // slower path to support subnormals
 	      // if __hi is subnormal, avoid scaling by inf & final mul by 0
 	      // (which yields NaN) by using min()
-	      _V __scale = _V(1 / _Limits::min());
+	      _V __scale = _V(1 / __norm_min_v<_Tp>);
 	      // invert exponent w/o error and w/o using the slow divider unit:
 	      // xor inverts the exponent but off by 1. Multiplication with .5
 	      // adjusts for the discrepancy.
-	      where(__hi >= _Limits::min(), __scale)
+	      where(__hi >= __norm_min_v<_Tp>, __scale)
 		= ((__hi & __inf) ^ __inf) * _Tp(.5);
 	      // adjust final exponent for subnormal inputs
-	      _V __hi_exp = _Limits::min();
-	      where(__hi >= _Limits::min(), __hi_exp)
+	      _V __hi_exp = __norm_min_v<_Tp>;
+	      where(__hi >= __norm_min_v<_Tp>, __hi_exp)
 		= __hi & __inf;         // no error
 	      _V __h1 = __hi * __scale; // no error
 	      __l0 *= __scale;          // no error
@@ -1209,7 +1205,7 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      _V __fixup = __hi; // __lo == 0
 	      // where(__lo == 0, __fixup)                   = __hi;
 	      where(isunordered(__x, __y + __z), __fixup)
-		= _Limits::quiet_NaN();
+		= __quiet_NaN_v<_Tp>;
 	      where(isinf(__absx) || isinf(__absy) || isinf(__absz), __fixup)
 		= __inf;
 	      // Instead of __lo == 0, the following could depend on __h1² ==
