@@ -41,8 +41,9 @@ test() //{{{1
   using T = typename V::value_type;
   if constexpr (std::is_integral_v<T>)
     {
-      constexpr int nbits(sizeof(T) * CHAR_BIT);
-      constexpr int n_promo_bits = std::max(nbits, int(sizeof(int) * CHAR_BIT));
+      constexpr int nbits(sizeof(T) * __CHAR_BIT__);
+      constexpr int n_promo_bits
+	= std::max(nbits, int(sizeof(int) * __CHAR_BIT__));
 
       // complement{{{2
       COMPARE(~V(), V(~T()));

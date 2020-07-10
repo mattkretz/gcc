@@ -30,7 +30,6 @@
 #include "simd_detail.h"
 #include "numeric_traits.h"
 #include <bitset>
-#include <climits>
 #ifdef _GLIBCXX_DEBUG_UB
 #include <cstdio> // for stderr
 #endif
@@ -1031,14 +1030,14 @@ template <size_t _Np> using _SanitizedBitMask = _BitMask<_Np, true>;
 template <size_t _Np, bool _Sanitized> struct _BitMask
 {
   static_assert(_Np > 0);
-  static constexpr size_t _NBytes = __div_roundup(_Np, CHAR_BIT);
+  static constexpr size_t _NBytes = __div_roundup(_Np, __CHAR_BIT__);
   using _Tp = conditional_t<_Np == 1, bool,
 			    make_unsigned_t<__int_with_sizeof_t<std::min(
 			      sizeof(_ULLong), __next_power_of_2(_NBytes))>>>;
   static constexpr int _S_array_size = __div_roundup(_NBytes, sizeof(_Tp));
   _Tp _M_bits[_S_array_size];
   static constexpr int _S_unused_bits
-    = _Np == 1 ? 0 : _S_array_size * sizeof(_Tp) * CHAR_BIT - _Np;
+    = _Np == 1 ? 0 : _S_array_size * sizeof(_Tp) * __CHAR_BIT__ - _Np;
   static constexpr _Tp _S_bitmask = +_Tp(~_Tp()) >> _S_unused_bits;
 
   constexpr _BitMask() noexcept = default;
@@ -1126,16 +1125,16 @@ template <size_t _Np, bool _Sanitized> struct _BitMask
   constexpr auto _M_extract() const noexcept
   {
     static_assert(_Np > _DropLsb);
-    static_assert(_DropLsb + _NewSize <= sizeof(_ULLong) * CHAR_BIT,
+    static_assert(_DropLsb + _NewSize <= sizeof(_ULLong) * __CHAR_BIT__,
 		  "not implemented for bitmasks larger than one ullong");
     if constexpr (_NewSize == 1) // must sanitize because the return _Tp is bool
       return _SanitizedBitMask<1>{
 	{static_cast<bool>(_M_bits[0] & (_Tp(1) << _DropLsb))}};
     else
       return _BitMask<_NewSize,
-		      ((_NewSize + _DropLsb == sizeof(_Tp) * CHAR_BIT
+		      ((_NewSize + _DropLsb == sizeof(_Tp) * __CHAR_BIT__
 			&& _NewSize + _DropLsb <= _Np)
-		       || ((_Sanitized || _Np == sizeof(_Tp) * CHAR_BIT)
+		       || ((_Sanitized || _Np == sizeof(_Tp) * __CHAR_BIT__)
 			   && _NewSize + _DropLsb >= _Np))>(_M_bits[0]
 							    >> _DropLsb);
   }
@@ -1216,8 +1215,8 @@ template <size_t _Np, bool _Sanitized> struct _BitMask
       return (_M_bits[0] >> __i) & 1;
     else
       {
-	const size_t __j = __i / (sizeof(_Tp) * CHAR_BIT);
-	const size_t __shift = __i % (sizeof(_Tp) * CHAR_BIT);
+	const size_t __j = __i / (sizeof(_Tp) * __CHAR_BIT__);
+	const size_t __shift = __i % (sizeof(_Tp) * __CHAR_BIT__);
 	return (_M_bits[__j] >> __shift) & 1;
       }
   }
@@ -1225,8 +1224,8 @@ template <size_t _Np, bool _Sanitized> struct _BitMask
   constexpr bool operator[](_SizeConstant<__i>) const noexcept
   {
     static_assert(__i < _Np);
-    constexpr size_t __j = __i / (sizeof(_Tp) * CHAR_BIT);
-    constexpr size_t __shift = __i % (sizeof(_Tp) * CHAR_BIT);
+    constexpr size_t __j = __i / (sizeof(_Tp) * __CHAR_BIT__);
+    constexpr size_t __shift = __i % (sizeof(_Tp) * __CHAR_BIT__);
     return static_cast<bool>(_M_bits[__j] & (_Tp(1) << __shift));
   }
 
@@ -1242,8 +1241,8 @@ template <size_t _Np, bool _Sanitized> struct _BitMask
       }
     else
       {
-	const size_t __j = __i / (sizeof(_Tp) * CHAR_BIT);
-	const size_t __shift = __i % (sizeof(_Tp) * CHAR_BIT);
+	const size_t __j = __i / (sizeof(_Tp) * __CHAR_BIT__);
+	const size_t __shift = __i % (sizeof(_Tp) * __CHAR_BIT__);
 	_M_bits[__j] &= ~_Tp(_Tp(1) << __shift);
 	_M_bits[__j] |= _Tp(_Tp(__x) << __shift);
       }
@@ -1256,8 +1255,8 @@ template <size_t _Np, bool _Sanitized> struct _BitMask
       _M_bits[0] = __x;
     else
       {
-	constexpr size_t __j = __i / (sizeof(_Tp) * CHAR_BIT);
-	constexpr size_t __shift = __i % (sizeof(_Tp) * CHAR_BIT);
+	constexpr size_t __j = __i / (sizeof(_Tp) * __CHAR_BIT__);
+	constexpr size_t __shift = __i % (sizeof(_Tp) * __CHAR_BIT__);
 	constexpr _Tp __mask = ~_Tp(_Tp(1) << __shift);
 	_M_bits[__j] &= __mask;
 	_M_bits[__j] |= _Tp(_Tp(__x) << __shift);
@@ -2303,7 +2302,7 @@ struct _SimdWrapper<
 {
   using _BuiltinType = typename __bool_storage_member_type<_Width>::type;
   using value_type = bool;
-  static constexpr size_t _S_full_size = sizeof(_BuiltinType) * CHAR_BIT;
+  static constexpr size_t _S_full_size = sizeof(_BuiltinType) * __CHAR_BIT__;
 
   _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<bool, _S_full_size>
   __as_full_vector() const
@@ -2351,7 +2350,7 @@ struct _SimdWrapper<
   {
     if (__builtin_constant_p(_M_data))
       {
-	constexpr int __nbits = sizeof(_BuiltinType) * CHAR_BIT;
+	constexpr int __nbits = sizeof(_BuiltinType) * __CHAR_BIT__;
 	constexpr _BuiltinType __active_mask
 	  = ~_BuiltinType() >> (__nbits - _Width);
 	return (_M_data & __active_mask) == 0;
@@ -2363,7 +2362,7 @@ struct _SimdWrapper<
   {
     if (__builtin_constant_p(_M_data))
       {
-	constexpr int __nbits = sizeof(_BuiltinType) * CHAR_BIT;
+	constexpr int __nbits = sizeof(_BuiltinType) * __CHAR_BIT__;
 	constexpr _BuiltinType __active_mask
 	  = ~_BuiltinType() >> (__nbits - _Width);
 	return (_M_data & __active_mask) == __active_mask;
@@ -3804,7 +3803,7 @@ split(const simd_mask<typename _V::simd_type::value_type, _Ap>& __x)
       return {_V(__private_init, __lo128(__data(__x))),
 	      _V(__private_init, __hi128(__data(__x)))};
     }
-  else if constexpr (_V::size() <= CHAR_BIT * sizeof(_ULLong))
+  else if constexpr (_V::size() <= __CHAR_BIT__ * sizeof(_ULLong))
     {
       const std::bitset __bits = __x.__to_bitset();
       return __generate_from_n_evaluations<_Parts, std::array<_V, _Parts>>([&](
@@ -4879,7 +4878,7 @@ public:
 	"The behavior is undefined if the right operand of a shift operation "
 	"is negative. [expr.shift]\nA shift by %d was requested",
 	__y);
-    if (__y >= sizeof(std::declval<_Tp>() << __y) * CHAR_BIT)
+    if (__y >= sizeof(std::declval<_Tp>() << __y) * __CHAR_BIT__)
       __invoke_ub(
 	"The behavior is undefined if the right operand of a shift operation "
 	"is greater than or equal to the width of the promoted left operand. "
@@ -4897,7 +4896,7 @@ public:
 	"The behavior is undefined if the right operand of a shift operation "
 	"is negative. [expr.shift]\nA shift by %d was requested",
 	__y);
-    if (__y >= sizeof(std::declval<_Tp>() << __y) * CHAR_BIT)
+    if (__y >= sizeof(std::declval<_Tp>() << __y) * __CHAR_BIT__)
       __invoke_ub(
 	"The behavior is undefined if the right operand of a shift operation "
 	"is greater than or equal to the width of the promoted left operand. "

@@ -1740,7 +1740,8 @@ template <typename _Abi> struct _SimdImplX86 : _SimdImplBuiltin<_Abi>
     if (__builtin_is_constant_evaluated())
       return __x >> __y;
     else if (__builtin_constant_p(__y)
-	     && std::is_unsigned_v<_Up> && __y >= int(sizeof(_Up) * CHAR_BIT))
+	     && std::is_unsigned_v<
+	       _Up> && __y >= int(sizeof(_Up) * __CHAR_BIT__))
       return _V();
     else if constexpr (sizeof(_Up) == 1 && is_unsigned_v<_Up>) //{{{
       return __intrin_bitcast<_V>(__vector_bitcast<_UShort>(__ix) >> __y)
@@ -3596,7 +3597,7 @@ struct _MaskImplX86Mixin
 
     using _UpUInt = std::make_unsigned_t<_Up>;
     using _V = __vector_type_t<_UpUInt, _ToN>;
-    constexpr size_t __bits_per_element = sizeof(_Up) * CHAR_BIT;
+    constexpr size_t __bits_per_element = sizeof(_Up) * __CHAR_BIT__;
     if constexpr (_ToN == 2)
       {
 	return __vector_bitcast<_Up>(_V{_UpUInt(-__x[0]), _UpUInt(-__x[1])});

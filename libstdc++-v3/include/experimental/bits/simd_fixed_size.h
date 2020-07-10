@@ -1825,7 +1825,7 @@ template <int _Np> struct _SimdImplFixedSize
 // _MaskImplFixedSize {{{1
 template <int _Np> struct _MaskImplFixedSize
 {
-  static_assert(sizeof(_ULLong) * CHAR_BIT >= _Np,
+  static_assert(sizeof(_ULLong) * __CHAR_BIT__ >= _Np,
 		"The fixed_size implementation relies on one "
 		"_ULLong being able to store all boolean "
 		"elements."); // required in load & store

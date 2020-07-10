@@ -50,7 +50,7 @@ template <typename _Abi> struct _SimdImplPpc : _SimdImplBuiltin<_Abi>
   {
     __x = _Base::_S_bit_shift_left(__x, __y);
     if constexpr (sizeof(_Tp) < sizeof(int))
-      __x._M_data = (__y._M_data < sizeof(_Tp) * CHAR_BIT) & __x._M_data;
+      __x._M_data = (__y._M_data < sizeof(_Tp) * __CHAR_BIT__) & __x._M_data;
     return __x;
   }
 
@@ -61,7 +61,7 @@ template <typename _Abi> struct _SimdImplPpc : _SimdImplBuiltin<_Abi>
     __x = _Base::_S_bit_shift_left(__x, __y);
     if constexpr (sizeof(_Tp) < sizeof(int))
       {
-	if (__y >= sizeof(_Tp) * CHAR_BIT)
+	if (__y >= sizeof(_Tp) * __CHAR_BIT__)
 	  return {};
       }
     return __x;
@@ -75,7 +75,7 @@ template <typename _Abi> struct _SimdImplPpc : _SimdImplBuiltin<_Abi>
   {
     if constexpr (sizeof(_Tp) < sizeof(int))
       {
-	constexpr int __nbits = sizeof(_Tp) * CHAR_BIT;
+	constexpr int __nbits = sizeof(_Tp) * __CHAR_BIT__;
 	if constexpr (std::is_unsigned_v<_Tp>)
 	  return (__y._M_data < __nbits)
 		 & _Base::_S_bit_shift_right(__x, __y)._M_data;
@@ -97,7 +97,7 @@ template <typename _Abi> struct _SimdImplPpc : _SimdImplBuiltin<_Abi>
   {
     if constexpr (sizeof(_Tp) < sizeof(int))
       {
-	constexpr int __nbits = sizeof(_Tp) * CHAR_BIT;
+	constexpr int __nbits = sizeof(_Tp) * __CHAR_BIT__;
 	if (__y >= __nbits)
 	  {
 	    if constexpr (std::is_unsigned_v<_Tp>)

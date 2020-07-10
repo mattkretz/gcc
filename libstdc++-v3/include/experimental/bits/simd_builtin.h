@@ -1117,7 +1117,7 @@ public:
   __implicit_mask_n()
   {
     using _Tp = __bool_storage_member_type_t<_Np>;
-    return _Np < sizeof(_Tp) * CHAR_BIT ? _Tp((1ULL << _Np) - 1) : ~_Tp();
+    return _Np < sizeof(_Tp) * __CHAR_BIT__ ? _Tp((1ULL << _Np) - 1) : ~_Tp();
   }
 
   template <typename _Tp>
@@ -2596,10 +2596,10 @@ struct _MaskImplBuiltinMixin
   _S_to_bits(_SimdWrapper<_Tp, _Np> __x)
   {
     static_assert(!is_same_v<_Tp, bool>);
-    static_assert(_Np <= CHAR_BIT * sizeof(_ULLong));
+    static_assert(_Np <= __CHAR_BIT__ * sizeof(_ULLong));
     using _Up = make_unsigned_t<__int_for_sizeof_t<_Tp>>;
     const auto __bools
-      = __vector_bitcast<_Up>(__x) >> (sizeof(_Up) * CHAR_BIT - 1);
+      = __vector_bitcast<_Up>(__x) >> (sizeof(_Up) * __CHAR_BIT__ - 1);
     _ULLong __r = 0;
     __execute_n_times<_Np>(
       [&](auto __i) { __r |= _ULLong(__bools[__i.value]) << __i; });
