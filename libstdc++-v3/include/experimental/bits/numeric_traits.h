@@ -252,15 +252,15 @@ template <typename _Tp> struct __finite_min_impl<_Tp, true>
 };
 template <> struct __finite_min_impl<float, true>
 {
-  static inline constexpr float value = __FLT_MIN__;
+  static inline constexpr float value = -__FLT_MAX__;
 };
 template <> struct __finite_min_impl<double, true>
 {
-  static inline constexpr double value = __DBL_MIN__;
+  static inline constexpr double value = -__DBL_MAX__;
 };
 template <> struct __finite_min_impl<long double, true>
 {
-  static inline constexpr long double value = __LDBL_MIN__;
+  static inline constexpr long double value = -__LDBL_MAX__;
 };
 
 template <typename _Tp, bool = std::is_arithmetic_v<_Tp>>
