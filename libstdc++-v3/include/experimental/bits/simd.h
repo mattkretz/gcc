@@ -704,7 +704,7 @@ template <typename _From, typename _To, bool = std::is_arithmetic<_From>::value,
 	  bool = std::is_arithmetic<_To>::value>
 struct __is_narrowing_conversion;
 
-// ignore "warning C4018: '<': signed/unsigned mismatch" in the following trait.
+// ignore "signed/unsigned mismatch" in the following trait.
 // The implicit conversions will do the right thing here.
 template <typename _From, typename _To>
 struct __is_narrowing_conversion<_From, _To, true, true>
@@ -2374,19 +2374,29 @@ struct _SimdWrapper<
 };
 
 // _SimdWrapperBase{{{1
-template <bool> struct _SimdWrapperBase;
+template <bool _MustZeroInitPadding, typename _BuiltinType>
+struct _SimdWrapperBase;
 
-template <> struct _SimdWrapperBase<true> // no padding or no SNaNs
+template <typename _BuiltinType>
+struct _SimdWrapperBase<false, _BuiltinType> // no padding or no SNaNs
 {
+  _BuiltinType _M_data;
+  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapperBase() = default;
+  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapperBase(_BuiltinType __init)
+    : _M_data(__init)
+  {}
 };
 
-#ifdef __SUPPORT_SNAN__
-template <>
-struct _SimdWrapperBase<false> // with padding that needs to never become SNaN
+template <typename _BuiltinType>
+struct _SimdWrapperBase<true, _BuiltinType> // with padding that needs to never
+					    // become SNaN
 {
+  _BuiltinType _M_data;
   _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapperBase() : _M_data() {}
+  _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapperBase(_BuiltinType __init)
+    : _M_data(__init)
+  {}
 };
-#endif // __SUPPORT_SNAN__
 
 // }}}
 // _SimdWrapper{{{
@@ -2394,24 +2404,26 @@ template <typename _Tp, size_t _Width>
 struct _SimdWrapper<
   _Tp, _Width,
   std::void_t<__vector_type_t<_Tp, _Width>, __intrinsic_type_t<_Tp, _Width>>>
-  : _SimdWrapperBase<
-#ifdef __SUPPORT_SNAN__
-      !std::numeric_limits<_Tp>::has_signaling_NaN
-      || sizeof(_Tp) * _Width == sizeof(__vector_type_t<_Tp, _Width>)
-#else
-      true
-#endif
-      >
+  : _SimdWrapperBase<__has_iec559_behavior<__signaling_NaN, _Tp>::value
+		       && sizeof(_Tp) * _Width
+			    == sizeof(__vector_type_t<_Tp, _Width>),
+		     __vector_type_t<_Tp, _Width>>
 {
+  using _Base
+    = _SimdWrapperBase<__has_iec559_behavior<__signaling_NaN, _Tp>::value
+			 && sizeof(_Tp) * _Width
+			      == sizeof(__vector_type_t<_Tp, _Width>),
+		       __vector_type_t<_Tp, _Width>>;
   static_assert(__is_vectorizable_v<_Tp>);
   static_assert(_Width >= 2); // 1 doesn't make sense, use _Tp directly then
   using _BuiltinType = __vector_type_t<_Tp, _Width>;
   using value_type = _Tp;
-  static inline constexpr size_t _S_full_size = sizeof(_BuiltinType) / sizeof(value_type);
+  static inline constexpr size_t _S_full_size
+    = sizeof(_BuiltinType) / sizeof(value_type);
   static inline constexpr int _S_size = _Width;
   static inline constexpr bool _S_is_partial = _S_full_size != _S_size;
 
-  _BuiltinType _M_data;
+  using _Base::_M_data;
 
   _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper<_Tp, _S_full_size>
   __as_full_vector() const
@@ -2421,7 +2433,7 @@ struct _SimdWrapper<
 
   _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper(
     std::initializer_list<_Tp> __init)
-    : _M_data(__generate_from_n_evaluations<_Width, _BuiltinType>(
+    : _Base(__generate_from_n_evaluations<_Width, _BuiltinType>(
       [&](auto __i) { return __init.begin()[__i.value]; }))
   {}
 
@@ -2437,7 +2449,7 @@ struct _SimdWrapper<
 			   is_same<_V, __vector_type_t<_Tp, _Width>>,
 			   is_same<_V, __intrinsic_type_t<_Tp, _Width>>>>>
   _GLIBCXX_SIMD_INTRINSIC constexpr _SimdWrapper(_V __x)
-    : _M_data(__vector_bitcast<_Tp, _Width>(
+    : _Base(__vector_bitcast<_Tp, _Width>(
       __x)) // __vector_bitcast can convert e.g. __m128 to __vector(2) float
   {}
 
