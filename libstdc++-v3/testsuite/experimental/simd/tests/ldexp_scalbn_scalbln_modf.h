@@ -121,13 +121,17 @@ test()
 	return tmp;
       };
       const auto expect1 = expected(input);
+#ifdef __STDC_IEC_559__
       COMPARE(isnan(totest), isnan(expect1.first))
 	<< "modf(" << input << ", iptr) = " << totest << " != " << expect1;
       COMPARE(isnan(integral), isnan(expect1.second))
 	<< "modf(" << input << ", iptr) = " << totest << " != " << expect1;
       COMPARE(isnan(totest), isnan(integral))
 	<< "modf(" << input << ", iptr) = " << totest << " != " << expect1;
-      const V clean = iif(isnan(totest), 0, input);
+      const V clean = iif(isnan(totest), V(), input);
+#else
+      const V clean = iif(isnormal(input), input, V());
+#endif
       const auto expect2 = expected(clean);
       COMPARE(modf(clean, &integral), expect2.first) << "\nclean = " << clean;
       COMPARE(integral, expect2.second);
