@@ -10,9 +10,9 @@ template <typename V> void test()
     {
       using std::abs;
       using T = typename V::value_type;
-      using L = std::numeric_limits<T>;
-      test_values<V>({L::max(), L::lowest(), L::min(), -L::max() / 2, T(), -T(),
-		      T(-1), T(-2)},
+      test_values<V>({std::__finite_max_v<T>, std::__norm_min_v<T>,
+		      -std::__norm_min_v<T>, std::__finite_min_v<T>,
+		      std::__finite_min_v<T> / 2, T(), -T(), T(-1), T(-2)},
 		     {1000}, [](V input) {
 		       const V expected(
 			 [&](auto i) { return T(std::abs(T(input[i]))); });

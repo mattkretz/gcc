@@ -2,7 +2,6 @@
 #define VC_TESTS_METAHELPERS_H_
 
 #include <functional>
-#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -55,7 +54,7 @@ constexpr auto sfinae_is_callable_t(F &&f)
 // traits {{{1
 template <class A, class B> constexpr bool has_less_bits()
 {
-  return std::numeric_limits<A>::digits < std::numeric_limits<B>::digits;
+  return std::__digits_v<A> < std::__digits_v<B>;
 }
 
 //}}}1

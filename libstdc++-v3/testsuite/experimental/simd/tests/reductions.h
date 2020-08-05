@@ -1,8 +1,8 @@
 #include "bits/verify.h"
 #include "bits/metahelpers.h"
+#include "bits/test_values.h"
 #include <random>
 
-static std::mt19937 g_mt_gen{0};
 template <typename V>
 void
 test()
@@ -25,7 +25,7 @@ test()
 	  T(3 * (V::size() / 3)   // 0+1+2 for every complete 3 elements in V
 	    + (V::size() % 3) / 2 // 0->0, 1->0, 2->1 adjustment
 	    ));
-  if ((1 + V::size()) * V::size() / 2 <= std::numeric_limits<T>::max())
+  if ((1 + V::size()) * V::size() / 2 <= std::__finite_max_v<T>)
     {
       COMPARE(reduce(V([](int i) { return i + 1; })),
 	      T((1 + V::size()) * V::size() / 2));
@@ -63,20 +63,18 @@ test()
       << "z: " << z;
   }
 
-  {
-    std::conditional_t<std::is_floating_point_v<T>,
-		       std::uniform_real_distribution<T>,
-		       std::uniform_int_distribution<T>>
-      dist(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
-    for (int repeat = 0; repeat < 100; ++repeat)
-      {
-	const V x([&](int) { return dist(g_mt_gen); });
-	T acc = x[0];
-	for (size_t i = 1; i < V::size(); ++i)
-	  acc += x[i];
-	FUZZY_COMPARE(reduce(x), acc);
-      }
-  }
+  test_values<V>({}, {1000}, [](V x) {
+    // avoid over-/underflow on signed integers:
+    if constexpr (std::is_signed_v<T> && std::is_integral_v<T>)
+      x /= int(V::size());
+    T acc = x[0];
+    for (size_t i = 1; i < V::size(); ++i)
+      acc += x[i];
+    // The error in the following could be huge if catastrophic
+    // cancellation occurs. (e.g. `a-a+b+b` vs. `a+b+b-a`) This is very
+    // unlikely, though.
+    ULP_COMPARE(reduce(x), acc, V::size() / 2);
+  });
 }
 
 // vim: foldmethod=marker

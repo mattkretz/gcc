@@ -8,7 +8,13 @@ void
 test()
 {
   using int_v = std::experimental::fixed_size_simd<int, V::size()>;
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
+  constexpr auto denorm_min = std::__denorm_min_v<T>;
+  constexpr auto norm_min = std::__norm_min_v<T>;
+  constexpr auto min = std::__finite_min_v<T>;
+  constexpr auto max = std::__finite_max_v<T>;
+  constexpr auto nan = std::__quiet_NaN_v<T>;
+  constexpr auto inf = std::__infinity_v<T>;
   test_values<V>(
     {
       0, 0.25, 0.5, 1, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -16,11 +22,9 @@ test()
 	-3, -4, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17, -18,
 	-19, -20, -21, -22, -23, -24, -25, -26, -27, -28, -29, -32, -31,
 #if __GCC_IEC_559 >= 2
-	limits::denorm_min(), -limits::denorm_min(), limits::min() / 2,
-	-limits::min() / 2,
+	denorm_min, -denorm_min, norm_min / 2, -norm_min / 2,
 #endif
-	limits::max(), -limits::max(), limits::max() * 0.123f,
-	-limits::max() * 0.123f
+	max, -max, max * 0.123f, -max * 0.123f
     },
     [](const V input) {
       V expectedFraction;
@@ -44,29 +48,8 @@ test()
     // (negative infinity) is returned, and the value of *exp is unspecified.
     // This behavior is only guaranteed with C's Annex F when __STDC_IEC_559__
     // is defined.
-    {limits::quiet_NaN(),
-     limits::infinity(),
-     -limits::infinity(),
-     limits::quiet_NaN(),
-     limits::infinity(),
-     -limits::infinity(),
-     limits::quiet_NaN(),
-     limits::infinity(),
-     -limits::infinity(),
-     limits::quiet_NaN(),
-     limits::infinity(),
-     -limits::infinity(),
-     limits::quiet_NaN(),
-     limits::infinity(),
-     -limits::infinity(),
-     limits::denorm_min(),
-     limits::denorm_min() * 1.72,
-     -limits::denorm_min(),
-     -limits::denorm_min() * 1.72,
-     0.,
-     -0.,
-     1,
-     -1},
+    {nan, inf, -inf, denorm_min, denorm_min * 1.72, -denorm_min,
+     -denorm_min * 1.72, 0., -0., 1, -1},
     [](const V input) {
       const V expectedFraction([&](auto i) {
 	int exp;

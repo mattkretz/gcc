@@ -11,7 +11,13 @@ test()
   vir::test::setFuzzyness<float>(1);
   vir::test::setFuzzyness<double>(1);
 
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
+  constexpr T nan = std::__quiet_NaN_v<T>;
+  constexpr T inf = std::__infinity_v<T>;
+  constexpr T denorm_min = std::__denorm_min_v<T>;
+  constexpr T norm_min = std::__norm_min_v<T>;
+  constexpr T min = std::__finite_min_v<T>;
+  constexpr T max = std::__finite_max_v<T>;
   test_values<V>({1,
 		  2,
 		  4,
@@ -34,27 +40,27 @@ test()
 		  63,
 		  65,
 #ifdef __STDC_IEC_559__
-		  limits::quiet_NaN(),
-		  limits::infinity(),
-		  -limits::infinity(),
-		  limits::denorm_min(),
-		  -limits::denorm_min(),
-		  limits::min() / 3,
-		  -limits::min() / 3,
-		  -0.,
-		  -limits::min(),
-		  -limits::max(),
-		  +0.,
+		  nan,
+		  inf,
+		  -inf,
+		  denorm_min,
+		  -denorm_min,
+		  norm_min / 3,
+		  -norm_min / 3,
+		  -T(),
+		  -norm_min,
+		  min,
+		  T(),
 #endif
-		  limits::min(),
-		  limits::max()},
+		  norm_min,
+		  max},
 		 {10000,
 #ifdef __STDC_IEC_559__
-		  -limits::max() / 2,
+		  min / 2,
 #else
-		  limits::min(),
+		  norm_min,
 #endif
-		  limits::max() / 2},
+		  max / 2},
 		 MAKE_TESTER(log), MAKE_TESTER(log10), MAKE_TESTER(log1p),
 		 MAKE_TESTER(log2), MAKE_TESTER(logb));
 }

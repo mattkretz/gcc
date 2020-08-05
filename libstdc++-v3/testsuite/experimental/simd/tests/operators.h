@@ -27,8 +27,7 @@ genHalfBits()
   if constexpr (std::is_floating_point_v<T>)
     return 0;
   else
-    return std::numeric_limits<T>::max()
-	   >> (std::numeric_limits<T>::digits / 2);
+    return std::__finite_max_v<T> >> (std::__digits_v<T> / 2);
 }
 
 template <typename V>
@@ -37,9 +36,9 @@ test()
 {
   using M = typename V::mask_type;
   using T = typename V::value_type;
-  using L = std::numeric_limits<T>;
-  constexpr auto min = std::numeric_limits<T>::min();
-  constexpr auto max = std::numeric_limits<T>::max();
+  constexpr auto min = std::__finite_min_v<T>;
+  constexpr auto norm_min = std::__norm_min_v<T>;
+  constexpr auto max = std::__finite_max_v<T>;
   { // compares{{{2
     COMPARE(V(0) == make_vec<V>({0, 1}, 0), make_mask<M>({1, 0}));
     COMPARE(V(0) == make_vec<V>({0, 1, 2}, 0), make_mask<M>({1, 0, 0}));
@@ -48,16 +47,15 @@ test()
     COMPARE(V(0) < make_vec<V>({0, 1, 2}, 0), make_mask<M>({0, 1, 1}));
 
     constexpr T half = genHalfBits<T>();
-    for (T lo_ : {min, T(min + 1), T(-1), T(0), T(1), T(half - 1), half,
-		  T(half + 1), T(max - 1)})
+    for (T lo_ : {min, T(min + 1), T(-1), T(0), norm_min, T(1), T(half - 1),
+		  half, T(half + 1), T(max - 1)})
       {
-	for (T hi_ : {T(min + 1), T(-1), T(0), T(1), T(half - 1), half,
-		      T(half + 1), T(max - 1), max})
+	for (T hi_ : {T(min + 1), T(-1), T(0), norm_min, T(1), T(half - 1),
+		      half, T(half + 1), T(max - 1), max})
 	  {
 	    if (hi_ <= lo_)
-	      {
-		continue;
-	      }
+	      continue;
+
 	    for (std::size_t pos = 0; pos < V::size(); ++pos)
 	      {
 		V lo = lo_;
@@ -193,10 +191,11 @@ test()
     y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
     COMPARE(x = x * y, make_vec<V>({2, 4, 6, 8, 10, 12, 14}));
     y = 2;
-    // don't test min() in the following. There's no guarantee, in general, that
-    // min/2*2 is min (e.g. NEON without subnormals)
-    for (T n : {T(L::max() - 1),
-		std::is_floating_point_v<T> ? T(L::min() * 3) : T(L::min())})
+    // don't test norm_min/2*2 in the following. There's no guarantee, in
+    // general, that the result isn't flushed to zero (e.g. NEON without
+    // subnormals)
+    for (T n :
+	 {T(max - 1), std::is_floating_point_v<T> ? T(norm_min * 3) : min})
       {
 	x = n / 2;
 	COMPARE(x * y, V(n));
@@ -204,10 +203,9 @@ test()
     if (std::is_integral<T>::value && std::is_unsigned<T>::value)
       {
 	// test modulo arithmetics
-	T n = std::numeric_limits<T>::max();
+	T n = max;
 	x = n;
-	for (T m : {T(2), T(7), T(std::numeric_limits<T>::max() / 127),
-		    std::numeric_limits<T>::max()})
+	for (T m : {T(2), T(7), T(max / 127), max})
 	  {
 	    y = m;
 	    // if T is of lower rank than int, `n * m` will promote to int
@@ -225,7 +223,8 @@ test()
   }
 
   // divides{{{2
-  if constexpr (std::is_floating_point_v<T> && !L::is_iec559)
+  constexpr bool is_iec559 = __GCC_IEC_559 >= 2;
+  if constexpr (std::is_floating_point_v<T> && !is_iec559)
     { // avoid testing subnormals and expect minor deltas if we have non-IEC559
       // float
       V x = 2;
@@ -238,8 +237,8 @@ test()
 		    {T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}),
 		  1);
 
-      test_values<V>({L::min() * 1024, T(1), T(), T(-1), L::max() / 1024,
-		      L::max() / 4.1, L::max(), L::lowest()},
+      test_values<V>({norm_min * 1024, T(1), T(), T(-1), max / 1024, max / 4.1,
+		      max, min},
 		     [&](V a) {
 		       V b = 2;
 		       V ref([&](auto i) { return a[i] / 2; });
@@ -247,9 +246,9 @@ test()
 		       where(a == 0, a) = 1;
 		       // -freciprocal-math together with flush-to-zero makes
 		       // the following range restriction necessary (i.e.
-		       // 1/|a| must be >= L::min()). Intel vrcpps and vrcp14ps
+		       // 1/|a| must be >= min). Intel vrcpps and vrcp14ps
 		       // need some extra slack (use 1.1 instead of 1).
-		       where(abs(a) >= T(1.1) / L::min(), a) = 1;
+		       where(abs(a) >= T(1.1) / norm_min, a) = 1;
 		       ULP_COMPARE(a / a, V(1), 1) << "\na = " << a;
 		       ref = V([&](auto i) { return 2 / a[i]; });
 		       ULP_COMPARE(b / a, ref, 1) << "\na = " << a;
@@ -267,24 +266,18 @@ test()
       COMPARE(y / x,
 	      make_vec<V>({T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}));
 
-      y = make_vec<V>(
-	{std::numeric_limits<T>::max(), std::numeric_limits<T>::min()});
-      V ref = make_vec<V>({T(std::numeric_limits<T>::max() / 2),
-			   T(std::numeric_limits<T>::min() / 2)});
+      y = make_vec<V>({max, norm_min});
+      V ref = make_vec<V>({T(max / 2), T(norm_min / 2)});
       COMPARE(y / x, ref);
 
-      y = make_vec<V>(
-	{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()});
-      ref = make_vec<V>({T(std::numeric_limits<T>::min() / 2),
-			 T(std::numeric_limits<T>::max() / 2)});
+      y = make_vec<V>({norm_min, max});
+      ref = make_vec<V>({T(norm_min / 2), T(max / 2)});
       COMPARE(y / x, ref);
 
-      y = make_vec<V>(
-	{std::numeric_limits<T>::max(), T(std::numeric_limits<T>::min() + 1)});
+      y = make_vec<V>({max, T(norm_min + 1)});
       COMPARE(y / y, V(1));
 
-      ref = make_vec<V>({T(2 / std::numeric_limits<T>::max()),
-			 T(2 / (std::numeric_limits<T>::min() + 1))});
+      ref = make_vec<V>({T(2 / max), T(2 / (norm_min + 1))});
       COMPARE(x / y, ref);
       COMPARE(x /= y, ref);
       COMPARE(x, ref);

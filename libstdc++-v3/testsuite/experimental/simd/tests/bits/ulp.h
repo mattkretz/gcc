@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cmath>
 #include <experimental/simd>
-#include <limits>
 #include <type_traits>
 #include <cfenv>
 
@@ -66,25 +65,25 @@ ulp_distance(const T& val_, const T& ref_)
       using std::ldexp;
       using std::max;
       using std::experimental::where;
-      using limits = std::numeric_limits<value_type_t<T>>;
+      using TT = value_type_t<T>;
 
       where(ref == 0, val) = abs(val);
       where(ref == 0, diff) = 1;
-      where(ref == 0, ref) = limits::min();
+      where(ref == 0, ref) = std::__norm_min_v<TT>;
       where(isinf(ref) && ref == val, ref)
         = 0; // where(val_ == ref_) = 0 below will fix it up
 
       where(val == 0, ref) = abs(ref);
       where(val == 0, diff) += 1;
-      where(val == 0, val) = limits::min();
+      where(val == 0, val) = std::__norm_min_v<TT>;
 
       using I = decltype(fpclassify(std::declval<T>()));
       I exp = {};
       frexp(ref, &exp);
       // lower bound for exp must be min_exponent to scale the resulting
       // difference from a denormal correctly
-      exp = max(exp, I(limits::min_exponent));
-      diff += ldexp(abs(ref - val), limits::digits - exp);
+      exp = max(exp, I(std::__min_exponent_v<TT>));
+      diff += ldexp(abs(ref - val), std::__digits_v<TT> - exp);
       where(val_ == ref_ || (isnan(val_) && isnan(ref_)), diff) = T();
       std::feclearexcept(FE_ALL_EXCEPT ^ fp_exceptions);
       return diff;

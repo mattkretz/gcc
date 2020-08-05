@@ -9,7 +9,12 @@ test()
   vir::test::setFuzzyness<float>(0);
   vir::test::setFuzzyness<double>(0);
 
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
+  constexpr T inf = std::__infinity_v<T>;
+  constexpr T nan = std::__quiet_NaN_v<T>;
+  constexpr T denorm_min = std::__denorm_min_v<T>;
+  constexpr T norm_min = std::__norm_min_v<T>;
+  constexpr T max = std::__finite_max_v<T>;
   test_values<V>({+0.,
 		  0.5,
 		  -0.5,
@@ -37,14 +42,14 @@ test()
 		  -0x1.fffffcp23,
 		  0x1.8p23,
 		  -0x1.8p23,
-		  limits::infinity(),
-		  -limits::infinity(),
+		  inf,
+		  -inf,
 		  -0.,
-		  limits::quiet_NaN(),
-		  limits::denorm_min(),
-		  limits::min() / 3,
-		  limits::min(),
-		  limits::max()},
+		  nan,
+		  denorm_min,
+		  norm_min / 3,
+		  norm_min,
+		  max},
 		 {10000},
 		 MAKE_TESTER(sqrt), MAKE_TESTER(erf), MAKE_TESTER(erfc),
 		 MAKE_TESTER(tgamma), MAKE_TESTER(lgamma), MAKE_TESTER(ceil),

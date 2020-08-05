@@ -59,21 +59,22 @@ template<typename T> struct StaticDeleter
 template <class F, class T> inline std::string filename()
 {
     static_assert(std::is_floating_point<T>::value, "");
-    using Lim = std::numeric_limits<T>;
-    static const auto cache =
-      std::string("reference-") + F::str +
-      (sizeof(T) == 4 && Lim::digits == 24 && Lim::max_exponent == 128
-	 ? "-sp"
-	 : (sizeof(T) == 8 && Lim::digits == 53 && Lim::max_exponent == 1024
-	      ? "-dp"
-	      : (sizeof(T) == 16 && Lim::digits == 64 &&
-		     Lim::max_exponent == 16384
-		   ? "-dep"
-		   : (sizeof(T) == 16 && Lim::digits == 113 &&
-			  Lim::max_exponent == 16384
-			? "-qp"
-			: "-unknown")))) +
-      ".dat";
+    static const auto cache
+      = std::string("reference-") + F::str
+	+ (sizeof(T) == 4 && std::__digits_v<T> == 24
+	       && std::__max_exponent_v<T> == 128
+	     ? "-sp"
+	     : (sizeof(T) == 8 && std::__digits_v<T> == 53
+		    && std::__max_exponent_v<T> == 1024
+		  ? "-dp"
+		  : (sizeof(T) == 16 && std::__digits_v<T> == 64
+			 && std::__max_exponent_v<T> == 16384
+		       ? "-dep"
+		       : (sizeof(T) == 16 && std::__digits_v<T> == 113
+			      && std::__max_exponent_v<T> == 16384
+			    ? "-qp"
+			    : "-unknown"))))
+	+ ".dat";
     return cache;
 }
 

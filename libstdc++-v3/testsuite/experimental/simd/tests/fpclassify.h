@@ -20,22 +20,22 @@ template <typename V>
 void
 test()
 {
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
+  using intv = std::experimental::fixed_size_simd<int, V::size()>;
+  constexpr T inf = std::__infinity_v<T>;
+  constexpr T denorm_min = std::__infinity_v<T>;
+  constexpr T nan = std::__quiet_NaN_v<T>;
+  constexpr T max = std::__finite_max_v<T>;
+  constexpr T norm_min = std::__norm_min_v<T>;
   test_values<V>(
     {
       0., 1., -1.,
 #if __GCC_IEC_559 >= 2
-	-0., limits::infinity(), -limits::infinity(), limits::denorm_min(),
-	-limits::denorm_min(), limits::quiet_NaN(),
-#ifdef __SUPPORT_SNAN__
-	limits::signaling_NaN(),
+	-0., inf, -inf, denorm_min, -denorm_min, nan,
 #endif
-#endif
-	limits::max(), -limits::max(), limits::min(), limits::min() * 0.9,
-	-limits::min(), -limits::min() * 0.9
+	max, -max, norm_min, norm_min * 0.9, -norm_min, -norm_min * 0.9
     },
     [](const V input) {
-      using intv = std::experimental::fixed_size_simd<int, V::size()>;
       COMPARE(NOFPEXCEPT(isfinite(input)),
 	      !V([&](auto i) { return std::isfinite(input[i]) ? 0 : 1; }))
 	<< input;
@@ -61,4 +61,29 @@ test()
 	      intv([&](auto i) { return std::fpclassify(input[i]); }))
 	<< input;
     });
+#ifdef __SUPPORT_SNAN__
+  const V snan = std::__signaling_NaN_v<T>;
+  COMPARE(isfinite(snan),
+	  !V([&](auto i) { return std::isfinite(snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(isinf(snan), !V([&](auto i) { return std::isinf(snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(isnan(snan), !V([&](auto i) { return std::isnan(snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(isnormal(snan),
+	  !V([&](auto i) { return std::isnormal(snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(signbit(snan),
+	  !V([&](auto i) { return std::signbit(snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(isunordered(snan, V()),
+	  !V([&](auto i) { return std::isunordered(snan[i], 0) ? 0 : 1; }))
+    << snan;
+  COMPARE(isunordered(V(), snan),
+	  !V([&](auto i) { return std::isunordered(0, snan[i]) ? 0 : 1; }))
+    << snan;
+  COMPARE(fpclassify(snan),
+	  intv([&](auto i) { return std::fpclassify(snan[i]); }))
+    << snan;
+#endif
 }

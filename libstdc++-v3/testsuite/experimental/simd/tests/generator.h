@@ -33,7 +33,6 @@ test()
 	  (std::is_floating_point<T>::value));
 
   COMPARE(sfinae_is_callable<ullong (&)(int)>(call_generator<V>()),
-	  std::numeric_limits<T>::max() >= std::numeric_limits<ullong>::max()
-	    && std::numeric_limits<T>::digits
-		 >= std::numeric_limits<ullong>::digits);
+	  std::__finite_max_v<T> >= std::__finite_max_v<ullong>
+	  && std::__digits_v<T> >= std::__digits_v<ullong>);
 }

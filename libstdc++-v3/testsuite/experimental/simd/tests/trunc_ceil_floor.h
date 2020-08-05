@@ -6,7 +6,12 @@ template <typename V>
 void
 test()
 {
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
+  constexpr T inf = std::__infinity_v<T>;
+  constexpr T denorm_min = std::__denorm_min_v<T>;
+  constexpr T norm_min = std::__norm_min_v<T>;
+  constexpr T max = std::__finite_max_v<T>;
+  constexpr T min = std::__finite_min_v<T>;
   test_values<V>(
     {2.1,
      2.0,
@@ -39,19 +44,18 @@ test()
      -(3 << 23),
 #ifdef __STDC_IEC_559__
      -0.,
-     limits::infinity(),
-     -limits::infinity(),
-     limits::denorm_min(),
-     limits::min() * 0.9,
-     -limits::denorm_min(),
-     -limits::min() * 0.9,
+     inf,
+     -inf,
+     denorm_min,
+     norm_min * 0.9,
+     -denorm_min,
+     -norm_min * 0.9,
 #endif
-     limits::max(),
-     limits::min(),
-     limits::lowest(),
-     -limits::max(),
-     -limits::min(),
-     -limits::lowest()},
+     max,
+     norm_min,
+     min,
+     -norm_min
+     },
     [](const V input) {
       const V expected([&](auto i) { return std::trunc(input[i]); });
       COMPARE(trunc(input), expected) << input;
@@ -69,9 +73,9 @@ test()
   test_values<V>(
     {
 #ifdef __SUPPORT_SNAN__
-      limits::signaling_NaN(),
+      std::__signaling_NaN_v<T>,
 #endif
-      limits::quiet_NaN()},
+      std::__quiet_NaN_v<T>},
     [](const V input) {
       const V expected([&](auto i) { return std::trunc(input[i]); });
       COMPARE(isnan(trunc(input)), isnan(expected)) << input;

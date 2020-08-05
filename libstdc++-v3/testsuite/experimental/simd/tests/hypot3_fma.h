@@ -9,15 +9,14 @@ template <typename T>
 T
 hypot3(T x, T y, T z)
 {
-  using limits = std::numeric_limits<T>;
   x = std::abs(x);
   y = std::abs(y);
   z = std::abs(z);
   auto too_small = [](T a, T b, T c) { return a + b == b && a + c == c; };
   if (std::isinf(x) || std::isinf(y) || std::isinf(z))
-    return limits::infinity();
+    return std::__infinity_v<T>;
   else if (std::isnan(x) || std::isnan(y) || std::isnan(z))
-    return limits::quiet_NaN();
+    return std::__quiet_NaN_v<T>;
   else if (x == y && y == z)
     return x * std::sqrt(T(3));
   else if (z == 0 && y == 0)
@@ -49,23 +48,24 @@ test()
   vir::test::setFuzzyness<long double>(2); // because of the bad reference
 
   using T = typename V::value_type;
-  using limits = std::numeric_limits<T>;
   test_values_3arg<V>(
     {
 #ifdef __STDC_IEC_559__
-      limits::quiet_NaN(), limits::infinity(), -limits::infinity(),
-      limits::min() / 3, -0., limits::denorm_min(),
+      std::__quiet_NaN_v<T>, std::__infinity_v<T>, -std::__infinity_v<T>,
+      std::__norm_min_v<T> / 3, -0., std::__denorm_min_v<T>,
 #endif
-      0., 1., -1., limits::min(), limits::max(), -limits::max()},
+      0., 1., -1., std::__norm_min_v<T>, std::__finite_max_v<T>,
+      -std::__finite_max_v<T>},
     {100000}, MAKE_TESTER_2(hypot, hypot3));
-  COMPARE(hypot(V(limits::max()), V(limits::max()), V()),
-	  V(limits::infinity()));
-  COMPARE(hypot(V(limits::max()), V(), V(limits::max())),
-	  V(limits::infinity()));
-  COMPARE(hypot(V(), V(limits::max()), V(limits::max())),
-	  V(limits::infinity()));
-  COMPARE(hypot(V(limits::min()), V(limits::min()), V(limits::min())),
-	  V(limits::min() * std::sqrt(T(3))));
+  COMPARE(hypot(V(std::__finite_max_v<T>), V(std::__finite_max_v<T>), V()),
+	  V(std::__infinity_v<T>));
+  COMPARE(hypot(V(std::__finite_max_v<T>), V(), V(std::__finite_max_v<T>)),
+	  V(std::__infinity_v<T>));
+  COMPARE(hypot(V(), V(std::__finite_max_v<T>), V(std::__finite_max_v<T>)),
+	  V(std::__infinity_v<T>));
+  COMPARE(hypot(V(std::__norm_min_v<T>), V(std::__norm_min_v<T>),
+		V(std::__norm_min_v<T>)),
+	  V(std::__norm_min_v<T> * std::sqrt(T(3))));
   VERIFY((sfinae_is_callable<V, V, V>(
     [](auto a, auto b, auto c) -> decltype(hypot(a, b, c)) { return {}; })));
   VERIFY((sfinae_is_callable<T, T, V>(
@@ -92,11 +92,12 @@ test()
   test_values_3arg<V>(
     {
 #ifdef __STDC_IEC_559__
-      limits::quiet_NaN(), limits::infinity(), -limits::infinity(), -0.,
-      limits::min() / 3, limits::denorm_min(),
+      std::__quiet_NaN_v<T>, std::__infinity_v<T>, -std::__infinity_v<T>, -0.,
+      std::__norm_min_v<T> / 3, std::__denorm_min_v<T>,
 #endif
-      0., limits::min(), limits::max()},
-    {10000, -limits::max() / 2, limits::max() / 2}, MAKE_TESTER(fma));
+      0., std::__norm_min_v<T>, std::__finite_max_v<T>},
+    {10000, -std::__finite_max_v<T> / 2, std::__finite_max_v<T> / 2},
+    MAKE_TESTER(fma));
   VERIFY((sfinae_is_callable<V, V, V>(
     [](auto a, auto b, auto c) -> decltype(fma(a, b, c)) { return {}; })));
   VERIFY((sfinae_is_callable<T, T, V>(

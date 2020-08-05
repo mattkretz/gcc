@@ -33,7 +33,6 @@ void test_values(const std::initializer_list<typename V::value_type> &inputs,
 
 template <class V> struct RandomValues {
   using T = typename V::value_type;
-  using L = std::numeric_limits<T>;
   static constexpr bool isfp = std::is_floating_point_v<T>;
   const std::size_t count;
   std::conditional_t<std::is_floating_point_v<T>,
@@ -46,23 +45,27 @@ template <class V> struct RandomValues {
     : count(count_), dist(min, max), uniform(true)
   {
     if constexpr (std::is_floating_point_v<T>)
-      VERIFY(max - min <= L::max());
+      VERIFY(max - min <= std::__finite_max_v<T>);
   }
 
   RandomValues(std::size_t count_)
-    : count(count_), dist(isfp ? 1 : L::lowest(), isfp ? 2 : L::max()),
+    : count(count_), dist(isfp ? 1 : std::__finite_min_v<T>,
+			  isfp ? 2 : std::__finite_max_v<T>),
       uniform(!isfp)
   {
   }
 
   template <typename URBG> V operator()(URBG& gen)
   {
-    if (uniform)
+    if constexpr (!isfp)
+      return V([&](int) { return dist(gen); });
+    else if (uniform)
       return V([&](int) { return dist(gen); });
     else
       {
 	auto exp_dist
-	  = std::normal_distribution<float>(0.f, L::max_exponent * .5f);
+	  = std::normal_distribution<float>(0.f,
+					    std::__max_exponent_v<T> * .5f);
 	return V([&](int) {
 	  const T mant = dist(gen);
 	  T fp = 0;
@@ -71,7 +74,7 @@ template <class V> struct RandomValues {
 	      const int exp = exp_dist(gen);
 	      fp = std::ldexp(mant, exp);
 	    }
-	  while (fp >= L::max() || fp <= L::denorm_min());
+	  while (fp >= std::__finite_max_v<T> || fp <= std::__denorm_min_v<T>);
 	  fp = gen() & 0x4 ? fp : -fp;
 	  return fp;
 	});
@@ -164,19 +167,19 @@ template <class V> typename V::mask_type isvalid(V x) {
     {
       using I = rebind_simd_t<__int_for_sizeof_t<T>, V>;
       const I abs_x = __bit_cast<I>(abs(x));
-      const I min = __bit_cast<I>(V(std::numeric_limits<T>::min()));
-      const I max = __bit_cast<I>(V(std::numeric_limits<T>::max()));
+      const I min = __bit_cast<I>(V(std::__norm_min_v<T>));
+      const I max = __bit_cast<I>(V(std::__finite_max_v<T>));
       return static_simd_cast<typename V::mask_type>(
 	__bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
     }
   else
     {
       const V abs_x = abs(x);
-      const V min = std::numeric_limits<T>::min();
+      const V min = std::__norm_min_v<T>;
       // Make max non-const static to inhibit constprop. Otherwise the compiler
       // might decide `abs_x <= max` is constexpr true, by definition
       // (-ffinite-math-only)
-      static V max = std::numeric_limits<T>::max();
+      static V max = std::__finite_max_v<T>;
       return (x == 0 && copysign(x, V(1)) == V(1))
 	     || (abs_x >= min && abs_x <= max);
     }

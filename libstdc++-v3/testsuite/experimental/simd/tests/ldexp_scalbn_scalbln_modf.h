@@ -10,18 +10,18 @@ test()
   vir::test::setFuzzyness<float>(0);
   vir::test::setFuzzyness<double>(0);
 
-  using limits = std::numeric_limits<typename V::value_type>;
+  using T = typename V::value_type;
   test_values<V>(
     {
 #ifdef __STDC_IEC_559__
-      limits::quiet_NaN(),
-      limits::infinity(),
-      -limits::infinity(),
+      std::__quiet_NaN_v<T>,
+      std::__infinity_v<T>,
+      -std::__infinity_v<T>,
       -0.,
-      limits::denorm_min(),
-      limits::min() / 3,
-      -limits::denorm_min(),
-      -limits::min() / 3,
+      std::__denorm_min_v<T>,
+      std::__norm_min_v<T> / 3,
+      -std::__denorm_min_v<T>,
+      -std::__norm_min_v<T> / 3,
 #endif
       +0.,
       +1.3,
@@ -32,11 +32,11 @@ test()
       0.9,
       -0.9,
       -0.99,
-      limits::min(),
-      limits::max(),
-      -limits::min(),
-      -limits::max()},
-    {10000, -limits::max() / 2, limits::max() / 2},
+      std::__norm_min_v<T>,
+      std::__finite_max_v<T>,
+      -std::__norm_min_v<T>,
+      -std::__finite_max_v<T>},
+    {10000},
     [](const V input) {
       for (int exp : {-10000, -100, -10, -1, 0, 1, 10, 100, 10000})
 	{
