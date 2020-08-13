@@ -11,6 +11,17 @@ test()
   vir::test::setFuzzyness<double>(0);
 
   using T = typename V::value_type;
+
+  // See https://sourceware.org/bugzilla/show_bug.cgi?id=18031
+  const bool modf_is_broken = [] {
+    volatile T x = T(5e20) / 7;
+    T tmp;
+    return std::fabs(std::modf(x, &tmp)) >= 1;
+  }();
+  if (modf_is_broken)
+    __builtin_fprintf(stderr,
+		      "NOTE: Skipping modf because std::modf is broken.\n");
+
   test_values<V>(
     {
 #ifdef __STDC_IEC_559__
@@ -106,7 +117,9 @@ test()
 	    << "\nclean = " << iif(isnan(expect1), 0, input);
 	}
     },
-    [](const V input) {
+    [modf_is_broken](const V input) {
+      if (modf_is_broken)
+	return;
       V integral = {};
       const V totest = modf(input, &integral);
       auto&& expected = [&](const auto& v) -> std::pair<const V, const V> {
