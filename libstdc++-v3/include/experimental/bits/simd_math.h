@@ -843,13 +843,24 @@ template <typename _Tp, typename _Abi>
 enable_if_t<std::is_floating_point_v<_Tp>, simd<_Tp, _Abi>>
 modf(const simd<_Tp, _Abi>& __x, simd<_Tp, _Abi>* __iptr)
 {
-  const auto __integral = trunc(__x);
-  *__iptr = __integral;
-  auto __r = __x - __integral;
+  if constexpr (__is_scalar_abi<_Abi>()
+		|| (__is_fixed_size_abi_v<_Abi> && simd_size_v<_Tp, _Abi> == 1))
+    {
+      _Tp __tmp;
+      _Tp __r = std::modf(__x[0], &__tmp);
+      __iptr[0] = __tmp;
+      return __r;
+    }
+  else
+    {
+      const auto __integral = trunc(__x);
+      *__iptr = __integral;
+      auto __r = __x - __integral;
 #if !__FINITE_MATH_ONLY__
   where(isinf(__x), __r) = _Tp();
 #endif
   return copysign(__r, __x);
+    }
 }
 
 _GLIBCXX_SIMD_MATH_CALL2_(scalbn, int)
