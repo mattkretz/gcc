@@ -39,6 +39,11 @@ for testcase in tests/*.h; do
     else
       extra=''
     fi
+    if [[ $type == "long double" ]]; then
+      # I don't care for fast-math with long double failures
+      extra='// { dg-skip-if "long double with -ffast-math is irrelevant for simd" { *-*-* }  { "-ffast-math" } { "" } }
+'"$extra"
+    fi
     filename="${testcase}-${type// /_}"
 
     cat > "${filename}.cc" <<EOF
