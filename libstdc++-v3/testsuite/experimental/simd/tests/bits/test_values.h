@@ -180,7 +180,7 @@ template <class V> typename V::mask_type isvalid(V x) {
       // might decide `abs_x <= max` is constexpr true, by definition
       // (-ffinite-math-only)
       static V max = std::__finite_max_v<T>;
-      return (x == 0 && copysign(x, V(1)) == V(1))
+      return (x == 0 && copysign(V(1), x) == V(1))
 	     || (abs_x >= min && abs_x <= max);
     }
 }
