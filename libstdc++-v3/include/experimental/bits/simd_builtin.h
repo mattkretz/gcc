@@ -2349,19 +2349,25 @@ template <typename _Abi> struct _SimdImplBuiltin
     _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_infinite
       = __vector_broadcast<_NI, _I>(FP_INFINITE);
 #endif
+#ifndef __FAST_MATH__
     _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_subnormal
       = __vector_broadcast<_NI, _I>(FP_SUBNORMAL);
+#endif
     _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_zero
       = __vector_broadcast<_NI, _I>(FP_ZERO);
 
-    __vector_type_t<_I, _NI> __tmp
-      = __xn < __minn ? (__xn == 0 ? __fp_zero : __fp_subnormal)
-#if __FINITE_MATH_ONLY__
-		      : __fp_normal;
+    __vector_type_t<_I, _NI>
+      __tmp = __xn < __minn
+#ifdef __FAST_MATH__
+		? __fp_zero
 #else
-		      : (__xn < __infn
-			   ? __fp_normal
-			   : (__xn == __infn ? __fp_infinite : __fp_nan));
+		? (__xn == 0 ? __fp_zero : __fp_subnormal)
+#endif
+#if __FINITE_MATH_ONLY__
+		: __fp_normal;
+#else
+		: (__xn < __infn ? __fp_normal
+				 : (__xn == __infn ? __fp_infinite : __fp_nan));
 #endif
 
     if constexpr (sizeof(_I) == sizeof(int))
