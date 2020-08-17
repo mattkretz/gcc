@@ -31,9 +31,10 @@ test()
     {
       0., 1., -1.,
 #if __GCC_IEC_559 >= 2
-	-0., inf, -inf, denorm_min, -denorm_min, nan,
+	-0., inf, -inf, denorm_min, -denorm_min, nan, norm_min * 0.9,
+	-norm_min * 0.9,
 #endif
-	max, -max, norm_min, norm_min * 0.9, -norm_min, -norm_min * 0.9
+	max, -max, norm_min, -norm_min
     },
     [](const V input) {
       COMPARE(NOFPEXCEPT(isfinite(input)),
