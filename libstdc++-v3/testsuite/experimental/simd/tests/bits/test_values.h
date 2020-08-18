@@ -40,6 +40,7 @@ template <class V> struct RandomValues {
 		     std::uniform_int_distribution<T>>
     dist;
   const bool uniform;
+  const T abs_max = std::__finite_max_v<T>;
 
   RandomValues(std::size_t count_, T min, T max)
     : count(count_), dist(min, max), uniform(true)
@@ -52,6 +53,12 @@ template <class V> struct RandomValues {
     : count(count_), dist(isfp ? 1 : std::__finite_min_v<T>,
 			  isfp ? 2 : std::__finite_max_v<T>),
       uniform(!isfp)
+  {
+  }
+
+  RandomValues(std::size_t count_, T abs_max_)
+    : count(count_), dist(isfp ? 1 : -abs_max_, isfp ? 2 : abs_max_),
+      uniform(!isfp), abs_max(abs_max_)
   {
   }
 
@@ -74,7 +81,7 @@ template <class V> struct RandomValues {
 	      const int exp = exp_dist(gen);
 	      fp = std::ldexp(mant, exp);
 	    }
-	  while (fp >= std::__finite_max_v<T> || fp <= std::__denorm_min_v<T>);
+	  while (fp >= abs_max || fp <= std::__denorm_min_v<T>);
 	  fp = gen() & 0x4 ? fp : -fp;
 	  return fp;
 	});

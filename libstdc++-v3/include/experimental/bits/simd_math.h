@@ -1003,6 +1003,7 @@ __hypot(_VV __x, _VV __y)
       // round __hi down to the next power-of-2:
       _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(__infinity_v<_Tp>);
 
+#ifndef __FAST_MATH__
       if constexpr (__have_neon && !__have_neon_a32)
 	{ // With ARMv7 NEON, we have no subnormals and must use slightly
 	  // different strategy
@@ -1020,16 +1021,30 @@ __hypot(_VV __x, _VV __y)
 	  where(__hi == 0, __r) = 0;
 	  return __r;
 	}
+#endif
 
+#ifdef __FAST_MATH__
+      // With fast-math, ignore precision of subnormals and inputs from
+      // __finite_max_v/2 to __finite_max_v. This removes all branching/masking.
+      if constexpr (true)
+#else
       if (_GLIBCXX_SIMD_IS_LIKELY(all_of(isnormal(__x))
 				  && all_of(isnormal(__y))))
+#endif
 	{
 	  const _V __hi_exp = __hi & __inf;
 	  //((__hi + __hi) & __inf) ^ __inf almost works for computing __scale,
 	  // except when (__hi + __hi) & __inf == __inf, in which case __scale
 	  // becomes 0 (should be min/2 instead) and thus loses the information
 	  // from __lo.
+#ifdef __FAST_MATH__
+	  using _Ip = __int_for_sizeof_t<_Tp>;
+	  using _IV = rebind_simd_t<_Ip, _V>;
+	  const auto __as_int = __bit_cast<_IV>(__hi_exp);
+	  const _V __scale = __bit_cast<_V>(2 * __bit_cast<_Ip>(_Tp(1)) - __as_int);
+#else
 	  const _V __scale = (__hi_exp ^ __inf) * _Tp(.5);
+#endif
 	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __mant_mask
 	    = __norm_min_v<_Tp> - __denorm_min_v<_Tp>;
 	  const _V __h1 = (__hi & __mant_mask) | _V(1);
@@ -1147,6 +1162,7 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	  // round __hi down to the next power-of-2:
 	  _GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(__infinity_v<_Tp>);
 
+#ifndef __FAST_MATH__
 	  if constexpr (_V::size() > 1 && __have_neon && !__have_neon_a32)
 	    { // With ARMv7 NEON, we have no subnormals and must use slightly
 	      // different strategy
@@ -1169,10 +1185,18 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      where(__hi == 0, __r) = 0;
 	      return __r;
 	    }
+#endif
 
+#ifdef __FAST_MATH__
+	  // With fast-math, ignore precision of subnormals and inputs from
+	  // __finite_max_v/2 to __finite_max_v. This removes all
+	  // branching/masking.
+	  if constexpr (true)
+#else
 	  if (_GLIBCXX_SIMD_IS_LIKELY(all_of(isnormal(__x))
 				      && all_of(isnormal(__y))
 				      && all_of(isnormal(__z))))
+#endif
 	    {
 	      const _V __hi_exp = __hi & __inf;
 	      //((__hi + __hi) & __inf) ^ __inf almost works for computing
@@ -1180,7 +1204,15 @@ __hypot(_VV __x, _VV __y, _VV __z)
 	      // case __scale
 	      // becomes 0 (should be min/2 instead) and thus loses the
 	      // information from __lo.
+#ifdef __FAST_MATH__
+	      using _Ip = __int_for_sizeof_t<_Tp>;
+	      using _IV = rebind_simd_t<_Ip, _V>;
+	      const auto __as_int = __bit_cast<_IV>(__hi_exp);
+	      const _V __scale
+		= __bit_cast<_V>(2 * __bit_cast<_Ip>(_Tp(1)) - __as_int);
+#else
 	      const _V __scale = (__hi_exp ^ __inf) * _Tp(.5);
+#endif
 	      constexpr _Tp __mant_mask
 		= __norm_min_v<_Tp> - __denorm_min_v<_Tp>;
 	      const _V __h1 = (__hi & _V(__mant_mask)) | _V(1);

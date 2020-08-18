@@ -18,10 +18,21 @@ test()
       std::__quiet_NaN_v<T>, std::__infinity_v<T>, -std::__infinity_v<T>, -0.,
       std::__denorm_min_v<T>, std::__norm_min_v<T> / 3,
 #endif
-      +0., std::__norm_min_v<T>, std::__finite_max_v<T>},
-    {100000}, MAKE_TESTER(hypot));
+      +0., std::__norm_min_v<T>, 1., 2., std::__finite_max_v<T> / 5,
+      std::__finite_max_v<T> / 3, std::__finite_max_v<T> / 2,
+#ifdef __FAST_MATH__
+      // fast-math hypot is imprecise for the max exponent
+    },
+    {100000, std::__finite_max_v<T> / 2},
+#else
+      std::__finite_max_v<T>},
+    {100000},
+#endif
+    MAKE_TESTER(hypot));
+#if !__FINITE_MATH_ONLY__
   COMPARE(hypot(V(std::__finite_max_v<T>), V(std::__finite_max_v<T>)),
 	  V(std::__infinity_v<T>));
+#endif
   COMPARE(hypot(V(std::__norm_min_v<T>), V(std::__norm_min_v<T>)),
 	  V(std::__norm_min_v<T> * std::sqrt(T(2))));
   VERIFY((sfinae_is_callable<V, V>(
