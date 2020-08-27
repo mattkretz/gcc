@@ -157,19 +157,26 @@ public:
   }
 };
 
-#if defined __i686__ && ! defined __SSE2_MATH__
+#if __FLT_EVAL_METHOD__ != 0
 template <typename T>
 [[gnu::always_inline]] inline decltype(auto)
-x87_force_fp_truncation(const T& x)
+force_fp_truncation(const T& x)
 {
-  if constexpr (std::experimental::is_simd_v<T> && sizeof(T) < 16)
+  namespace stdx = std::experimental;
+  if constexpr (stdx::is_simd_v<T>)
     {
-      if constexpr (std::is_floating_point_v<typename T::value_type>)
+      using U = typename T::value_type;
+      if constexpr (std::is_floating_point_v<typename T::value_type>
+	  && sizeof(U) <= 8
+	  && (sizeof(T) < 16
+	    || std::is_same_v<T, stdx::fixed_size_simd<U, T::size()>>))
 	{
 	  T y = x;
 	  asm("" : "+m"(y));
 	  return y;
 	}
+      else
+	return x;
     }
   else if constexpr (std::is_floating_point_v<T> && sizeof(T) <= 8)
     {
@@ -186,7 +193,7 @@ x87_force_fp_truncation(const T& x)
 		  __FILE__, __LINE__, __PRETTY_FUNCTION__,                     \
 		  "all_of(" #_a " == " #_b ")", #_a " = ", _aa,                \
 		  "\n" #_b " = ", _bb);                                        \
-  }(x87_force_fp_truncation(_a), x87_force_fp_truncation(_b))
+  }(force_fp_truncation(_a), force_fp_truncation(_b))
 #else
 #define COMPARE(_a, _b)                                                        \
   [&](auto&& _aa, auto&& _bb) {                                                \
