@@ -734,7 +734,7 @@ frexp(const simd<_Tp, _Abi>& __x, __samesize<int, simd<_Tp, _Abi>>* __exp)
       where(__iszero_inf_nan, __mant) = __x;
       _IV __e = __extract_exponent_as_int(__scaled_subnormal);
       using _MaskType = typename std::conditional_t<
-	sizeof(typename _V::mask_type) == sizeof(_IV), _V, _IV>::mask_type;
+	sizeof(typename _V::value_type) == sizeof(int), _V, _IV>::mask_type;
       const _MaskType __value_isnormal = isnormal(__x).__cvt();
       where(__value_isnormal.__cvt(), __e) = __exponent_bits;
       static_assert(sizeof(_IV) == sizeof(__value_isnormal));
