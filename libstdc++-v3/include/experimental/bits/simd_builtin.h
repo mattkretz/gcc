@@ -611,10 +611,10 @@ __convert_all(_From __v)
 	    []<typename _ToConvert>(_ToConvert __x0,
 				    [[maybe_unused]] _ToConvert __x1) {
 	      if constexpr (_Np == 1)
-		return _R{__vector_bitcast<_ToT>(__x0)};
+		return _R{__intrin_bitcast<_To>(__x0)};
 	      else
-		return _R{__vector_bitcast<_ToT>(__x0),
-			  __vector_bitcast<_ToT>(__x1)};
+		return _R{__intrin_bitcast<_To>(__x0),
+			  __intrin_bitcast<_To>(__x1)};
 	    };
 
 	  if constexpr (_Np == 0)
