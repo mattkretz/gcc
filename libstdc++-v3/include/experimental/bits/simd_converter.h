@@ -169,7 +169,7 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
 	  { // e.g. <int, 3> -> <double, 2, 1> or <short, 7> -> <double, 4, 2,
 	    // 1>
 	    using _RetRem = __remove_cvref_t<decltype(
-	      __simd_tuple_pop_front<__multiple_return_chunks.size()>(_Ret()))>;
+	      __simd_tuple_pop_front<__converted>(_Ret()))>;
 	    const auto __return_chunks2
 	      = __convert_all<__vector_type_t<_To, _RetRem::_S_first_size>, 0,
 			      __converted>(__x.first);
@@ -181,7 +181,9 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
 	    else
 	      {
 		using _RetRem2 = __remove_cvref_t<decltype(
-		  __simd_tuple_pop_front<__return_chunks2.size()>(_RetRem()))>;
+		  __simd_tuple_pop_front<__return_chunks2.size()
+					 * _RetRem::_S_first_size>(
+		    _RetRem()))>;
 		const auto __return_chunks3
 		  = __convert_all<__vector_type_t<_To, _RetRem2::_S_first_size>,
 				  0, __converted2>(__x.first);
@@ -195,7 +197,8 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
 		else
 		  {
 		    using _RetRem3 = __remove_cvref_t<decltype(
-		      __simd_tuple_pop_front<__return_chunks3.size()>(
+		      __simd_tuple_pop_front<__return_chunks3.size()
+					     * _RetRem2::_S_first_size>(
 			_RetRem2()))>;
 		    const auto __return_chunks4 = __convert_all<
 		      __vector_type_t<_To, _RetRem3::_S_first_size>, 0,
@@ -257,7 +260,7 @@ struct _SimdConverter<_From, simd_abi::fixed_size<_Np>, _To,
 		_SimdConverter<
 		  _From, simd_abi::fixed_size<_Np - _Ret::_S_first_size>, _To,
 		  simd_abi::fixed_size<_Np - _Ret::_S_first_size>>()(
-		  __simd_tuple_pop_front<sizeof...(__uncvted)>(__x))};
+		  __simd_tuple_pop_front<_Ret::_S_first_size>(__x))};
 	  },
 	  [&__x](auto __i) { return __get_tuple_at<__i>(__x); });
       }

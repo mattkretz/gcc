@@ -87,6 +87,8 @@ __simd_tuple_concat(const _Tp& __left,
 
 // }}}
 // __simd_tuple_pop_front {{{
+// Returns the next _SimdTuple in __x that has _Np elements less.
+// Precondition: _Np must match the number of elements in __first (recursively)
 template <size_t _Np, typename _Tp>
 _GLIBCXX_SIMD_INTRINSIC constexpr decltype(auto)
 __simd_tuple_pop_front(_Tp&& __x)
@@ -94,7 +96,11 @@ __simd_tuple_pop_front(_Tp&& __x)
   if constexpr (_Np == 0)
     return static_cast<_Tp&&>(__x);
   else
-    return __simd_tuple_pop_front<_Np - 1>(__x.second);
+    {
+      using _Up = __remove_cvref_t<_Tp>;
+      static_assert(_Np >= _Up::_S_first_size);
+      return __simd_tuple_pop_front<_Np - _Up::_S_first_size>(__x.second);
+    }
 }
 
 // }}}
@@ -453,7 +459,7 @@ struct _SimdTuple<_Tp, _Abi0, _Abis...>
       return __tup.second;
     else if constexpr (_S_first_size > _Up::_S_first_size
 		       && _S_first_size % _Up::_S_first_size == 0 && __off == 0)
-      return __simd_tuple_pop_front<_S_first_size / _Up::_S_first_size>(__tup);
+      return __simd_tuple_pop_front<_S_first_size>(__tup);
     else if constexpr (_S_first_size + __off < _Up::_S_first_size)
       return __add_offset<_S_first_size>(__tup);
     else if constexpr (_S_first_size + __off == _Up::_S_first_size)
@@ -834,7 +840,7 @@ __optimize_simd_tuple(const _SimdTuple<_Tp, _A0, _A1, _Abis...>& __x)
   else if constexpr (is_same_v<typename _R::_FirstType,
 			       typename _Tup::_FirstType>)
     return {__x.first, __optimize_simd_tuple(__x.second)};
-  else if constexpr (__is_scalar_abi<_A0>()) // implies all entries are scalar
+  else if constexpr (__is_scalar_abi<_A0>() || _A0::template _S_is_partial<_Tp>)
     return {
       __generate_from_n_evaluations<_R::_S_first_size, typename _R::_FirstType>(
 	[&](auto __i) { return __x[__i]; }),
@@ -855,6 +861,7 @@ __optimize_simd_tuple(const _SimdTuple<_Tp, _A0, _A1, _Abis...>& __x)
 	    __optimize_simd_tuple(__x.second.second.second.second)};
   else
     {
+      static_assert(sizeof(_R) == sizeof(__x));
       _R __r;
       __builtin_memcpy(__r._M_as_charptr(), __x._M_as_charptr(),
 		       sizeof(_Tp) * _R::_S_size());
