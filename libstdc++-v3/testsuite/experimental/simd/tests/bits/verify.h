@@ -262,27 +262,28 @@ template <class T> void iterate_abis()/*{{{*/
   invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
 #ifdef STRESSTEST
+  invoke_test<simd<T, simd_abi::_VecBuiltin<8>>>(int());
   invoke_test<simd<T, simd_abi::_VecBuiltin<32>>>(int());
   invoke_test<simd<T, simd_abi::_VecBltnBtmsk<56>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
 #endif
-#else
+#elif TESTFIXEDSIZE == 1
   invoke_test<simd<T, simd_abi::fixed_size<1>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<2>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<5>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<6>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<7>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<8>>>(int());
+#elif TESTFIXEDSIZE == 2
   invoke_test<simd<T, simd_abi::fixed_size<9>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<10>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<11>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<13>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<14>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<15>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<16>>>(int());
+#elif TESTFIXEDSIZE == 3
   invoke_test<simd<T, simd_abi::fixed_size<17>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<18>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<19>>>(int());
@@ -290,9 +291,12 @@ template <class T> void iterate_abis()/*{{{*/
   invoke_test<simd<T, simd_abi::fixed_size<21>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<22>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<23>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
+#elif TESTFIXEDSIZE == 4
   invoke_test<simd<T, simd_abi::fixed_size<25>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<26>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<27>>>(int());
+  invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<29>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<30>>>(int());
   invoke_test<simd<T, simd_abi::fixed_size<31>>>(int());

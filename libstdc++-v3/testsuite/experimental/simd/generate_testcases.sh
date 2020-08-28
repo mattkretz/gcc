@@ -58,7 +58,7 @@ int main()
 }
 EOF
     cat > "${filename}-constexpr.cc" <<EOF
-// { dg-options "-std=gnu++17" }
+// { dg-options "-std=gnu++17 -DSTRESSTEST=1" }
 // { dg-require-effective-target run_expensive_tests }
 ${extra}
 #include "tests/${testcase}.h"
@@ -69,11 +69,12 @@ int main()
   return 0;
 }
 EOF
-    cat > "${filename}-fixed_size.cc" <<EOF
+    for i in 1 2 3 4; do
+      cat > "${filename}-fixed_size${i}.cc" <<EOF
 // { dg-options "-std=gnu++17" }
 // { dg-require-effective-target run_expensive_tests }
 ${extra}
-#define TESTFIXEDSIZE 1
+#define TESTFIXEDSIZE $i
 #include "tests/${testcase}.h"
 
 int main()
@@ -82,5 +83,6 @@ int main()
   return 0;
 }
 EOF
+    done
   done
 done
