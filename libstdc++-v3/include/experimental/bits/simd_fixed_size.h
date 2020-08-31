@@ -1560,9 +1560,8 @@ template <int _Np> struct _SimdImplFixedSize
   // math {{{2
 #define _GLIBCXX_SIMD_APPLY_ON_TUPLE(_RetTp, __name)                           \
   template <typename _Tp, typename... _As, typename... _More>                  \
-  static inline __fixed_size_storage_t<_RetTp,                                 \
-				       _SimdTuple<_Tp, _As...>::_S_size()>     \
-    _S_##__name(const _SimdTuple<_Tp, _As...>& __x, const _More&... __more)    \
+  static inline __fixed_size_storage_t<_RetTp, _Np> _S_##__name(               \
+    const _SimdTuple<_Tp, _As...>& __x, const _More&... __more)                \
   {                                                                            \
     if constexpr (sizeof...(_More) == 0)                                       \
       {                                                                        \
@@ -1680,14 +1679,6 @@ template <int _Np> struct _SimdImplFixedSize
 		__autocvt_to_simd(__b)));
       },
       __exp);
-  }
-
-  template <typename _Tp, typename... _As>
-  static inline __fixed_size_storage_t<int, _Np>
-  _S_fpclassify(const _SimdTuple<_Tp, _As...>& __x) noexcept
-  {
-    return __optimize_simd_tuple(__x.template _M_apply_r<int>(
-      [](auto __impl, auto __xx) { return __impl._S_fpclassify(__xx); }));
   }
 
 #define _GLIBCXX_SIMD_TEST_ON_TUPLE_(name_)                                    \
