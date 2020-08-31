@@ -1018,7 +1018,7 @@ __convert_x86(_V __v0, _V __v1)
 		    "integral conversions with ymm registers require AVX2");
     }
   // concat => use 1-arg __convert_x86 {{{2
-  if constexpr ((sizeof(__v0) == 16 && __have_avx2)
+  if constexpr (sizeof(__v0) < 16 || (sizeof(__v0) == 16 && __have_avx2)
 		|| (sizeof(__v0) == 16 && __have_avx
 		    && std::is_floating_point_v<_Tp>)
 		|| (sizeof(__v0) == 32 && __have_avx512f
@@ -1556,7 +1556,7 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 		    "integral conversions with ymm registers require AVX2");
     }
   // concat => use 2-arg __convert_x86 {{{2
-  if constexpr ((sizeof(__v0) == 16 && __have_avx2)
+  if constexpr (sizeof(__v0) < 16 || (sizeof(__v0) == 16 && __have_avx2)
 		|| (sizeof(__v0) == 16 && __have_avx
 		    && std::is_floating_point_v<_Tp>)
 		|| (sizeof(__v0) == 32 && __have_avx512f))
@@ -1850,7 +1850,7 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3, _V __v4, _V __v5, _V __v6,
 		    "integral conversions with ymm registers require AVX2");
     }
   // concat => use 4-arg __convert_x86 {{{2
-  if constexpr ((sizeof(__v0) == 16 && __have_avx2)
+  if constexpr (sizeof(__v0) < 16 || (sizeof(__v0) == 16 && __have_avx2)
 		|| (sizeof(__v0) == 16 && __have_avx
 		    && std::is_floating_point_v<_Tp>)
 		|| (sizeof(__v0) == 32 && __have_avx512f))
