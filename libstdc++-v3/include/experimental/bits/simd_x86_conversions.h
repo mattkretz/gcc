@@ -1002,14 +1002,12 @@ __convert_x86(_V __v0, _V __v1)
     = is_floating_point_v<_Tp> && sizeof(_Tp) == 8
       && is_floating_point_v<_Up> && sizeof(_Up) == 4;
 
-  if constexpr (__i_to_i && __y_to_x && !__have_avx2)
-    { //{{{2
-      // <double, 4>, <double, 4> => <short, 8>
-      return __convert_x86<_To>(__lo128(__v0), __hi128(__v0), __lo128(__v1),
-				__hi128(__v1));
-    }
-  else if constexpr (__i_to_i)
-    { // assert ISA {{{2
+  if constexpr (__i_to_i && __y_to_x && !__have_avx2) //{{{2
+    // <double, 4>, <double, 4> => <short, 8>
+    return __convert_x86<_To>(__lo128(__v0), __hi128(__v0), __lo128(__v1),
+			      __hi128(__v1));
+  else if constexpr (__i_to_i) // assert ISA {{{2
+    {
       static_assert(__x_to_x || __have_avx2,
 		    "integral conversions with ymm registers require AVX2");
       static_assert(__have_avx512bw
@@ -1030,23 +1028,24 @@ __convert_x86(_V __v0, _V __v1)
       // implementation. This reduces code duplication considerably.
       return __convert_x86<_To>(__concat(__v0, __v1));
     }
-  else
-    { //{{{2
+  else //{{{2
+    {
       // conversion using bit reinterpretation (or no conversion at all) should
       // all go through the concat branch above:
       static_assert(!(
 	std::is_floating_point_v<
 	  _Tp> == std::is_floating_point_v<_Up> && sizeof(_Tp) == sizeof(_Up)));
+      // handle all zero extension{{{2
       if constexpr (2 * _Np < _M && sizeof(_To) > 16)
-	{ // handle all zero extension{{{2
+	{
 	  constexpr size_t Min = 16 / sizeof(_Up);
 	  return __zero_extend(
 	    __convert_x86<
 	      __vector_type_t<_Up, (Min > 2 * _Np) ? Min : 2 * _Np>>(__v0,
 								     __v1));
 	}
-      else if constexpr (__i64_to_i32)
-	{ //{{{2
+      else if constexpr (__i64_to_i32) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    return __auto_bitcast(
 	      _mm_shuffle_ps(__auto_bitcast(__v0), __auto_bitcast(__v1), 0x88));
@@ -1067,8 +1066,8 @@ __convert_x86(_V __v0, _V __v1)
 	    return __intrin_bitcast<_To>(__concat(_mm512_cvtepi64_epi32(__i0),
 						  _mm512_cvtepi64_epi32(__i1)));
 	}
-      else if constexpr (__i64_to_i16)
-	{ //{{{2
+      else if constexpr (__i64_to_i16) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    {
 	      // AVX2 is not available (would concat otherwise)
@@ -1099,8 +1098,8 @@ __convert_x86(_V __v0, _V __v1)
 	    return __intrin_bitcast<_To>(__concat(_mm512_cvtepi64_epi16(__i0),
 						  _mm512_cvtepi64_epi16(__i1)));
 	}
-      else if constexpr (__i64_to_i8)
-	{ //{{{2
+      else if constexpr (__i64_to_i8) //{{{2
+	{
 	  if constexpr (__x_to_x && __have_sse4_1)
 	    {
 	      return __intrin_bitcast<_To>(_mm_shuffle_epi8(
@@ -1138,8 +1137,8 @@ __convert_x86(_V __v0, _V __v1)
 	      return __intrin_bitcast<_To>(__lo128(__a) | __hi128(__a));
 	    } // __z_to_x uses concat fallback
 	}
-      else if constexpr (__i32_to_i16)
-	{ //{{{2
+      else if constexpr (__i32_to_i16) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    {
 	      // AVX2 is not available (would concat otherwise)
@@ -1186,8 +1185,8 @@ __convert_x86(_V __v0, _V __v1)
 		__xzyw(_mm256_unpacklo_epi64(__a, __b)));
 	    } // __z_to_z uses concat fallback
 	}
-      else if constexpr (__i32_to_i8)
-	{ //{{{2
+      else if constexpr (__i32_to_i8) //{{{2
+	{
 	  if constexpr (__x_to_x && __have_ssse3)
 	    {
 	      const auto shufmask
@@ -1218,8 +1217,8 @@ __convert_x86(_V __v0, _V __v1)
 	      return __intrin_bitcast<_To>(__lo128(__a) | __hi128(__a));
 	    } // __z_to_y uses concat fallback
 	}
-      else if constexpr (__i16_to_i8)
-	{ //{{{2
+      else if constexpr (__i16_to_i8) //{{{2
+	{
 	  if constexpr (__x_to_x && __have_ssse3)
 	    {
 	      const auto __shuf = reinterpret_cast<__m128i>(
@@ -1250,8 +1249,8 @@ __convert_x86(_V __v0, _V __v1)
 				 9, 11, 13, 15))));
 	    } // __z_to_z uses concat fallback
 	}
-      else if constexpr (__i64_to_f32)
-	{ //{{{2
+      else if constexpr (__i64_to_f32) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    return __make_wrapper<float>(__v0[0], __v0[1], __v1[0], __v1[1]);
 	  else if constexpr (__y_to_y)
@@ -1307,12 +1306,12 @@ __convert_x86(_V __v0, _V __v1)
 					      _mm512_cvtepi64_epi32(__i1))));
 	    }
 	}
-      else if constexpr (__f64_to_s32)
-	{ //{{{2
+      else if constexpr (__f64_to_s32) //{{{2
+	{
 	  // use concat fallback
 	}
-      else if constexpr (__f64_to_u32)
-	{ //{{{2
+      else if constexpr (__f64_to_u32) //{{{2
+	{
 	  if constexpr (__x_to_x && __have_sse4_1)
 	    {
 	      return __vector_bitcast<_Up, _M>(_mm_unpacklo_epi64(
@@ -1332,8 +1331,8 @@ __convert_x86(_V __v0, _V __v1)
 		     ^ 0x8000'0000u;
 	    } // __z_to_z uses fallback
 	}
-      else if constexpr (__f64_to_ibw)
-	{ //{{{2
+      else if constexpr (__f64_to_ibw) //{{{2
+	{
 	  // one-arg __f64_to_ibw goes via _SimdWrapper<int, ?>. The fallback
 	  // would go via two independet conversions to _SimdWrapper<_To> and
 	  // subsequent interleaving. This is better, because f64->__i32 allows
@@ -1343,13 +1342,12 @@ __convert_x86(_V __v0, _V __v1)
 	    __convert_x86<__vector_type_t<int, _Np * 2>>(__v0, __v1));
 	  //}
 	}
-      else if constexpr (__f32_to_ibw)
-	{ //{{{2
+      else if constexpr (__f32_to_ibw) //{{{2
+	{
 	  return __convert_x86<_To>(
 	    __convert_x86<__vector_type_t<int, _Np>>(__v0),
 	    __convert_x86<__vector_type_t<int, _Np>>(__v1));
-	  //}}}
-	}
+	} //}}}
 
       // fallback: {{{2
       if constexpr (sizeof(_To) >= 32)
@@ -1539,15 +1537,15 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
     = is_floating_point_v<_Tp> && sizeof(_Tp) == 8
       && is_floating_point_v<_Up> && sizeof(_Up) == 4;
 
-  if constexpr (__i_to_i && __y_to_x && !__have_avx2)
-    { //{{{2
+  if constexpr (__i_to_i && __y_to_x && !__have_avx2) //{{{2
+    {
       // <double, 4>, <double, 4>, <double, 4>, <double, 4> => <char, 16>
       return __convert_x86<_To>(__lo128(__v0), __hi128(__v0), __lo128(__v1),
 				__hi128(__v1), __lo128(__v2), __hi128(__v2),
 				__lo128(__v3), __hi128(__v3));
     }
-  else if constexpr (__i_to_i)
-    { // assert ISA {{{2
+  else if constexpr (__i_to_i) // assert ISA {{{2
+    {
       static_assert(__x_to_x || __have_avx2,
 		    "integral conversions with ymm registers require AVX2");
       static_assert(__have_avx512bw
@@ -1567,15 +1565,16 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
       // implementation. This reduces code duplication considerably.
       return __convert_x86<_To>(__concat(__v0, __v1), __concat(__v2, __v3));
     }
-  else
-    { //{{{2
+  else //{{{2
+    {
       // conversion using bit reinterpretation (or no conversion at all) should
       // all go through the concat branch above:
       static_assert(!(
 	std::is_floating_point_v<
 	  _Tp> == std::is_floating_point_v<_Up> && sizeof(_Tp) == sizeof(_Up)));
+      // handle all zero extension{{{2
       if constexpr (4 * _Np < _M && sizeof(_To) > 16)
-	{ // handle all zero extension{{{2
+	{
 	  constexpr size_t Min = 16 / sizeof(_Up);
 	  return __zero_extend(
 	    __convert_x86<
@@ -1583,8 +1582,8 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 								     __v2,
 								     __v3));
 	}
-      else if constexpr (__i64_to_i16)
-	{ //{{{2
+      else if constexpr (__i64_to_i16) //{{{2
+	{
 	  if constexpr (__x_to_x && __have_sse4_1)
 	    {
 	      return __intrin_bitcast<_To>(_mm_shuffle_epi8(
@@ -1628,8 +1627,8 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 		  */
 	    } // else use fallback
 	}
-      else if constexpr (__i64_to_i8)
-	{ //{{{2
+      else if constexpr (__i64_to_i8) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    {
 	      // TODO: use fallback for now
@@ -1654,8 +1653,8 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 				   __hi128(__c))); // 0123 4567 89AB CDEF
 	    }
 	}
-      else if constexpr (__i32_to_i8)
-	{ //{{{2
+      else if constexpr (__i32_to_i8) //{{{2
+	{
 	  if constexpr (__x_to_x)
 	    {
 	      if constexpr (__have_ssse3)
@@ -1706,8 +1705,8 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 		__a, _mm256_setr_epi32(0, 4, 1, 5, 2, 6, 3, 7)));
 	    }
 	}
-      else if constexpr (__i64_to_f32)
-	{ //{{{2
+      else if constexpr (__i64_to_f32) //{{{2
+	{
 	  // this branch is only relevant with AVX and w/o AVX2 (i.e. no ymm
 	  // integers)
 	  if constexpr (__x_to_y)
@@ -1738,14 +1737,14 @@ __convert_x86(_V __v0, _V __v1, _V __v2, _V __v3)
 	      return (__hi + __mid) + __lo;
 	    }
 	}
-      else if constexpr (__f64_to_ibw)
-	{ //{{{2
+      else if constexpr (__f64_to_ibw) //{{{2
+	{
 	  return __convert_x86<_To>(
 	    __convert_x86<__vector_type_t<int, _Np * 2>>(__v0, __v1),
 	    __convert_x86<__vector_type_t<int, _Np * 2>>(__v2, __v3));
 	}
-      else if constexpr (__f32_to_ibw)
-	{ //{{{2
+      else if constexpr (__f32_to_ibw) //{{{2
+	{
 	  return __convert_x86<_To>(
 	    __convert_x86<__vector_type_t<int, _Np>>(__v0),
 	    __convert_x86<__vector_type_t<int, _Np>>(__v1),
