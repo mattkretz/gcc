@@ -178,7 +178,7 @@ struct _SimdImplScalar
   template <typename _Tp, typename _Up>
   static inline void _S_store(_Tp __v, _Up* __mem, _TypeTag<_Tp>) noexcept
   {
-    __mem[0] = static_cast<_Tp>(__v);
+    __mem[0] = static_cast<_Up>(__v);
   }
 
   // _S_masked_store {{{2
