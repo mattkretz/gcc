@@ -11,7 +11,6 @@ test()
   using T = typename V::value_type;
   constexpr auto denorm_min = std::__denorm_min_v<T>;
   constexpr auto norm_min = std::__norm_min_v<T>;
-  constexpr auto min = std::__finite_min_v<T>;
   constexpr auto max = std::__finite_max_v<T>;
   constexpr auto nan = std::__quiet_NaN_v<T>;
   constexpr auto inf = std::__infinity_v<T>;

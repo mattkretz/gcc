@@ -12,7 +12,6 @@ hypot3(T x, T y, T z)
   x = std::abs(x);
   y = std::abs(y);
   z = std::abs(z);
-  auto too_small = [](T a, T b, T c) { return a + b == b && a + c == c; };
   if (std::isinf(x) || std::isinf(y) || std::isinf(z))
     return std::__infinity_v<T>;
   else if (std::isnan(x) || std::isnan(y) || std::isnan(z))
