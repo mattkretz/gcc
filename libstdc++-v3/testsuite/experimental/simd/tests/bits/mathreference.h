@@ -69,7 +69,7 @@ template <class F, class T> inline std::string filename()
 		  ? "-dp"
 		  : (sizeof(T) == 16 && std::__digits_v<T> == 64
 			 && std::__max_exponent_v<T> == 16384
-		       ? "-dep"
+		       ? "-ep"
 		       : (sizeof(T) == 16 && std::__digits_v<T> == 113
 			      && std::__max_exponent_v<T> == 16384
 			    ? "-qp"
