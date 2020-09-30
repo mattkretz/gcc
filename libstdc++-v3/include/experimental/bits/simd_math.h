@@ -45,17 +45,20 @@ struct __math_return_type<double, _Tp, _Abi>
 {
   using type = std::experimental::simd<_Tp, _Abi>;
 };
+
 template <typename _Tp, typename _Abi>
 struct __math_return_type<bool, _Tp, _Abi>
 {
   using type = std::experimental::simd_mask<_Tp, _Abi>;
 };
+
 template <typename _DoubleR, typename _Tp, typename _Abi>
 struct __math_return_type
 {
   using type
     = std::experimental::fixed_size_simd<_DoubleR, simd_size_v<_Tp, _Abi>>;
 };
+
 //}}}
 // _GLIBCXX_SIMD_MATH_CALL_ {{{
 #define _GLIBCXX_SIMD_MATH_CALL_(__name)                                       \
@@ -85,6 +88,7 @@ struct __extra_argument_type<_Tp*, _Tp, _Abi>
   }
   static constexpr bool __needs_temporary_scalar = true;
 };
+
 template <typename _Up, typename _Tp, typename _Abi>
 struct __extra_argument_type<_Up*, _Tp, _Abi>
 {
@@ -98,6 +102,7 @@ struct __extra_argument_type<_Up*, _Tp, _Abi>
   }
   static constexpr bool __needs_temporary_scalar = true;
 };
+
 template <typename _Tp, typename _Abi>
 struct __extra_argument_type<_Tp, _Tp, _Abi>
 {
@@ -110,6 +115,7 @@ struct __extra_argument_type<_Tp, _Tp, _Abi>
   }
   static constexpr bool __needs_temporary_scalar = false;
 };
+
 template <typename _Up, typename _Tp, typename _Abi>
 struct __extra_argument_type
 {
@@ -124,6 +130,7 @@ struct __extra_argument_type
   }
   static constexpr bool __needs_temporary_scalar = false;
 };
+
 //}}}
 // _GLIBCXX_SIMD_MATH_CALL2_ {{{
 #define _GLIBCXX_SIMD_MATH_CALL2_(__name, arg2_)                               \
@@ -1387,6 +1394,7 @@ template <typename _Abi> __ldoublev<_Abi> nanl(const char* tagp);
 template <typename _V> struct simd_div_t {
     _V quot, rem;
 };
+
 template <typename _Abi>
 simd_div_t<_SCharv<_Abi>> div(_SCharv<_Abi> numer,
 					 _SCharv<_Abi> denom);

@@ -152,6 +152,7 @@ struct element_aligned_tag
     return __ptr;
   }
 };
+
 struct vector_aligned_tag
 {
   template <typename _Tp, typename _Up = typename _Tp::value_type>
@@ -165,6 +166,7 @@ struct vector_aligned_tag
       __builtin_assume_aligned(__ptr, _S_alignment<_Tp, _Up>));
   }
 };
+
 template <size_t _Np> struct overaligned_tag
 {
   template <typename _Tp, typename _Up = typename _Tp::value_type>
@@ -176,6 +178,7 @@ template <size_t _Np> struct overaligned_tag
     return static_cast<_Up*>(__builtin_assume_aligned(__ptr, _Np));
   }
 };
+
 inline constexpr element_aligned_tag element_aligned = {};
 inline constexpr vector_aligned_tag vector_aligned = {};
 template <size_t _Np> inline constexpr overaligned_tag<_Np> overaligned = {};
@@ -275,6 +278,7 @@ template <typename _Tp> struct __identity
 {
   using type = _Tp;
 };
+
 template <typename _Tp> using __id = typename __identity<_Tp>::type;
 
 // }}}
@@ -283,6 +287,7 @@ template <typename _T0, typename...> struct __first_of_pack
 {
   using type = _T0;
 };
+
 template <typename... _Ts>
 using __first_of_pack_t = typename __first_of_pack<_Ts...>::type;
 
@@ -304,9 +309,11 @@ template <typename _Tp>
 struct __is_vectorizable : public std::is_arithmetic<_Tp>
 {
 };
+
 template <> struct __is_vectorizable<bool> : public false_type
 {
 };
+
 template <typename _Tp>
 inline constexpr bool __is_vectorizable_v = __is_vectorizable<_Tp>::value;
 // Deduces to a vectorizable type
@@ -320,9 +327,11 @@ struct __is_possible_loadstore_conversion
   : conjunction<__is_vectorizable<_Ptr>, __is_vectorizable<_ValueType>>
 {
 };
+
 template <> struct __is_possible_loadstore_conversion<bool, bool> : true_type
 {
 };
+
 // Deduces to a type allowed for load/store with the given value type.
 template <typename _Ptr, typename _ValueType,
 	  typename = enable_if_t<
@@ -335,6 +344,7 @@ template <typename _Tp, typename = std::void_t<>>
 struct __is_bitmask : false_type
 {
 };
+
 template <typename _Tp>
 inline constexpr bool __is_bitmask_v = __is_bitmask<_Tp>::value;
 
@@ -426,6 +436,7 @@ using __int_with_sizeof_t = decltype(__int_for_sizeof<_Np>());
 template <typename _Tp> struct __is_fixed_size_abi : false_type
 {
 };
+
 template <int _Np>
 struct __is_fixed_size_abi<simd_abi::fixed_size<_Np>> : true_type
 {
@@ -569,6 +580,7 @@ template <typename, typename _Up> struct __make_dependent
 {
   using type = _Up;
 };
+
 template <typename _Tp, typename _Up>
 using __make_dependent_t = typename __make_dependent<_Tp, _Up>::type;
 
@@ -677,6 +689,7 @@ struct _InvalidTraits
   struct _SimdMember
   {
   };
+
   struct _SimdCastType;
 
   static constexpr size_t _S_mask_align = 1;
@@ -684,8 +697,10 @@ struct _InvalidTraits
   struct _MaskMember
   {
   };
+
   struct _MaskCastType;
 };
+
 // }}}
 // _SimdTraits {{{
 template <typename _Tp, typename _Abi, typename = std::void_t<>>
@@ -728,10 +743,12 @@ template <typename _Tp>
 struct __is_narrowing_conversion<bool, _Tp, true, true> : public true_type
 {
 };
+
 template <>
 struct __is_narrowing_conversion<bool, bool, true, true> : public false_type
 {
 };
+
 template <typename _Tp>
 struct __is_narrowing_conversion<_Tp, _Tp, true, true> : public false_type
 {
@@ -749,6 +766,7 @@ template <typename _From, typename _To, bool = (sizeof(_From) < sizeof(_To))>
 struct __converts_to_higher_integer_rank : public true_type
 {
 };
+
 // this may fail for char -> short if sizeof(char) == sizeof(short)
 template <typename _From, typename _To>
 struct __converts_to_higher_integer_rank<_From, _To, false>
@@ -849,10 +867,12 @@ using _SimdWrapper64 = _SimdWrapper<_Tp, 64 / sizeof(_Tp)>;
 template <typename _Tp> struct __is_simd_wrapper : false_type
 {
 };
+
 template <typename _Tp, size_t _Np>
 struct __is_simd_wrapper<_SimdWrapper<_Tp, _Np>> : true_type
 {
 };
+
 template <typename _Tp>
 inline constexpr bool __is_simd_wrapper_v = __is_simd_wrapper<_Tp>::value;
 
@@ -966,6 +986,7 @@ template <typename _Tp = void> struct __increment
 {
   constexpr _Tp operator()(_Tp __a) const { return ++__a; }
 };
+
 template <> struct __increment<void>
 {
   template <typename _Tp> constexpr _Tp operator()(_Tp __a) const
@@ -973,10 +994,12 @@ template <> struct __increment<void>
     return ++__a;
   }
 };
+
 template <typename _Tp = void> struct __decrement
 {
   constexpr _Tp operator()(_Tp __a) const { return --__a; }
 };
+
 template <> struct __decrement<void>
 {
   template <typename _Tp> constexpr _Tp operator()(_Tp __a) const
@@ -1423,6 +1446,7 @@ template <typename _Tp, typename = std::void_t<>>
 struct __is_vector_type : false_type
 {
 };
+
 template <typename _Tp>
 struct __is_vector_type<
   _Tp, std::void_t<typename __vector_type<
@@ -1451,6 +1475,7 @@ struct _VectorTraitsImpl<_Tp, enable_if_t<__is_vector_type_v<_Tp>>>
   static constexpr bool _S_is
     = std::is_same_v<value_type, _Up> && _W == _S_full_size;
 };
+
 template <typename _Tp, size_t _Np>
 struct _VectorTraitsImpl<_SimdWrapper<_Tp, _Np>,
 			 std::void_t<__vector_type_t<_Tp, _Np>>>
@@ -2168,6 +2193,7 @@ template <typename _Tp> struct _AutoCast
     return __intrin_bitcast<typename _UVT::type>(__x);
   }
 };
+
 template <typename _Tp>
 _GLIBCXX_SIMD_INTRINSIC constexpr _AutoCast<_Tp>
 __auto_bitcast(const _Tp& __x)
@@ -2196,30 +2222,37 @@ template <size_t _Size> struct __bool_storage_member_type
   using type =
     typename __bool_storage_member_type<__next_power_of_2(_Size)>::type;
 };
+
 template <> struct __bool_storage_member_type<1>
 {
   using type = bool;
 };
+
 template <> struct __bool_storage_member_type<2>
 {
   using type = __mmask8;
 };
+
 template <> struct __bool_storage_member_type<4>
 {
   using type = __mmask8;
 };
+
 template <> struct __bool_storage_member_type<8>
 {
   using type = __mmask8;
 };
+
 template <> struct __bool_storage_member_type<16>
 {
   using type = __mmask16;
 };
+
 template <> struct __bool_storage_member_type<32>
 {
   using type = __mmask32;
 };
+
 template <> struct __bool_storage_member_type<64>
 {
   using type = __mmask64;
@@ -2659,11 +2692,13 @@ template <typename _Tp> using __default_abi = compatible<_Tp>;
 template <typename _Tp, typename = std::void_t<>> struct is_abi_tag : false_type
 {
 };
+
 template <typename _Tp>
 struct is_abi_tag<_Tp, std::void_t<typename _Tp::_IsValidAbiTag>>
   : public _Tp::_IsValidAbiTag
 {
 };
+
 template <typename _Tp>
 inline constexpr bool is_abi_tag_v = is_abi_tag<_Tp>::value;
 
@@ -2671,11 +2706,13 @@ inline constexpr bool is_abi_tag_v = is_abi_tag<_Tp>::value;
 template <typename _Tp> struct is_simd : public false_type
 {
 };
+
 template <typename _Tp> inline constexpr bool is_simd_v = is_simd<_Tp>::value;
 
 template <typename _Tp> struct is_simd_mask : public false_type
 {
 };
+
 template <typename _Tp>
 inline constexpr bool is_simd_mask_v = is_simd_mask<_Tp>::value;
 
@@ -2683,6 +2720,7 @@ inline constexpr bool is_simd_mask_v = is_simd_mask<_Tp>::value;
 template <typename _Tp, typename _Abi, typename = void> struct __simd_size_impl
 {
 };
+
 template <typename _Tp, typename _Abi>
 struct __simd_size_impl<
   _Tp, _Abi,
@@ -2696,6 +2734,7 @@ template <typename _Tp, typename _Abi = simd_abi::__default_abi<_Tp>>
 struct simd_size : __simd_size_impl<_Tp, _Abi>
 {
 };
+
 template <typename _Tp, typename _Abi = simd_abi::__default_abi<_Tp>>
 inline constexpr size_t simd_size_v = simd_size<_Tp, _Abi>::value;
 
@@ -2729,6 +2768,7 @@ struct rebind_simd<
 {
   using type = simd<_Tp, simd_abi::deduce_t<_Tp, simd_size_v<_Up, _Abi>, _Abi>>;
 };
+
 template <typename _Tp, typename _Up, typename _Abi>
 struct rebind_simd<
   _Tp, simd_mask<_Up, _Abi>,
@@ -2737,6 +2777,7 @@ struct rebind_simd<
   using type
     = simd_mask<_Tp, simd_abi::deduce_t<_Tp, simd_size_v<_Up, _Abi>, _Abi>>;
 };
+
 template <typename _Tp, typename _V>
 using rebind_simd_t = typename rebind_simd<_Tp, _V>::type;
 
@@ -2748,12 +2789,14 @@ struct resize_simd<_Np, simd<_Tp, _Abi>,
 {
   using type = simd<_Tp, simd_abi::deduce_t<_Tp, _Np, _Abi>>;
 };
+
 template <int _Np, typename _Tp, typename _Abi>
 struct resize_simd<_Np, simd_mask<_Tp, _Abi>,
 		   void_t<simd_abi::deduce_t<_Tp, _Np, _Abi>>>
 {
   using type = simd_mask<_Tp, simd_abi::deduce_t<_Tp, _Np, _Abi>>;
 };
+
 template <int _Np, typename _V>
 using resize_simd_t = typename resize_simd<_Np, _V>::type;
 
@@ -2764,6 +2807,7 @@ struct memory_alignment
   : public _SizeConstant<vector_aligned_tag::_S_alignment<_Tp, _Up>>
 {
 };
+
 template <typename _Tp, typename _Up = typename _Tp::value_type>
 inline constexpr size_t memory_alignment_v = memory_alignment<_Tp, _Up>::value;
 
@@ -2774,6 +2818,7 @@ template <typename _Tp, typename _Abi>
 struct is_simd<simd<_Tp, _Abi>> : public true_type
 {
 };
+
 template <typename _Tp> using native_simd = simd<_Tp, simd_abi::native<_Tp>>;
 template <typename _Tp, int _Np>
 using fixed_size_simd = simd<_Tp, simd_abi::fixed_size<_Np>>;
@@ -2787,6 +2832,7 @@ template <typename _Tp, typename _Abi>
 struct is_simd_mask<simd_mask<_Tp, _Abi>> : public true_type
 {
 };
+
 template <typename _Tp>
 using native_simd_mask = simd_mask<_Tp, simd_abi::native<_Tp>>;
 template <typename _Tp, int _Np>
@@ -2830,12 +2876,14 @@ template <typename _Tp, typename = void> struct __safe_make_signed
 {
   using type = _Tp;
 };
+
 template <typename _Tp>
 struct __safe_make_signed<_Tp, enable_if_t<std::is_integral_v<_Tp>>>
 {
   // the extra make_unsigned_t is because of PR85951
   using type = std::make_signed_t<std::make_unsigned_t<_Tp>>;
 };
+
 template <typename _Tp>
 using safe_make_signed_t = typename __safe_make_signed<_Tp>::type;
 
@@ -3661,6 +3709,7 @@ template <size_t _V0, size_t... _Values> struct _SizeList
       }
   }
 };
+
 // }}}
 // __extract_center {{{
 template <typename _Tp, size_t _Np>
@@ -4189,6 +4238,7 @@ template <typename _Tp> struct __decay_abi
 {
   using type = _Tp;
 };
+
 template <int _Bytes> struct __decay_abi<__scalar_abi_wrapper<_Bytes>>
 {
   using type = simd_abi::scalar;
@@ -4307,12 +4357,14 @@ template <typename _Tp, std::size_t _Np, typename = void>
 struct __deduce_fixed_size_fallback
 {
 };
+
 template <typename _Tp, std::size_t _Np>
 struct __deduce_fixed_size_fallback<
   _Tp, _Np, enable_if_t<simd_abi::fixed_size<_Np>::template _S_is_valid_v<_Tp>>>
 {
   using type = simd_abi::fixed_size<_Np>;
 };
+
 template <typename _Tp, std::size_t _Np, typename>
 struct __deduce_impl : public __deduce_fixed_size_fallback<_Tp, _Np>
 {
@@ -4594,6 +4646,7 @@ public:
 
     const simd_mask<_Tp, _Abi>& _M_data;
   };
+
   _GLIBCXX_SIMD_INTRINSIC _CvtProxy __cvt() const { return {*this}; }
   // }}}
   // operator?: overloads (suggested extension) {{{
