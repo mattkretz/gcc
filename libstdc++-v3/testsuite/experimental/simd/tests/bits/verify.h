@@ -141,6 +141,14 @@ public:
     return *this;
   }
 
+  template <typename... Ts>
+  const verify& on_failure(const Ts&... xs) const
+  {
+    if (m_failed)
+      (print(xs, int()), ...);
+    return *this;
+  }
+
   [[gnu::always_inline]] static inline size_t get_ip()
   {
     size_t _ip = 0;
