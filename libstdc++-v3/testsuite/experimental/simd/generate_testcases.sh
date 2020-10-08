@@ -42,6 +42,7 @@ for testcase in tests/*.h; do
     if [[ $type == "long double" ]]; then
       # I don't care for fast-math with long double failures
       extra='// { dg-skip-if "long double with -ffast-math is irrelevant for simd" { *-*-* }  { "-ffast-math" } { "" } }
+// { dg-skip-if "long double on ppc64 is not conforming" { powerpc64*-*-* && longdouble128 } }
 '"$extra"
     fi
     filename="${testcase}-${type// /_}"
