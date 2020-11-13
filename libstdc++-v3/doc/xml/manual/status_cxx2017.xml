@@ -3036,20 +3036,38 @@ since C++14 and the implementation is complete.
      <para>
         When targeting 32-bit x86,
         <classname>simd_abi::compatible&lt;T&gt;</classname> is an alias for
-        <classname>simd_abi::scalar</classname>. When targeting 64-bit x86
-        (including x32), <classname>simd_abi::compatible&lt;T&gt;</classname> is
-        an alias for <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>,
+        <classname>simd_abi::scalar</classname>.
+        When targeting 64-bit x86 (including x32) or Aarch64,
+        <classname>simd_abi::compatible&lt;T&gt;</classname> is an alias for
+        <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>,
         unless <code>T</code> is <code>long double</code>, in which case it is
         an alias for <classname>simd_abi::scalar</classname>.
+        When targeting ARM (but not Aarch64) with NEON support,
+        <classname>simd_abi::compatible&lt;T&gt;</classname> is an alias for
+        <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>,
+        unless <code>sizeof(T) &gt; 4</code>, in which case it is
+        an alias for <classname>simd_abi::scalar</classname>. Additionally,
+        <classname>simd_abi::compatible&lt;float&gt;</classname> is an alias for
+        <classname>simd_abi::scalar</classname> unless compiling with
+        -ffast-math.
      </para>
 
      <para>
         When targeting x86 (both 32-bit and 64-bit),
         <classname>simd_abi::native&lt;T&gt;</classname> is an alias for one of
+        <classname>simd_abi::scalar</classname>,
         <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>,
         <classname>simd_abi::_VecBuiltin&lt;32&gt;</classname>, or
         <classname>simd_abi::_VecBltnBtmsk&lt;64&gt;</classname>, depending on
-        the machine options the compiler was invoked with.
+        <code>T</code> and the machine options the compiler was invoked with.
+     </para>
+
+     <para>
+        When targeting ARM/Aarch64 or POWER,
+        <classname>simd_abi::native&lt;T&gt;</classname> is an alias for
+        <classname>simd_abi::scalar</classname> or
+        <classname>simd_abi::_VecBuiltin&lt;16&gt;</classname>, depending on
+        <code>T</code> and the machine options the compiler was invoked with.
      </para>
 
      <para>
@@ -3090,6 +3108,14 @@ since C++14 and the implementation is complete.
         <code>sizeof(T) == 8</code> with integral <code>T</code> is supported if
         <code>__ARM_ARCH &gt;= 8</code>, and <code>double</code> is supported if
         <code>__aarch64__</code> is defined.
+
+        On POWER, <classname>simd&lt;T, _VecBuiltin&lt;Bytes&gt;&gt;</classname>
+        is supported if <code>__ALTIVEC__</code> is defined and <code>sizeof(T)
+        &lt; 8</code>. Additionally, <code>double</code> is supported if
+        <code>__VSX__</code> is defined, and any <code>T</code> with <code>
+        sizeof(T) &le; 8</code> is supported if <code>__POWER8_VECTOR__</code>
+        is defined.
+
         On x86, given an extended ABI tag <code>Abi</code>,
         <classname>simd&lt;T, Abi&gt;</classname> is supported according to the
         following table:
