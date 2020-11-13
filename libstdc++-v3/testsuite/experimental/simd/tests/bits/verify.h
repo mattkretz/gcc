@@ -24,21 +24,21 @@ using char16 = char16_t;
 using char32 = char32_t;
 
 template <class T>
-T
-make_value_unknown(const T& x)
-{
-  if constexpr (std::is_constructible_v<T, const volatile T&>)
-    {
-      const volatile T& y = x;
-      return y;
-    }
-  else
-    {
-      T y = x;
-      asm("" : "+m"(y));
-      return y;
-    }
-}
+  T
+  make_value_unknown(const T& x)
+  {
+    if constexpr (std::is_constructible_v<T, const volatile T&>)
+      {
+	const volatile T& y = x;
+	return y;
+      }
+    else
+      {
+	T y = x;
+	asm("" : "+m"(y));
+	return y;
+      }
+  }
 
 class verify
 {
@@ -47,56 +47,59 @@ class verify
   template <typename T,
 	    typename = decltype(std::declval<std::stringstream&>()
 				<< std::declval<const T&>())>
-  void print(const T& x, int) const
-  {
-    std::stringstream ss;
-    ss << x;
-    __builtin_fprintf(stderr, "%s", ss.str().c_str());
-  }
+    void
+    print(const T& x, int) const
+    {
+      std::stringstream ss;
+      ss << x;
+      __builtin_fprintf(stderr, "%s", ss.str().c_str());
+    }
 
   template <typename T>
-  void print(const T& x, ...) const
-  {
-    if constexpr (std::experimental::is_simd_v<T>)
-      {
-	std::stringstream ss;
-	if constexpr (std::is_floating_point_v<typename T::value_type>)
-	  {
-	    ss << '(' << x[0] << " == " << std::hexfloat << x[0]
-	       << std::defaultfloat << ')';
-	    for (unsigned i = 1; i < x.size(); ++i)
-	      {
-		ss << (i % 4 == 0 ? ",\n(" : ", (") << x[i]
-		   << " == " << std::hexfloat << x[i] << std::defaultfloat
-		   << ')';
-	      }
-	  }
-	else
-	  {
-	    ss << +x[0];
-	    for (unsigned i = 1; i < x.size(); ++i)
-	      {
-		ss << ", " << +x[i];
-	      }
-	  }
-	__builtin_fprintf(stderr, "%s", ss.str().c_str());
-      }
-    else if constexpr (std::experimental::is_simd_mask_v<T>)
-      {
-	__builtin_fprintf(stderr, (x[0] ? "[1" : "[0"));
-	for (unsigned i = 1; i < x.size(); ++i)
-	  {
-	    __builtin_fprintf(stderr, (x[i] ? "1" : "0"));
-	  }
-	__builtin_fprintf(stderr, "]");
-      }
-    else
-      {
-	print_hex(&x, sizeof(T));
-      }
-  }
+    void
+    print(const T& x, ...) const
+    {
+      if constexpr (std::experimental::is_simd_v<T>)
+	{
+	  std::stringstream ss;
+	  if constexpr (std::is_floating_point_v<typename T::value_type>)
+	    {
+	      ss << '(' << x[0] << " == " << std::hexfloat << x[0]
+		<< std::defaultfloat << ')';
+	      for (unsigned i = 1; i < x.size(); ++i)
+		{
+		  ss << (i % 4 == 0 ? ",\n(" : ", (") << x[i]
+		    << " == " << std::hexfloat << x[i] << std::defaultfloat
+		    << ')';
+		}
+	    }
+	  else
+	    {
+	      ss << +x[0];
+	      for (unsigned i = 1; i < x.size(); ++i)
+		{
+		  ss << ", " << +x[i];
+		}
+	    }
+	  __builtin_fprintf(stderr, "%s", ss.str().c_str());
+	}
+      else if constexpr (std::experimental::is_simd_mask_v<T>)
+	{
+	  __builtin_fprintf(stderr, (x[0] ? "[1" : "[0"));
+	  for (unsigned i = 1; i < x.size(); ++i)
+	    {
+	      __builtin_fprintf(stderr, (x[i] ? "1" : "0"));
+	    }
+	  __builtin_fprintf(stderr, "]");
+	}
+      else
+	{
+	  print_hex(&x, sizeof(T));
+	}
+    }
 
-  void print_hex(const void* x, std::size_t n) const
+  void
+  print_hex(const void* x, std::size_t n) const
   {
     __builtin_fprintf(stderr, "0x");
     const auto* bytes = static_cast<const unsigned char*>(x);
@@ -109,18 +112,18 @@ class verify
 
 public:
   template <typename... Ts>
-  verify(bool ok, size_t ip, const char* file, const int line, const char* func,
-	 const char* cond, const Ts&... extra_info)
+    verify(bool ok, size_t ip, const char* file, const int line,
+	   const char* func, const char* cond, const Ts&... extra_info)
     : m_failed(!ok)
-  {
-    if (m_failed)
-      {
-	__builtin_fprintf(stderr,
-			  "%s:%d: (%s):\nInstruction Pointer: %x\nAssertion '%s' failed.\n",
-			  file, line, func, ip, cond);
-	(print(extra_info, int()), ...);
-      }
-  }
+    {
+      if (m_failed)
+	{
+	  __builtin_fprintf(stderr, "%s:%d: (%s):\nInstruction Pointer: %x\n"
+				    "Assertion '%s' failed.\n",
+			    file, line, func, ip, cond);
+	  (print(extra_info, int()), ...);
+	}
+    }
 
   ~verify()
   {
@@ -132,24 +135,27 @@ public:
   }
 
   template <typename T>
-  const verify& operator<<(const T& x) const
-  {
-    if (m_failed)
-      {
-	print(x, int());
-      }
-    return *this;
-  }
+    const verify&
+    operator<<(const T& x) const
+    {
+      if (m_failed)
+	{
+	  print(x, int());
+	}
+      return *this;
+    }
 
   template <typename... Ts>
-  const verify& on_failure(const Ts&... xs) const
-  {
-    if (m_failed)
-      (print(xs, int()), ...);
-    return *this;
-  }
+    const verify&
+    on_failure(const Ts&... xs) const
+    {
+      if (m_failed)
+	(print(xs, int()), ...);
+      return *this;
+    }
 
-  [[gnu::always_inline]] static inline size_t get_ip()
+  [[gnu::always_inline]] static inline size_t
+  get_ip()
   {
     size_t _ip = 0;
 #ifdef __x86_64__
@@ -167,34 +173,34 @@ public:
 
 #if __FLT_EVAL_METHOD__ != 0
 template <typename T>
-[[gnu::always_inline]] inline decltype(auto)
-force_fp_truncation(const T& x)
-{
-  namespace stdx = std::experimental;
-  if constexpr (stdx::is_simd_v<T>)
-    {
-      using U = typename T::value_type;
-      if constexpr (std::is_floating_point_v<typename T::value_type>
-	  && sizeof(U) <= 8
-	  && (sizeof(T) < 16
-	    || std::is_same_v<T, stdx::fixed_size_simd<U, T::size()>>))
-	{
-	  T y = x;
-	  asm("" : "+m"(y));
-	  return y;
-	}
-      else
-	return x;
-    }
-  else if constexpr (std::is_floating_point_v<T> && sizeof(T) <= 8)
-    {
-      T y = x;
-      asm("" : "+m"(y));
-      return y;
-    }
-  else
-    return x;
-}
+  [[gnu::always_inline]] inline decltype(auto)
+  force_fp_truncation(const T& x)
+  {
+    namespace stdx = std::experimental;
+    if constexpr (stdx::is_simd_v<T>)
+      {
+	using U = typename T::value_type;
+	if constexpr (std::is_floating_point_v<typename T::value_type>
+		      && sizeof(U) <= 8 && (sizeof(T) < 16 || std::is_same_v<
+		  T, stdx::fixed_size_simd<U, T::size()>>))
+	  {
+	    T y = x;
+	    asm("" : "+m"(y));
+	    return y;
+	  }
+	else
+	  return x;
+      }
+    else if constexpr (std::is_floating_point_v<T> && sizeof(T) <= 8)
+      {
+	T y = x;
+	asm("" : "+m"(y));
+	return y;
+      }
+    else
+      return x;
+  }
+
 #define COMPARE(_a, _b)                                                        \
   [&](auto&& _aa, auto&& _bb) {                                                \
     return verify(std::experimental::all_of(_aa == _bb), verify::get_ip(),     \
@@ -216,8 +222,8 @@ force_fp_truncation(const T& x)
   verify(_test, verify::get_ip(), __FILE__, __LINE__, __PRETTY_FUNCTION__,     \
 	 #_test)
 
-// ulp_distance_signed can raise FP exceptions and thus must be conditionally
-// executed
+  // ulp_distance_signed can raise FP exceptions and thus must be conditionally
+  // executed
 #define ULP_COMPARE(_a, _b, _allowed_distance)                                 \
   [&](auto&& _aa, auto&& _bb) {                                                \
     const bool success = std::experimental::all_of(                            \
@@ -228,18 +234,17 @@ force_fp_truncation(const T& x)
 		  success ? 0 : vir::test::ulp_distance_signed(_aa, _bb));     \
   }((_a), (_b))
 
-namespace vir
-{
-namespace test
-{
-  template <typename T>
-  inline T _S_fuzzyness = 0;
-  template <typename T>
-  void setFuzzyness(T x)
+namespace vir {
+  namespace test
   {
-    _S_fuzzyness<T> = x;
-  }
-} // namespace test
+    template <typename T>
+      inline T _S_fuzzyness = 0;
+
+    template <typename T>
+      void
+      setFuzzyness(T x)
+      { _S_fuzzyness<T> = x; }
+  } // namespace test
 } // namespace vir
 
 #define FUZZY_COMPARE(_a, _b)                                                  \
@@ -248,68 +253,74 @@ namespace test
     vir::test::_S_fuzzyness<vir::test::value_type_t<decltype((_a) + (_b))>>)
 
 template <typename V>
-void test();
-template <typename V>
-void invoke_test(...)
-{
-}
-template <typename V, typename = decltype(V())>
-void invoke_test(int)
-{
-  test<V>();
-  __builtin_fprintf(stderr, "PASS: %s\n", __PRETTY_FUNCTION__);
-}
+  void
+  test();
 
-template <class T> void iterate_abis()/*{{{*/
-{
-  using namespace std::experimental::parallelism_v2;
+template <typename V>
+  void
+  invoke_test(...)
+  {}
+
+template <typename V, typename = decltype(V())>
+  void
+  invoke_test(int)
+  {
+    test<V>();
+    __builtin_fprintf(stderr, "PASS: %s\n", __PRETTY_FUNCTION__);
+  }
+
+template <class T>
+  void
+  iterate_abis()
+  {
+    using namespace std::experimental::parallelism_v2;
 #ifndef TESTFIXEDSIZE
-  invoke_test<simd<T, simd_abi::scalar>>(int());
-  invoke_test<simd<T, simd_abi::_VecBuiltin<16>>>(int());
-  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<64>>>(int());
-  invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
+    invoke_test<simd<T, simd_abi::scalar>>(int());
+    invoke_test<simd<T, simd_abi::_VecBuiltin<16>>>(int());
+    invoke_test<simd<T, simd_abi::_VecBltnBtmsk<64>>>(int());
+    invoke_test<simd<T, simd_abi::_VecBuiltin<12>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<3>>>(int());
 #ifdef STRESSTEST
-  invoke_test<simd<T, simd_abi::_VecBuiltin<8>>>(int());
-  invoke_test<simd<T, simd_abi::_VecBuiltin<32>>>(int());
-  invoke_test<simd<T, simd_abi::_VecBltnBtmsk<56>>>(int());
+    invoke_test<simd<T, simd_abi::_VecBuiltin<8>>>(int());
+    invoke_test<simd<T, simd_abi::_VecBuiltin<32>>>(int());
+    invoke_test<simd<T, simd_abi::_VecBltnBtmsk<56>>>(int());
 #endif
 #elif TESTFIXEDSIZE == 1
-  invoke_test<simd<T, simd_abi::fixed_size<1>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<2>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<5>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<6>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<7>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<8>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<1>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<2>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<4>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<5>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<6>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<7>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<8>>>(int());
 #elif TESTFIXEDSIZE == 2
-  invoke_test<simd<T, simd_abi::fixed_size<9>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<10>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<11>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<13>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<14>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<15>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<16>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<9>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<10>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<11>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<12>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<13>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<14>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<15>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<16>>>(int());
 #elif TESTFIXEDSIZE == 3
-  invoke_test<simd<T, simd_abi::fixed_size<17>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<18>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<19>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<20>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<21>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<22>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<23>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<17>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<18>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<19>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<20>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<21>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<22>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<23>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<24>>>(int());
 #elif TESTFIXEDSIZE == 4
-  invoke_test<simd<T, simd_abi::fixed_size<25>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<26>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<27>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<29>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<30>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<31>>>(int());
-  invoke_test<simd<T, simd_abi::fixed_size<32>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<25>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<26>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<27>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<28>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<29>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<30>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<31>>>(int());
+    invoke_test<simd<T, simd_abi::fixed_size<32>>>(int());
 #endif
-}/*}}}*/
+  }
 
 #endif  // TESTS_BITS_VERIFY_H_

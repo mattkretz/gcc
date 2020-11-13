@@ -4,14 +4,15 @@
 /* implementation-defined
  * ======================
  * §4.7 p3 (integral conversions)
- *  If the destination type is signed, the value is unchanged if it can be represented in the
- *  destination type (and bit-field width); otherwise, the value is implementation-defined.
+ *  If the destination type is signed, the value is unchanged if it can be
+ *  represented in the destination type (and bit-field width); otherwise, the
+ *  value is implementation-defined.
  *
  * undefined
  * =========
  * §4.9/1  (floating-point conversions)
- *   If the source value is neither exactly represented in the destination type nor between
- *   two adjacent destination values the result is undefined.
+ *  If the source value is neither exactly represented in the destination type
+ *  nor between two adjacent destination values the result is undefined.
  *
  * §4.10/1 (floating-integral conversions)
  *  floating point type can be converted to integer type.
@@ -20,70 +21,89 @@
  *
  * §4.10/2
  *  integer can be converted to floating point type.
- *  If the value being converted is outside the range of values that can be represented, the
- *  behavior is undefined.
+ *  If the value being converted is outside the range of values that can be
+ *  represented, the behavior is undefined.
  */
 template <typename To, typename From>
-constexpr bool is_conversion_undefined_impl(From x, std::true_type)
+constexpr bool
+is_conversion_undefined_impl(From x, std::true_type)
 {
   return x > static_cast<long double>(std::__finite_max_v<To>)
 	 || x < static_cast<long double>(std::__finite_min_v<To>);
 }
 
 template <typename To, typename From>
-constexpr bool is_conversion_undefined_impl(From, std::false_type)
+constexpr bool
+is_conversion_undefined_impl(From, std::false_type)
 {
-    return false;
+  return false;
 }
 
-template <typename To, typename From> constexpr bool is_conversion_undefined(From x)
+template <typename To, typename From>
+  constexpr bool
+  is_conversion_undefined(From x)
 {
-    static_assert(std::is_arithmetic<From>::value,
-                  "this overload is only meant for builtin arithmetic types");
-    return is_conversion_undefined_impl<To, From>(
-        x, std::integral_constant<bool, (std::is_floating_point<From>::value &&
-                                         (std::is_integral<To>::value ||
-                                          (std::is_floating_point<To>::value &&
-                                           sizeof(From) > sizeof(To))))>());
+  static_assert(std::is_arithmetic<From>::value,
+		"this overload is only meant for builtin arithmetic types");
+  return is_conversion_undefined_impl<To, From>(
+      x, std::integral_constant<bool,
+				std::is_floating_point<From>::value
+				  && (std::is_integral<To>::value
+				      || (std::is_floating_point<To>::value
+					  && sizeof(From) > sizeof(To)))>());
 }
 
 static_assert(is_conversion_undefined<uint>(float(0x100000000LL)),
-              "testing my expectations of is_conversion_undefined");
+	      "testing my expectations of is_conversion_undefined");
 static_assert(!is_conversion_undefined<float>(0x100000000LL),
-              "testing my expectations of is_conversion_undefined");
+	      "testing my expectations of is_conversion_undefined");
 
 template <typename To, typename T, typename A>
-inline std::experimental::simd_mask<T, A> is_conversion_undefined(const std::experimental::simd<T, A> &x)
-{
+  inline std::experimental::simd_mask<T, A>
+  is_conversion_undefined(const std::experimental::simd<T, A> &x)
+  {
     std::experimental::simd_mask<T, A> k = false;
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        k[i] = is_conversion_undefined(x[i]);
-    }
+    for (std::size_t i = 0; i < x.size(); ++i)
+      {
+	k[i] = is_conversion_undefined(x[i]);
+      }
     return k;
-}
+  }
 
 //operators helpers  //{{{1
-template <class T> constexpr T genHalfBits()
-{
-  return std::__finite_max_v<T> >> (std::__digits_v<T> / 2);
-}
-template <> constexpr long double genHalfBits<long double>() { return 0; }
-template <> constexpr double genHalfBits<double>() { return 0; }
-template <> constexpr float genHalfBits<float>() { return 0; }
+template <class T>
+  constexpr T
+  genHalfBits()
+  { return std::__finite_max_v<T> >> (std::__digits_v<T> / 2); }
 
-template <class U, class T, class UU> constexpr U avoid_ub(UU x)
-{
-    return is_conversion_undefined<T>(U(x)) ? U(0) : U(x);
-}
+template <>
+  constexpr long double
+  genHalfBits<long double>()
+  { return 0; }
 
-template <class U, class T, class UU> constexpr U avoid_ub2(UU x)
-{
-    return is_conversion_undefined<U>(x) ? U(0) : avoid_ub<U, T>(x);
-}
+template <>
+  constexpr double
+  genHalfBits<double>()
+  { return 0; }
+
+template <>
+  constexpr float
+  genHalfBits<float>()
+  { return 0; }
+
+template <class U, class T, class UU>
+  constexpr U
+  avoid_ub(UU x)
+  { return is_conversion_undefined<T>(U(x)) ? U(0) : U(x); }
+
+template <class U, class T, class UU>
+  constexpr U
+  avoid_ub2(UU x)
+  { return is_conversion_undefined<U>(x) ? U(0) : avoid_ub<U, T>(x); }
 
 // conversion test input data //{{{1
 template <class U, class T>
-static const std::array<U, 53> cvt_input_data = {{
+  static const std::array<U, 53> cvt_input_data = {{
     avoid_ub<U, T>(0xc0000080U),
     avoid_ub<U, T>(0xc0000081U),
     avoid_ub<U, T>(0xc0000082U),
@@ -137,9 +157,16 @@ static const std::array<U, 53> cvt_input_data = {{
     avoid_ub2<U, T>(-std::__finite_max_v<U> / std::pow(2., sizeof(T) * 2 - 1)),
     avoid_ub<U, T>(std::__finite_max_v<T> - 1),
     avoid_ub<U, T>(std::__finite_max_v<T> * 0.75),
-}};
+  }};
 
-template <class T, class U> struct cvt_inputs {
-    static constexpr size_t size() { return cvt_input_data<U, T>.size(); }
-    U operator[](size_t i) const { return cvt_input_data<U, T>[i]; }
-};
+template <class T, class U>
+  struct cvt_inputs
+  {
+    static constexpr size_t
+    size()
+    { return cvt_input_data<U, T>.size(); }
+
+    U
+    operator[](size_t i) const
+    { return cvt_input_data<U, T>[i]; }
+  };
