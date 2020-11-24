@@ -109,5 +109,3 @@ namespace vir {
 } // namespace vir
 
 #endif // ULP_H
-
-// vim: sw=2 et sts=2 foldmethod=marker foldmarker={,}

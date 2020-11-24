@@ -3,10 +3,10 @@
 
 template <class M, class M2>
   constexpr bool assign_should_work
-  = std::is_same<M, M2>::value
-  || (std::is_same<typename M::abi_type,
-		   std::experimental::simd_abi::fixed_size<M::size()>>::value
-  && std::is_same<typename M::abi_type, typename M2::abi_type>::value);
+    = std::is_same<M, M2>::value
+	|| (std::is_same<typename M::abi_type,
+			 std::experimental::simd_abi::fixed_size<M::size()>>::value
+	      && std::is_same<typename M::abi_type, typename M2::abi_type>::value);
 
 template <class M, class M2>
   constexpr bool assign_should_not_work = !assign_should_work<M, M2>;

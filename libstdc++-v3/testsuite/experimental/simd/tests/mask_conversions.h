@@ -39,7 +39,8 @@ template <typename From, typename To>
       }
   }
 
-template <typename T, typename V, typename = void> struct rebind_or_max_fixed
+template <typename T, typename V, typename = void>
+  struct rebind_or_max_fixed
   {
     using type = stdx::rebind_simd_t<
       T, stdx::resize_simd_t<stdx::simd_abi::max_fixed_size<T>, V>>;

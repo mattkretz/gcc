@@ -145,4 +145,3 @@ using vir::test::sfinae_is_callable;
 using vir::test::has_less_bits;
 
 #endif  // VC_TESTS_METAHELPERS_H_
-// vim: foldmethod=marker foldmarker={,}

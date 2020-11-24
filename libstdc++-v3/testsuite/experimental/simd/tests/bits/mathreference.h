@@ -141,5 +141,3 @@ template <class Fun, class T, class Ref = testdatatype_for_function_t<Fun, T>>
       }
     return data;
   }
-
-// vim: foldmethod=marker foldmarker={,}

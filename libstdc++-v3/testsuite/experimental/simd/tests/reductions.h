@@ -23,7 +23,7 @@ template <typename V>
     COMPARE(reduce(V([](int i) { return i & 1; })), T(V::size() / 2));
     COMPARE(reduce(V([](int i) { return i % 3; })),
 	    T(3 * (V::size() / 3)   // 0+1+2 for every complete 3 elements in V
-	      + (V::size() % 3) / 2 // 0->0, 1->0, 2->1 adjustment
+		+ (V::size() % 3) / 2 // 0->0, 1->0, 2->1 adjustment
 	     ));
     if ((1 + V::size()) * V::size() / 2 <= std::__finite_max_v<T>)
       {

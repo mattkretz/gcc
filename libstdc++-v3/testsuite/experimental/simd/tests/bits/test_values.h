@@ -6,8 +6,8 @@
 template <class T, class A>
   std::experimental::simd<T, A>
   iif(std::experimental::simd_mask<T, A> k,
-      const typename std::experimental::simd_mask<T, A>::simd_type &t,
-      const std::experimental::simd<T, A> &f)
+      const typename std::experimental::simd_mask<T, A>::simd_type& t,
+      const std::experimental::simd<T, A>& f)
   {
     auto r = f;
     where(k, r) = t;
@@ -16,27 +16,27 @@ template <class T, class A>
 
 template <class V>
   V
-  epilogue_load(const typename V::value_type *mem, const std::size_t size)
+  epilogue_load(const typename V::value_type* mem, const std::size_t size)
   {
     const int rem = size % V::size();
     return where(V([](int i) { return i; }) < rem, V(0))
-      .copy_from(mem + size / V::size() * V::size(),
-		 std::experimental::element_aligned);
+	     .copy_from(mem + size / V::size() * V::size(),
+			std::experimental::element_aligned);
   }
 
 template <class V, class... F>
   void
-  test_values(const std::initializer_list<typename V::value_type> &inputs,
-	      F &&... fun_pack)
+  test_values(const std::initializer_list<typename V::value_type>& inputs,
+	      F&&... fun_pack)
   {
     for (auto it = inputs.begin(); it + V::size() <= inputs.end();
 	 it += V::size())
       {
-	[](auto...) {}(
-	    (fun_pack(V(&it[0], std::experimental::element_aligned)), 0)...);
+	[](auto...) {
+	}((fun_pack(V(&it[0], std::experimental::element_aligned)), 0)...);
       }
-    [](auto...) {}(
-	(fun_pack(epilogue_load<V>(inputs.begin(), inputs.size())), 0)...);
+    [](auto...) {
+    }((fun_pack(epilogue_load<V>(inputs.begin(), inputs.size())), 0)...);
   }
 
 template <class V>
@@ -87,15 +87,15 @@ template <class V>
 	      = std::normal_distribution<float>(0.f,
 						std::__max_exponent_v<T> * .5f);
 	    return V([&](int) {
-	      const T mant = dist(gen);
-	      T fp = 0;
-	      do {
-		const int exp = exp_dist(gen);
-		fp = std::ldexp(mant, exp);
-	      } while (fp >= abs_max || fp <= std::__denorm_min_v<T>);
-	      fp = gen() & 0x4 ? fp : -fp;
-	      return fp;
-	    });
+		     const T mant = dist(gen);
+		     T fp = 0;
+		     do {
+		       const int exp = exp_dist(gen);
+		       fp = std::ldexp(mant, exp);
+		     } while (fp >= abs_max || fp <= std::__denorm_min_v<T>);
+		     fp = gen() & 0x4 ? fp : -fp;
+		     return fp;
+		   });
 	  }
       }
   };
@@ -116,8 +116,8 @@ template <class V, class... F>
 
 template <class V, class... F>
   void
-  test_values_2arg(const std::initializer_list<typename V::value_type> &inputs,
-		   F &&... fun_pack)
+  test_values_2arg(const std::initializer_list<typename V::value_type>& inputs,
+		   F&&... fun_pack)
   {
     for (auto scalar_it = inputs.begin(); scalar_it != inputs.end();
 	 ++scalar_it)
@@ -125,13 +125,15 @@ template <class V, class... F>
 	for (auto it = inputs.begin(); it + V::size() <= inputs.end();
 	     it += V::size())
 	  {
-	    [](auto...) {}((
-		  fun_pack(V(&it[0], std::experimental::element_aligned),
-			   V(*scalar_it)), 0)...);
+	    [](auto...) {
+	    }((fun_pack(V(&it[0], std::experimental::element_aligned),
+			V(*scalar_it)),
+	       0)...);
 	  }
-	[](auto...) {}((
-	      fun_pack(epilogue_load<V>(inputs.begin(), inputs.size()),
-		       V(*scalar_it)), 0)...);
+	[](auto...) {
+	}((fun_pack(epilogue_load<V>(inputs.begin(), inputs.size()),
+		    V(*scalar_it)),
+	   0)...);
       }
   }
 
@@ -149,8 +151,8 @@ template <class V, class... F>
 
 template <class V, class... F>
   void
-  test_values_3arg(const std::initializer_list<typename V::value_type> &inputs,
-		   F &&... fun_pack)
+  test_values_3arg(const std::initializer_list<typename V::value_type>& inputs,
+		   F&&... fun_pack)
   {
     for (auto scalar_it1 = inputs.begin(); scalar_it1 != inputs.end();
 	 ++scalar_it1)
@@ -161,13 +163,15 @@ template <class V, class... F>
 	    for (auto it = inputs.begin(); it + V::size() <= inputs.end();
 		 it += V::size())
 	      {
-		[](auto...) {}((
-		      fun_pack(V(&it[0], std::experimental::element_aligned),
-			       V(*scalar_it1), V(*scalar_it2)), 0)...);
+		[](auto...) {
+		}((fun_pack(V(&it[0], std::experimental::element_aligned),
+			    V(*scalar_it1), V(*scalar_it2)),
+		   0)...);
 	      }
-	    [](auto...) {}((
-		  fun_pack(epilogue_load<V>(inputs.begin(), inputs.size()),
-			   V(*scalar_it1), V(*scalar_it2)), 0)...);
+	    [](auto...) {
+	    }((fun_pack(epilogue_load<V>(inputs.begin(), inputs.size()),
+			V(*scalar_it1), V(*scalar_it2)),
+	       0)...);
 	  }
       }
   }
@@ -180,9 +184,9 @@ template <class V, class... F>
     test_values_3arg<V>(inputs, fun_pack...);
     for (size_t i = 0; i < (random.count + V::size() - 1) / V::size(); ++i)
       {
-	[](auto...) {}((
-	      fun_pack(random(g_mt_gen), random(g_mt_gen), random(g_mt_gen)),
-	      0)...);
+	[](auto...) {
+	}((fun_pack(random(g_mt_gen), random(g_mt_gen), random(g_mt_gen)),
+	   0)...);
       }
   }
 
@@ -204,7 +208,7 @@ template <class V>
 	const I min = __bit_cast<I>(V(std::__norm_min_v<T>));
 	const I max = __bit_cast<I>(V(std::__finite_max_v<T>));
 	return static_simd_cast<typename V::mask_type>(
-	__bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
+		 __bit_cast<I>(x) == 0 || (abs_x >= min && abs_x <= max));
       }
     else
       {
@@ -215,7 +219,7 @@ template <class V>
 	// (-ffinite-math-only)
 	static V max = std::__finite_max_v<T>;
 	return (x == 0 && copysign(V(1), x) == V(1))
-	  || (abs_x >= min && abs_x <= max);
+		 || (abs_x >= min && abs_x <= max);
       }
   }
 
@@ -360,5 +364,3 @@ template <class V>
 #endif
 
 #define MAKE_TESTER(name_) MAKE_TESTER_2(name_, std::name_)
-
-		// vim: foldmethod=marker foldmarker={,} ts=8 sw=2 noet sts=2

@@ -1,6 +1,6 @@
 #include <array>
 
-// is_conversion_undefined {{{1
+// is_conversion_undefined
 /* implementation-defined
  * ======================
  * §4.7 p3 (integral conversions)
@@ -25,33 +25,31 @@
  *  represented, the behavior is undefined.
  */
 template <typename To, typename From>
-constexpr bool
-is_conversion_undefined_impl(From x, std::true_type)
-{
-  return x > static_cast<long double>(std::__finite_max_v<To>)
-	 || x < static_cast<long double>(std::__finite_min_v<To>);
-}
+  constexpr bool
+  is_conversion_undefined_impl(From x, std::true_type)
+  {
+    return x > static_cast<long double>(std::__finite_max_v<To>)
+	     || x < static_cast<long double>(std::__finite_min_v<To>);
+  }
 
 template <typename To, typename From>
-constexpr bool
-is_conversion_undefined_impl(From, std::false_type)
-{
-  return false;
-}
+  constexpr bool
+  is_conversion_undefined_impl(From, std::false_type)
+  { return false; }
 
 template <typename To, typename From>
   constexpr bool
   is_conversion_undefined(From x)
-{
-  static_assert(std::is_arithmetic<From>::value,
-		"this overload is only meant for builtin arithmetic types");
-  return is_conversion_undefined_impl<To, From>(
-      x, std::integral_constant<bool,
-				std::is_floating_point<From>::value
-				  && (std::is_integral<To>::value
-				      || (std::is_floating_point<To>::value
-					  && sizeof(From) > sizeof(To)))>());
-}
+  {
+    static_assert(std::is_arithmetic<From>::value,
+		  "this overload is only meant for builtin arithmetic types");
+    return is_conversion_undefined_impl<To, From>(
+	     x, std::integral_constant<
+		  bool, std::is_floating_point<From>::value
+			  && (std::is_integral<To>::value
+				|| (std::is_floating_point<To>::value
+				      && sizeof(From) > sizeof(To)))>());
+  }
 
 static_assert(is_conversion_undefined<uint>(float(0x100000000LL)),
 	      "testing my expectations of is_conversion_undefined");
@@ -60,17 +58,14 @@ static_assert(!is_conversion_undefined<float>(0x100000000LL),
 
 template <typename To, typename T, typename A>
   inline std::experimental::simd_mask<T, A>
-  is_conversion_undefined(const std::experimental::simd<T, A> &x)
+  is_conversion_undefined(const std::experimental::simd<T, A>& x)
   {
     std::experimental::simd_mask<T, A> k = false;
     for (std::size_t i = 0; i < x.size(); ++i)
-      {
-	k[i] = is_conversion_undefined(x[i]);
-      }
+      k[i] = is_conversion_undefined(x[i]);
     return k;
   }
 
-//operators helpers  //{{{1
 template <class T>
   constexpr T
   genHalfBits()
@@ -101,7 +96,7 @@ template <class U, class T, class UU>
   avoid_ub2(UU x)
   { return is_conversion_undefined<U>(x) ? U(0) : avoid_ub<U, T>(x); }
 
-// conversion test input data //{{{1
+// conversion test input data
 template <class U, class T>
   static const std::array<U, 53> cvt_input_data = {{
     avoid_ub<U, T>(0xc0000080U),

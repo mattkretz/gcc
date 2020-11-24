@@ -67,5 +67,3 @@ template <class V>
 	base += inc;
       }
   }
-
-// vim: foldmethod=marker foldmarker={,}

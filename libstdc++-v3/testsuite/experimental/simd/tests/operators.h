@@ -68,7 +68,7 @@ template <typename V>
 		  VERIFY(none_of(hi == lo)) << "hi: " << hi << ", lo: " << lo;
 		  VERIFY(none_of(lo == hi)) << "hi: " << hi << ", lo: " << lo;
 		  VERIFY(all_of(lo < hi)) << "hi: " << hi << ", lo: " << lo
-		    << ", lo < hi: " << (lo < hi);
+					  << ", lo < hi: " << (lo < hi);
 		  VERIFY(none_of(hi < lo)) << "hi: " << hi << ", lo: " << lo;
 		  VERIFY(none_of(hi <= lo)) << "hi: " << hi << ", lo: " << lo;
 		  VERIFY(all_of(hi <= hi)) << "hi: " << hi << ", lo: " << lo;
@@ -126,7 +126,7 @@ template <typename V>
 
       std::experimental::simd<typename V::value_type,
 			      std::experimental::simd_abi::scalar>
-	z = 2;
+      z = 2;
       x[0] = z[0];
       COMPARE(x[0], T(2));
       x = 3;
@@ -212,7 +212,7 @@ template <typename V>
 	      // will be UB (and ubsan will warn about it). The solution is to
 	      // cast to uint in that case.
 	      using U
-	      = std::conditional_t<(sizeof(T) < sizeof(int)), unsigned, T>;
+		= std::conditional_t<(sizeof(T) < sizeof(int)), unsigned, T>;
 	      COMPARE(x * y, V(T(U(n) * U(m))));
 	    }
 	}
@@ -232,7 +232,7 @@ template <typename V>
 	V y = make_vec<V>({1, 2, 3, 4, 5, 6, 7});
 	ULP_COMPARE(y / x,
 		    make_vec<V>(
-	    {T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}),
+		      {T(.5), T(1), T(1.5), T(2), T(2.5), T(3), T(3.5)}),
 		    1);
 
 	test_values<V>({norm_min * 1024, T(1), T(), T(-1), max / 1024,

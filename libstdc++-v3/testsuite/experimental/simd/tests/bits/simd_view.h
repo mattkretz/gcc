@@ -129,5 +129,3 @@ namespace experimental
 _GLIBCXX_SIMD_END_NAMESPACE
 
 #endif  // VC_TESTS_SIMD_VIEW_H_
-
-  // vim: foldmethod=marker foldmarker={,}

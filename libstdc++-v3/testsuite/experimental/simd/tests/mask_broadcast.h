@@ -10,14 +10,14 @@ template <typename V>
 		  "A smart_reference<simd_mask> must be convertible to bool.");
     static_assert(
       std::is_same<bool, decltype(std::declval<const typename M::reference&>()
-	  == true)>::value,
+				  == true)>::value,
       "A smart_reference<simd_mask> must be comparable against bool.");
     static_assert(
       vir::test::sfinae_is_callable<typename M::reference&&, bool>(
 	[](auto&& a, auto&& b) -> decltype(std::declval<decltype(a)>()
-	  == std::declval<decltype(b)>()) {
-	    return {};
-	  }),
+					   == std::declval<decltype(b)>()) {
+	  return {};
+	}),
       "A smart_reference<simd_mask> must be comparable against bool.");
     VERIFY(std::experimental::is_simd_mask_v<M>);
 

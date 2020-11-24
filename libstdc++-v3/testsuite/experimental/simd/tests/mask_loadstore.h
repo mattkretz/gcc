@@ -45,21 +45,21 @@ template <typename V>
     using std::experimental::vector_aligned;
     constexpr size_t stride_alignment
       = M::size() & 1
-      ? 1
-      : M::size() & 2
-      ? 2
-      : M::size() & 4
-      ? 4
-      : M::size() & 8
-      ? 8
-      : M::size() & 16
-      ? 16
-      : M::size() & 32
-      ? 32
-      : M::size() & 64
-      ? 64
-      : M::size() & 128 ? 128
-			: M::size() & 256 ? 256 : 512;
+	  ? 1
+	  : M::size() & 2
+	  ? 2
+	  : M::size() & 4
+	  ? 4
+	  : M::size() & 8
+	  ? 8
+	  : M::size() & 16
+	  ? 16
+	  : M::size() & 32
+	  ? 32
+	  : M::size() & 64
+	  ? 64
+	  : M::size() & 128 ? 128
+			    : M::size() & 256 ? 256 : 512;
     using stride_aligned_t = std::conditional_t<
       M::size() == stride_alignment, decltype(vector_aligned),
       std::experimental::overaligned_tag<stride_alignment * sizeof(bool)>>;

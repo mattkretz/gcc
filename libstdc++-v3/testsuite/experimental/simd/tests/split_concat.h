@@ -20,7 +20,7 @@ template <typename V, bool ConstProp>
   {
     using T = typename V::value_type;
     if constexpr (V::size() * 3
-		  <= std::experimental::simd_abi::max_fixed_size<T>)
+		    <= std::experimental::simd_abi::max_fixed_size<T>)
       {
 	V a(0), b(1), c(2);
 	auto x = concat(a, b, c);
@@ -46,9 +46,9 @@ template <typename V, bool ConstProp>
 	constexpr auto N0 = V::size() / 4u;
 	constexpr auto N1 = V::size() - 2 * N0;
 	using V0 = std::experimental::simd<
-	  T, std::experimental::simd_abi::deduce_t<T, N0>>;
+		     T, std::experimental::simd_abi::deduce_t<T, N0>>;
 	using V1 = std::experimental::simd<
-	  T, std::experimental::simd_abi::deduce_t<T, N1>>;
+		     T, std::experimental::simd_abi::deduce_t<T, N1>>;
 	{
 	  auto x = std::experimental::split<N0, N0, N1>(a);
 	  COMPARE(std::tuple_size<decltype(x)>::value, 3u);
@@ -98,7 +98,7 @@ template <typename V, bool ConstProp>
 	const V a = gen<V, ConstProp>([](auto i) -> T { return i; });
 	constexpr auto N0 = V::size() / 3;
 	using V0 = std::experimental::simd<
-	  T, std::experimental::simd_abi::deduce_t<T, N0>>;
+		     T, std::experimental::simd_abi::deduce_t<T, N0>>;
 	using V1 = std::experimental::simd<
 	  T, std::experimental::simd_abi::deduce_t<T, 2 * N0>>;
 	{

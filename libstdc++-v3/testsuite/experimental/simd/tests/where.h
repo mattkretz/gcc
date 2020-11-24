@@ -2,7 +2,8 @@
 #include "bits/make_vec.h"
 #include "bits/metahelpers.h"
 
-template <class V> struct Convertible
+template <class V>
+  struct Convertible
   {
     operator V() const { return V(4); }
   };
@@ -51,7 +52,7 @@ template <typename V>
     using T = typename V::value_type;
     where_fundamental<T>();
     VERIFY(!(sfinae_is_callable<V>(
-	  [](auto x) -> decltype(where(true, x))* { return nullptr; })));
+	       [](auto x) -> decltype(where(true, x))* { return nullptr; })));
 
     const V indexes([](int i) { return i + 1; });
     const M alternating_mask = make_mask<M>({true, false});
