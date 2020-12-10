@@ -31,7 +31,8 @@ include $(top_srcdir)/fragment.am
 lists_of_files = \
    testsuite_files \
    testsuite_files_interactive \
-   testsuite_files_performance
+   testsuite_files_performance \
+   testsuite_files_simd
 
 # This rule generates all of the testsuite_files* lists at once.
 ${lists_of_files}:
@@ -185,6 +186,18 @@ check-performance: testsuite_files_performance ${performance_script}
 	  CXXFLAGS='$(CXXFLAGS)'; export CXXFLAGS; \
 	  ${check_performance_script} ${glibcxx_srcdir} ${glibcxx_builddir})
 
+# Runs the simd tests.
+check-simd: $(srcdir)/experimental/simd/generate_makefile.sh \
+	    ${glibcxx_srcdir}/scripts/check_simd \
+	    testsuite_files_simd \
+	    ${glibcxx_builddir}/scripts/testsuite_flags
+	${glibcxx_srcdir}/scripts/check_simd "${glibcxx_srcdir}" "${glibcxx_builddir}" "$(CXXFLAGS)" | \
+	  while read subdir && read flags && read sim; do \
+	    $(MAKE) -C "$${subdir}" TESTFLAGS="$${flags}" GCC_TEST_SIMULATOR="$${sim}"; \
+	    tail -n6 $${subdir}/simd_testsuite.sum >> .simd.summary; \
+	  done; \
+	  cat .simd.summary && rm .simd.summary
+
 # Runs the testsuite in debug mode.
 debug_flags = "unix/-D_GLIBCXX_DEBUG"
 
@@ -234,4 +247,4 @@ CLEANFILES = *.txt *.tst *.exe core* filebuf_* tmp* ostream_* *.log *.sum \
 
 # To remove directories.
 clean-local:
-	rm -rf de fr debug parallel binaries normal*
+	rm -rf de fr debug parallel binaries normal* simd
