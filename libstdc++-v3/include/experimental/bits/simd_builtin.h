@@ -1911,6 +1911,106 @@ template <typename _Abi>
       }
 
     // math {{{2
+    // exp {{{
+    template <typename _Tp, size_t _Np>
+      static constexpr _SimdWrapper<_Tp, _Np>
+      _S_exp(const _SimdWrapper<_Tp, _Np> __x)
+      {
+	static_assert(std::is_floating_point_v<_Tp>);
+	static_assert(sizeof(_Tp) == 4 || sizeof(_Tp) == 8);
+	using _TW = _SimdWrapper<_Tp, _Np>;
+	auto __choose = [](float __flt, double __dbl) constexpr {
+	  if constexpr (is_same_v<_Tp, float>)
+	    return __flt;
+	  else
+	    return __dbl;
+	};
+	constexpr _Tp __maxlog = __choose(0x1.62E430p6f,         // ln(0x1p+128)  ~=   88.72
+					  0x1.62e42fefa39efp9);  // ln(0x1p+1024) ~=  709.78
+	// TODO: minlog depends on availablity of denormals
+	constexpr _Tp __minlog = __choose(-0x1.9fe368p6f,        // ln(0x1p-150)  ~= -103.97
+					  -0x1.74910d52d3052p9); // ln(0x1p-1075) ~= -745.13
+	const auto __overflow = _SuperImpl::_S_less(_SuperImpl::_S_broadcast(__maxlog), __x);
+	const auto __underflow = _SuperImpl::_S_less(__x, _SuperImpl::_S_broadcast(__minlog));
+	// Strategy: reduce input range from [minlog, maxlog] to [-.5ln2, .5ln2]
+	// by extracting 2ⁿ factor. The reduced range can be approximated via
+	// series expansion.
+	//
+	// log₂(eˣ) = x * log₂(e) * log₂(2)
+	//          = log₂(2^(x * log₂(e)))
+	// => eˣ = 2^(x * log₂(e))
+	//    n := ⌊x * log₂(e) + ½⌋
+	// first approximation: eˣ ~ 2ⁿ (set n as exponent bits)
+	// adjust for error:    eˣ = 2ⁿ * z
+	// => z = 2^(x * log₂(e)) / 2^n
+	//      = 2^(x * log₂(e) - n)
+	//      = e^ln(2^(x * log₂(e) - n)) =: eʸ
+	// => y = ln(2^(x * log₂(e) - n))
+	//      = (x * log₂(e) - n) * ln(2)
+	//      = x * log₂(e) * ln(2) - n * ln(2)
+	//      = x - n * ln(2)       | recall that: ln(2) * log₂(e) == 1
+	// <=> eˣ = 2ⁿ * eʸ
+	constexpr _Tp __log2_e = __choose(0x1.715476p0f, 0x1.71547652b82fep0);   // log₂(e)
+	constexpr _Tp __ln2_hi
+	  = __choose(0x1.62E400p-1f,  // round ln(2) to 9 zero least significant bits
+		     0x1.62e42fefa3800p-1);  // round ln(2) to 11 zero least significant bits
+	constexpr _Tp __ln2_lo = __choose(0x1.7F7D1Cp-20f, 0x1.ef35793c76730p-45); // ln(2) - ln2_hi
+	const _TW __n = _SuperImpl::_S_floor(_SuperImpl::_S_plus(
+					       _SuperImpl::_S_multiplies(
+						 _SuperImpl::_S_broadcast(__log2_e), __x),
+					       _SuperImpl::_S_broadcast(_Tp(0.5))));
+        const _TW __y
+	  = _SuperImpl::_S_minus(
+	      _SuperImpl::_S_minus(
+		__x, _SuperImpl::_S_multiplies(__n, _SuperImpl::_S_broadcast(__ln2_hi))),
+	      _SuperImpl::_S_multiplies(__n, _SuperImpl::_S_broadcast(__ln2_lo)));
+
+        // Approximate eʸ via 1 + x/1! + x²/2! + x³/3! + ...
+	// The coefficients were fitted to minimal error in the [-.5ln2, +.5ln2] range:
+	// IEEE binary32/64 is within 1 ULP with the majority within .5 ULP
+	constexpr _Tp __a0 = __choose(0x1.a01a02p-13f,        // .000198412701138295
+				      0x1.1eed8eff8d898p-29); // .00000000208767569878681
+	constexpr _Tp __a1 = __choose(0x1.6c1732p-10f,        // .00138889544177800
+				      0x1.ae64567f544dep-26); // .0000000250521083854417
+	constexpr _Tp __a2 = __choose(0x1.111622p-7f,         // .00833393726497888
+				      0x1.27e4fb7789f5ep-22); // .000000275573192239859
+	constexpr _Tp __a3 = __choose(0x1.555dbap-5f,         // .0416706688702106
+				      0x1.71de3a556c736p-19); // .00000275573192239859
+	constexpr _Tp __a4 = __choose(0x1.55553ep-3f,         // .166666492819786
+				      0x1.a01a01a01a037p-16); // .0000248015873015874
+	constexpr _Tp __a5 = __choose(0x1.ffffe0p-2f,         // .499999523162841
+				      0x1.a01a01a01a9d8p-13); // .000198412698412766
+
+	_TW __z = _SuperImpl::_S_broadcast(__a0);
+	__z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a1));
+	__z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a2));
+	__z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a3));
+	__z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a4));
+	__z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a5));
+	if constexpr (!is_same_v<_Tp, float>)
+	  {
+	    constexpr _Tp __a6 = 0x1.6c16c16c18101p-10; // .00138888888889005
+	    constexpr _Tp __a7 = 0x1.11111111187a4p-7;  // .00833333333338599
+	    constexpr _Tp __a8 = 0x1.5555555555577p-5;  // .0416666666666669
+	    constexpr _Tp __a9 = 0x1.55555555554d1p-3;  // .166666666666663
+	    constexpr _Tp __a10= .5;
+	    __z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a6 ));
+	    __z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a7 ));
+	    __z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a8 ));
+	    __z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a9 ));
+	    __z = _SuperImpl::_S_plus(_SuperImpl::_S_multiplies(__z, __y), _SuperImpl::_S_broadcast(__a10));
+	  }
+	__z = _SuperImpl::_S_multiplies(__z, _SuperImpl::_S_multiplies(__y, __y));
+	__z = _SuperImpl::_S_plus(__z, __y);
+	__z = _SuperImpl::_S_plus(__z, _SuperImpl::_S_broadcast(_Tp(1)));
+	constexpr _SimdConverter<_Tp, _Abi, int, simd_abi::fixed_size<_Np>> __cvt_to_int;
+	_TW __r = _SuperImpl::_S_ldexp(__z, __cvt_to_int(__n)); // x = z * 2ⁿ
+	_SuperImpl::_S_masked_assign(__overflow, __r, __infinity_v<_Tp>);
+	_SuperImpl::_S_masked_assign(__underflow, __r, _Tp());
+	return __r;
+      }
+
+    // }}}
     // frexp, modf and copysign implemented in simd_math.h
 #define _GLIBCXX_SIMD_MATH_FALLBACK(__name)                                    \
     template <typename _Tp, typename... _More>                                 \

@@ -105,4 +105,12 @@ template <typename V>
     vir::test::setFuzzyness<double>(1);
 #endif
     test_values<V>(input_values, {10000}, MAKE_TESTER(sqrt));
+
+    // allow 1 ULP for exp(simd<float>)
+    vir::test::setFuzzyness<float>(1);
+    vir::test::setFuzzyness<double>(1);
+    test_values<V>(input_values, {10000},
+		   MAKE_TESTER_2(exp, [](long double x) { return static_cast<T>(std::exp(x)); }),
+		   MAKE_TESTER(exp2), MAKE_TESTER(expm1)
+		  );
   }
