@@ -14,6 +14,7 @@ if [ -n "$GCC_TEST_RUN_EXPENSIVE" ]; then
 fi
 keep_failed=false
 only=
+print_progress=false
 
 usage() {
   cat <<EOF
@@ -22,6 +23,7 @@ Usage: $0 [Options] <g++ invocation>
 Options:
   -h, --help          Print this message and exit.
   -q, --quiet         Only print failures.
+  --progress          Print progress bar (implies --quiet and not --verbose).
   -v, --verbose       Print compiler and test output on failure.
   -t <type>, --type <type>
                       The value_type to test (default: $type).
@@ -50,9 +52,18 @@ while [ $# -gt 0 ]; do
     ;;
   -q|--quiet)
     quiet=true
+    print_progress=false
+    verbose=false
+    ;;
+  --progress)
+    quiet=true
+    verbose=false
+    print_progress=true
     ;;
   -v|--verbose)
+    quiet=false
     verbose=true
+    print_progress=false
     ;;
   --run-expensive)
     run_expensive=true
@@ -121,6 +132,17 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+if $print_progress; then
+  inc_progress() {
+    {
+      flock -n 9
+      n=$(($(cat .progress) + 1))
+      echo $n >&9
+      echo $n
+    } 9<>.progress
+  }
+fi
+
 CXX="$1"
 shift
 CXXFLAGS="$@"
@@ -133,6 +155,7 @@ sum="${testname}.sum"
 if [ -n "$only" ]; then
   if echo "$testname"|awk "{ exit /$only/ }"; then
     touch "$log" "$sum"
+    $print_progress && inc_progress >/dev/null
     exit 0
   fi
 fi
@@ -146,11 +169,28 @@ else
   exit 1
 fi
 
+if $print_progress; then
+  show_progress() {
+    n=$(inc_progress)
+    read total < .progress_total
+    total=${total}0
+    printf "\e[1G\e[K[%3d %%] ${src##*/} $type $abiflag" \
+      $((n * 1005 / total))
+  }
+
+  trap 'show_progress' EXIT
+  prefix="\e[1G\e[K"
+else
+  prefix=""
+fi
+
 fail() {
+  printf "$prefix"
   echo "FAIL: $src $type $abiflag ($*)" | tee -a "$sum" "$log"
 }
 
 xpass() {
+  printf "$prefix"
   echo "XPASS: $src $type $abiflag ($*)" | tee -a "$sum" "$log"
 }
 

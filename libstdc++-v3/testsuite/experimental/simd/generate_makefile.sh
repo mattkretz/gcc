@@ -97,7 +97,7 @@ driveroptions := \$(DRIVEROPTS)
 
 all: simd_testsuite.sum
 
-simd_testsuite.sum: simd_testsuite.log
+simd_testsuite.sum: .progress .progress_total simd_testsuite.log
 	@printf "\n\t\t=== simd_testsuite \$(test_flags) Summary ===\n\n"\\
 	"# of expected passes:\t\t\$(shell grep -c '^PASS:' \$@)\n"\\
 	"# of unexpected passes:\t\t\$(shell grep -c '^XPASS:' \$@)\n"\\
@@ -268,6 +268,7 @@ EOF
 use DRIVEROPTS=<options> to pass the following options:
 -q, --quiet         Only print failures.
 -v, --verbose       Print compiler and test output on failure.
+--progress          Print progress bar (implies --quiet and not --verbose).
 -k, --keep-failed   Keep executables of failed tests.
 --sim <executable>  Path to an executable that is prepended to the test
                     execution binary (default: the value of
@@ -285,9 +286,13 @@ The following are some of the valid targets for this Makefile:
 ... clean
 ... help"
 EOF
+  N=$(((0$(
+    all_tests | while read file && read name; do
+      all_types "$file" | printf " + %d" $(wc -l)
+    done) ) * 5))
   all_tests | while read file && read name; do
     echo "... run-${name}"
-    all_types | while read t && read type; do
+    all_types "$file" | while read t && read type; do
       echo "... run-${name}-${type}"
       for i in $(seq 0 9); do
         echo "... run-${name}-${type}-$i"
@@ -296,10 +301,16 @@ EOF
   done >> "$dsthelp"
   cat <<EOF
 
-clean:
-	rm -f -- *.sum *.log *.exe
+.progress:
+	@echo 0 > .progress
 
-.PHONY: clean help
+.progress_total:
+	@echo $N > .progress_total
+
+clean:
+	rm -f -- *.sum *.log *.exe .progress .progress_total
+
+.PHONY: all clean help .progress .progress_total
 
 .PRECIOUS: %.log %.sum
 EOF
