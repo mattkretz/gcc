@@ -3748,6 +3748,12 @@ template <int _Index, int _Total, int _Combine = 1, typename _Tp, size_t _Np>
   _SimdWrapper<_Tp, _Np / _Total * _Combine>
   __extract_part(const _SimdWrapper<_Tp, _Np> __x);
 
+template <int _Index, int _Total, int _Combine = 1, typename _TV>
+  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST
+  auto
+  __extract_part(const _TV __x)
+  { return __extract_part<_Index, _Total, _Combine>(__as_wrapper(__x))._M_data; }
+
 template <int Index, int Parts, int _Combine = 1, typename _Tp, typename _A0,
 	  typename... _As>
   _GLIBCXX_SIMD_INTRINSIC auto
