@@ -2605,18 +2605,15 @@ template <typename _Abi, typename>
       }
 
     // }}}
-    // _S_ldexp {{{
+    // _S_scalb {{{
     template <typename _Tp, size_t _Np>
       _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-      _S_ldexp(_SimdWrapper<_Tp, _Np> __x,
-	       __fixed_size_storage_t<int, _Np> __exp)
+      _S_scalb(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __exp)
       {
 	if constexpr (sizeof(__x) == 64 || __have_avx512vl)
 	  {
 	    const auto __xi = __to_intrin(__x);
-	    constexpr _SimdConverter<int, simd_abi::fixed_size<_Np>, _Tp, _Abi>
-	      __cvt;
-	    const auto __expi = __to_intrin(__cvt(__exp));
+	    const auto __expi = __to_intrin(__exp);
 	    using _Up = __bool_storage_member_type_t<_Np>;
 	    constexpr _Up __k1 = _Np < sizeof(_Up) * __CHAR_BIT__ ? _Up((1ULL << _Np) - 1) : ~_Up();
 	    if constexpr (sizeof(__xi) == 16)
@@ -2643,7 +2640,23 @@ template <typename _Abi, typename>
 	      }
 	  }
 	else
-	  return _Base::_S_ldexp(__x, __exp);
+	  return _Base::_S_scalb(__x, __exp);
+      }
+
+    // }}}
+    // _S_scalbn_v {{{
+    template <typename _Tp, size_t _Np>
+      _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
+      _S_scalbn_v(_SimdWrapper<_Tp, _Np> __x, __vector_type_t<int, _Np> __exp)
+      {
+	if constexpr (sizeof(__x) == 64 || __have_avx512vl)
+	  return _S_scalb(__x, _SimdWrapper<_Tp, _Np>(__vector_convert<__vector_type_t<_Tp, _Np>>(
+							_SimdWrapper<int, _Np>(__exp))));
+	else if constexpr (!__have_sse4_2 && sizeof(_Tp) == 8 && _Np == 2)
+	  // avoid bad codegen because of missing epi64 compares
+	  return {std::scalbn(__x[0], __exp[0]), std::scalbn(__x[1], __exp[1])};
+	else
+	  return _Base::_S_scalbn_v(__x, __exp);
       }
 
     // }}}

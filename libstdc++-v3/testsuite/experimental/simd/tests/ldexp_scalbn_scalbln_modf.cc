@@ -22,6 +22,16 @@
 #include "bits/test_values.h"
 
 template <typename V>
+  V rot1(const V& x) {
+    return V([&](auto i) {
+	     if constexpr(i == 0)
+	       return x[V::size() - 1];
+	     else
+	       return x[i - 1];
+	     });
+  }
+
+template <typename V>
   void
   test()
   {
@@ -48,9 +58,12 @@ template <typename V>
 	-std::__infinity_v<T>,
 	-0.,
 	std::__denorm_min_v<T>,
+	std::__denorm_min_v<T> * 3,
 	std::__norm_min_v<T> / 3,
 	-std::__denorm_min_v<T>,
+	-std::__denorm_min_v<T> * 3,
 	-std::__norm_min_v<T> / 3,
+	std::__quiet_NaN_v<T>,
 #endif
 	+0.,
 	+1.3,
@@ -62,78 +75,96 @@ template <typename V>
 	-0.9,
 	-0.99,
 	std::__norm_min_v<T>,
+	std::__norm_min_v<T> * 3,
 	std::__finite_max_v<T>,
+	std::__finite_max_v<T> / 3,
 	-std::__norm_min_v<T>,
-	-std::__finite_max_v<T>},
+	-std::__norm_min_v<T> * 3,
+	-std::__finite_max_v<T>,
+	-std::__finite_max_v<T> / 3},
       {10000},
-      [](const V input) {
-	for (int exp : {-10000, -100, -10, -1, 0, 1, 10, 100, 10000})
-	  {
-	    const auto totest = ldexp(input, exp);
-	    using R = std::remove_const_t<decltype(totest)>;
-	    auto&& expected = [&](const auto& v) -> const R {
-	      R tmp = {};
-	      using std::ldexp;
-	      for (std::size_t i = 0; i < R::size(); ++i)
-		{
-		  tmp[i] = ldexp(v[i], exp);
-		}
-	      return tmp;
-	    };
-	    const R expect1 = expected(input);
-	    COMPARE(isnan(totest), isnan(expect1))
-	      << "ldexp(" << input << ", " << exp << ") = " << totest
-	      << " != " << expect1;
-	    FUZZY_COMPARE(ldexp(iif(isnan(expect1), 0, input), exp),
-			  expected(iif(isnan(expect1), 0, input)))
-	      << "\nclean = " << iif(isnan(expect1), 0, input);
-	  }
-      },
-      [](const V input) {
-	for (int exp : {-10000, -100, -10, -1, 0, 1, 10, 100, 10000})
-	  {
-	    const auto totest = scalbn(input, exp);
-	    using R = std::remove_const_t<decltype(totest)>;
-	    auto&& expected = [&](const auto& v) -> const R {
-	      R tmp = {};
-	      using std::scalbn;
-	      for (std::size_t i = 0; i < R::size(); ++i)
-		{
-		  tmp[i] = scalbn(v[i], exp);
-		}
-	      return tmp;
-	    };
-	    const R expect1 = expected(input);
-	    COMPARE(isnan(totest), isnan(expect1))
-	      << "scalbn(" << input << ", " << exp << ") = " << totest
-	      << " != " << expect1;
-	    FUZZY_COMPARE(scalbn(iif(isnan(expect1), 0, input), exp),
-			  expected(iif(isnan(expect1), 0, input)))
-	      << "\nclean = " << iif(isnan(expect1), 0, input);
-	  }
-      },
-      [](const V input) {
-	for (long exp : {-10000, -100, -10, -1, 0, 1, 10, 100, 10000})
-	  {
-	    const auto totest = scalbln(input, exp);
-	    using R = std::remove_const_t<decltype(totest)>;
-	    auto&& expected = [&](const auto& v) -> const R {
-	      R tmp = {};
-	      using std::scalbln;
-	      for (std::size_t i = 0; i < R::size(); ++i)
-		{
-		  tmp[i] = scalbln(v[i], exp);
-		}
-	      return tmp;
-	    };
-	    const R expect1 = expected(input);
-	    COMPARE(isnan(totest), isnan(expect1))
-	      << "scalbln(" << input << ", " << exp << ") = " << totest
-	      << " != " << expect1;
-	    FUZZY_COMPARE(scalbln(iif(isnan(expect1), 0, input), exp),
-			  expected(iif(isnan(expect1), 0, input)))
-	      << "\nclean = " << iif(isnan(expect1), 0, input);
-	  }
+      [](V input) {
+	using IV = std::experimental::fixed_size_simd<int, V::size()>;
+	using LV = std::experimental::fixed_size_simd<long, V::size()>;
+	test_values<IV>(
+	  {-10000, -1026, -1024, -1023, -1000, -130, -128, -127,
+	   -100,   -10,   -1,    0,     1,     10,   100,
+	   127,    128,   130,   1000,  1023,  1024, 1026, 10000},
+	  [&](IV exp) {
+	    for (std::size_t rot = 0; rot < V::size(); ++rot)
+	      exp = rot1(exp);
+
+	    { // scalbn
+	      FloatExceptCompare fec;
+	      const auto totest = scalbn(input, exp);
+	      fec.record_first();
+	      using R = std::remove_const_t<decltype(totest)>;
+	      auto&& expected = [&](const auto& v) -> const R {
+		R tmp = {};
+		using std::scalbn;
+		for (std::size_t i = 0; i < R::size(); ++i)
+		  tmp[i] = scalbn(v[i], exp[i]);
+		return tmp;
+	      };
+	      const R expect1 = expected(input);
+	      fec.record_second();
+	      COMPARE(isnan(totest), isnan(expect1))
+		<< "\nscalbn(" << input << ", " << exp << ") = " << totest
+		<< " != " << expect1;
+	      input = iif(isnan(expect1), 0, input);
+	      FUZZY_COMPARE(scalbn(input, exp), expected(input))
+		.on_failure("\ninput = ", input, "\nexp = ", exp);
+	      fec.verify_equal_state(__FILE__, __LINE__,
+				     " After scalbn(", input, ", ", exp, ") = ", totest);
+	    }
+	    { // ldexp
+	      FloatExceptCompare fec;
+	      const auto totest = ldexp(input, exp);
+	      fec.record_first();
+	      using R = std::remove_const_t<decltype(totest)>;
+	      auto&& expected = [&](const auto& v) -> const R {
+		R tmp = {};
+		using std::ldexp;
+		for (std::size_t i = 0; i < R::size(); ++i)
+		  tmp[i] = ldexp(v[i], exp[i]);
+		return tmp;
+	      };
+	      const R expect1 = expected(input);
+	      fec.record_second();
+	      COMPARE(isnan(totest), isnan(expect1))
+		<< "\nldexp(" << input << ", " << exp << ") = " << totest
+		<< " != " << expect1;
+	      input = iif(isnan(expect1), 0, input);
+	      FUZZY_COMPARE(ldexp(input, exp), expected(input))
+		.on_failure("\ninput = ", input, "\nexp = ", exp);
+	      fec.verify_equal_state(__FILE__, __LINE__,
+				     " After ldexp(", input, ", ", exp, ") = ", totest);
+	    }
+	    { // scalbln
+	      LV expl = std::experimental::simd_cast<LV>(exp);
+	      FloatExceptCompare fec;
+	      const auto totest = scalbln(input, expl);
+	      fec.record_first();
+	      using R = std::remove_const_t<decltype(totest)>;
+	      auto&& expected = [&](const auto& v) -> const R {
+		R tmp = {};
+		using std::scalbln;
+		for (std::size_t i = 0; i < R::size(); ++i)
+		  tmp[i] = scalbln(v[i], expl[i]);
+		return tmp;
+	      };
+	      const R expect1 = expected(input);
+	      fec.record_second();
+	      COMPARE(isnan(totest), isnan(expect1))
+		<< "\nscalbln(" << input << ", " << expl << ") = " << totest
+		<< " != " << expect1;
+	      input = iif(isnan(expect1), 0, input);
+	      FUZZY_COMPARE(scalbln(input, expl), expected(input))
+		.on_failure("\ninput = ", input, "\nexp = ", expl);
+	      fec.verify_equal_state(__FILE__, __LINE__,
+				     " After scalbln(", input, ", ", exp, ") = ", totest);
+	    }
+	  });
       },
       [modf_is_broken](const V input) {
 	if (modf_is_broken)

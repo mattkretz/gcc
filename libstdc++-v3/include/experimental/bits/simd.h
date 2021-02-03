@@ -715,6 +715,20 @@ template <typename _Tp, typename _Up>
   using __make_dependent_t = typename __make_dependent<_Tp, _Up>::type;
 
 // }}}
+// __handle_fpexcept {{{
+namespace __detail
+{
+  template <int = math_errhandling>
+    constexpr bool __handle_fpexcept_impl(int)
+    { return math_errhandling & MATH_ERREXCEPT; }
+
+  constexpr bool __handle_fpexcept_impl(float)
+  { return false; }
+
+  /// True if math functions must raise floating-point exceptions as specified by C17.
+  static constexpr bool _S_handle_fpexcept = __handle_fpexcept_impl(0);
+}
+// }}}
 // ^^^ ---- type traits ---- ^^^
 
 // __invoke_ub{{{
@@ -3741,6 +3755,12 @@ template <int _Index, int _Total, int _Combine = 1, typename _Tp, size_t _Np>
   _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST
   _SimdWrapper<_Tp, _Np / _Total * _Combine>
   __extract_part(const _SimdWrapper<_Tp, _Np> __x);
+
+template <int _Index, int _Total, int _Combine = 1, typename _TV>
+  _GLIBCXX_SIMD_INTRINSIC _GLIBCXX_CONST
+  auto
+  __extract_part(const _TV __x)
+  { return __extract_part<_Index, _Total, _Combine>(__as_wrapper(__x))._M_data; }
 
 template <int Index, int Parts, int _Combine = 1, typename _Tp, typename _A0,
 	  typename... _As>

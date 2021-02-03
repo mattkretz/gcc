@@ -1925,7 +1925,237 @@ template <typename _Abi, typename>
 	  }
       }
 
+    // }}}2
+    // _S_all_of {{{
+    // Convenience function for making the following code less verbose
+    template <typename _Tp>
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      bool
+      _S_all_of(_MaskMember<_Tp> __k)
+      { return _MaskImpl::_S_all_of(simd_mask<_Tp, _Abi>(__private_init, __k)); }
+
+    // }}}
+    // _S_any_of {{{
+    // Convenience function for making the following code less verbose
+    template <typename _Tp>
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      bool
+      _S_any_of(_MaskMember<_Tp> __k)
+      { return _MaskImpl::_S_any_of(simd_mask<_Tp, _Abi>(__private_init, __k)); }
+
+    // }}}
     // math {{{2
+    // scalb {{{
+    template <typename _Tp, size_t _Np>
+      static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_scalb(const _SimdWrapper<_Tp, _Np> __x, const _SimdWrapper<_Tp, _Np> __e)
+      { return _SuperImpl::_S_scalbn_v(__x, __vector_convert<__vector_type_t<int, _Np>>(__e)); }
+
+    // }}}
+    // scalbln {{{
+    template <typename _Tp, size_t _Np>
+      static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_scalbln(const _SimdWrapper<_Tp, _Np> __x, const __fixed_size_storage_t<long, _Np>& __e)
+      {
+	_SimdConverter<long, simd_abi::fixed_size<_Np>, int, simd_abi::fixed_size<_Np>> __cvt;
+	return _SuperImpl::_S_scalbn(__x, __cvt(__e));
+      }
+
+    // }}}
+    // scalbn {{{
+    template <typename _Tp, size_t _Np>
+      static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_scalbn(const _SimdWrapper<_Tp, _Np> __x, const __fixed_size_storage_t<int, _Np>& __e)
+      {
+	if constexpr ( __fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
+	  return _SuperImpl::_S_scalbn_v(__x, __e.first._M_data);
+	else
+	  return _SuperImpl::_S_scalbn_v(__x, __bit_cast<__vector_type_t<int, _Np>>(__e));
+      }
+
+    template <size_t _Np>
+      static constexpr
+      _SimdWrapper<float, _Np>
+      _S_scalbn_v(const _SimdWrapper<float, _Np> __x, __vector_type_t<int, _Np> __ev)
+      {
+	static_assert(sizeof(float) == sizeof(int));
+	static_assert(__radix_v<float> == 2);
+	static_assert(__has_iec559_storage_format_v<float>);
+	using _FltV = __vector_type_t<float, _Np>;
+	using _IntV = __vector_type_t<int, _Np>;
+	constexpr int __shift = __digits_v<float> - 1; // 23 mantissa, 8 exponent, 1 sign bit(s)
+	_FltV __xv = __x._M_data;
+	_IntV __xiabs = reinterpret_cast<_IntV>(__xv) & 0x7fff'ffff;
+	_IntV __xexp = __xiabs >> __shift;
+	// active inputs are all normal and subnormal values
+	auto __active = __xiabs != 0
+#if !__FINITE_MATH_ONLY__
+			  && __xexp < 0xff // true by definition with finite-math-only
+#endif
+			;
+	// very unlikely:
+	//if (_GLIBCXX_SIMD_IS_UNLIKELY(!_S_any_of(__active))) return __x;
+	const auto __subnormal_input = __active && __xexp == 0;
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<float>(__subnormal_input)))
+	  { // make subnormal __xv normal and adjust __ev accordingly
+	    __ev -= __subnormal_input ? 25 : _IntV();
+	    // the following multiplication never raises an exception
+	    __xv *= __subnormal_input ? 0x1.p25f : 1.f;
+	    __xiabs = reinterpret_cast<_IntV>(__xv) & 0x7fff'ffff;
+	    __xexp = __xiabs >> __shift;
+	  }
+	const _IntV __newexp = __xexp + __ev;
+	_FltV __r = reinterpret_cast<_FltV>(
+		    (__newexp << __shift) | (0x807f'ffff & reinterpret_cast<_IntV>(__xv)));
+#if !__FINITE_MATH_ONLY__
+	// inf results can't happen by definition with finite-math-only
+	const auto __do_overflow = __active && __newexp >= 0xff; // result overflows, not inf before
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<float>(__do_overflow)))
+	  {
+	    const _IntV __xsignbit = reinterpret_cast<_IntV>(__xv) & 0x8000'0000;
+	    if constexpr (__detail::_S_handle_fpexcept)
+	      // the multiplication will lead to FE_INEXACT | FE_OVERFLOW with inf result
+	      // unless __xv is 0, in which case an FE_INVALID is avoided (0 * inf -> nan)
+	      __r = __do_overflow
+		      ? reinterpret_cast<_FltV>(__xsignbit | 0x7f7f'ffff) * __finite_max_v<float>
+		      : __r;
+	    else
+	      __r = __do_overflow ? reinterpret_cast<_FltV>(__xsignbit | 0x7f80'0000) : __r;
+	  }
+#endif
+	const auto __is_subnormal_or_0_result = __active && __newexp <= 0;
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<float>(__is_subnormal_or_0_result)))
+	  {
+	    if (__detail::_S_handle_fpexcept)
+	      {
+		// - If __newexp <= -25 the result must be 0 raising FE_INEXACT and FE_UNDERFLOW.
+		// - If __newexp > -25 && __newexp <= 0, the result is subnormal and raises
+		//   FE_INEXACT and FE_UNDERFLOW depending on whether mantissa bits are shifted out.
+		// - If __newexp > 0 the multiplication with __1pm25 may not raise any unrelated
+		//   exceptions like FE_INVALID.
+		const auto __1pm25 = __is_subnormal_or_0_result ? 0x1.p-25f : 0;
+		const auto __is_subnormal_result = __is_subnormal_or_0_result && __newexp > -25;
+		__r = __is_subnormal_or_0_result
+			? __1pm25 * reinterpret_cast<_FltV>(
+				      (__is_subnormal_result ? __newexp + 25 << __shift : 1)
+					| (0x807f'ffff & reinterpret_cast<_IntV>(__xv)))
+			: __r;
+	      }
+	    else
+	      { // raise whatever exceptions you want
+		__r = __is_subnormal_or_0_result
+			? 0x1.p-25f * reinterpret_cast<_FltV>(
+					(__newexp > -25 ? __newexp + 25 << __shift : 0)
+					| (0x807f'ffff & reinterpret_cast<_IntV>(__xv)))
+			: __r;
+	      }
+	  }
+	// fix up result for inf, nan, and +/-0 inputs
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(!_S_all_of<float>(__active)))
+	  __r = __active ? __r : __xv;
+	return __r;
+      }
+
+    template <size_t _Np>
+      static constexpr
+      _SimdWrapper<double, _Np>
+      _S_scalbn_v(const _SimdWrapper<double, _Np> __x, __vector_type_t<int, _Np> __e)
+      {
+	static_assert(sizeof(double) == 2 * sizeof(int));
+	static_assert(__radix_v<double> == 2);
+	static_assert(__has_iec559_storage_format_v<double>);
+	using _DblV = __vector_type_t<double, _Np>;
+	using _I64V = __vector_type_t<__int_for_sizeof_t<double>, _Np>;
+	using _IntV = __vector_type_t<int, _Np>;
+	constexpr int __shift = __digits_v<double> - 1; // 52 mantissa, 11 exponent, 1 sign bit(s)
+	_DblV __xv = __x._M_data;
+	_I64V __xiabs = reinterpret_cast<_I64V>(__xv) & 0x7fff'ffff'ffff'ffffll;
+	_I64V __xexp = __xiabs >> __shift;
+	_I64V __ev = __vector_convert<_I64V>(_SimdWrapper<int, _Np>(__e));
+	// active inputs are all normal and subnormal values
+	auto __active = __xiabs != 0
+#if !__FINITE_MATH_ONLY__
+			  && __xexp < 0x7ff // true by definition with finite-math-only
+#endif
+			;
+	// very unlikely:
+	//if (_GLIBCXX_SIMD_IS_UNLIKELY(!_S_any_of(__active))) return __x;
+	const auto __subnormal_input = __active && __xexp == 0;
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<double>(__subnormal_input)))
+	  { // make subnormal __xv normal and adjust __ev accordingly
+	    __ev -= __subnormal_input ? 54 : _I64V();
+	    // the following multiplication never raises an exception
+	    __xv *= __subnormal_input ? 0x1.p54 : 1.;
+	    __xiabs = reinterpret_cast<_I64V>(__xv) & 0x7fff'ffff'ffff'ffffll;
+	    __xexp = __xiabs >> __shift;
+	  }
+	const _I64V __newexp = __xexp + __ev;
+	_DblV __r = reinterpret_cast<_DblV>(
+		    (__newexp << __shift)
+			| (0x800f'ffff'ffff'ffffll & reinterpret_cast<_I64V>(__xv)));
+#if !__FINITE_MATH_ONLY__
+	// inf results can't happen by definition with finite-math-only
+	const auto __do_overflow = __active && __newexp >= 0x7ff; // result overflows, not inf before
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<double>(__do_overflow)))
+	  {
+	    const _I64V __xsignbit = reinterpret_cast<_I64V>(__xv) & 0x8000'0000'0000'0000ll;
+	    if constexpr (__detail::_S_handle_fpexcept)
+	      // the multiplication will lead to FE_INEXACT | FE_OVERFLOW with inf result
+	      // unless __xv is 0, in which case an FE_INVALID is avoided (0 * inf -> nan)
+	      __r = __do_overflow
+		      ? reinterpret_cast<_DblV>(__xsignbit | 0x7fef'ffff'ffff'ffffll)
+			  * __finite_max_v<double>
+		      : __r;
+	    else
+	      __r = __do_overflow ? reinterpret_cast<_DblV>(__xsignbit | 0x7f80'0000'0000'0000ll)
+				  : __r;
+	  }
+#endif
+	const auto __is_subnormal_or_0_result = __active && __newexp <= 0;
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(_S_any_of<double>(__is_subnormal_or_0_result)))
+	  {
+	    if (__detail::_S_handle_fpexcept)
+	      {
+		// - If __newexp <= -54 the result must be 0 raising FE_INEXACT and FE_UNDERFLOW.
+		// - If __newexp > -54 && __newexp <= 0, the result is subnormal and raises
+		//   FE_INEXACT and FE_UNDERFLOW depending on whether mantissa bits are shifted out.
+		// - If __newexp > 0 the multiplication with __1pm54 may not raise any unrelated
+		//   exceptions like FE_INVALID.
+		const auto __1pm54 = __is_subnormal_or_0_result ? 0x1.p-54 : 0;
+		const auto __is_subnormal_result = __is_subnormal_or_0_result && __newexp > -54;
+		__r = __is_subnormal_or_0_result
+			? __1pm54 * reinterpret_cast<_DblV>(
+				      (__is_subnormal_result ? __newexp + 54 << __shift : 1)
+					| (0x800f'ffff'ffff'ffffll & reinterpret_cast<_I64V>(__xv)))
+			: __r;
+	      }
+	    else
+	      { // raise whatever exceptions you want
+		__r = __is_subnormal_or_0_result
+			? 0x1.p-54 * reinterpret_cast<_DblV>(
+					(__newexp > -54 ? __newexp + 54 << __shift : 0)
+					| (0x800f'ffff'ffff'ffffll & reinterpret_cast<_I64V>(__xv)))
+			: __r;
+	      }
+	  }
+	// fix up result for inf, nan, and +/-0 inputs
+	if (_GLIBCXX_SIMD_IS_UNLIKELY(!_S_all_of<double>(__active)))
+	  __r = __active ? __r : __xv;
+	return __r;
+      }
+
+    // }}}
+    // ldexp {{{
+    template <typename _Tp, size_t _Np>
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_ldexp(const _SimdWrapper<_Tp, _Np>& __x, const __fixed_size_storage_t<int, _Np>& __e)
+      { return _SuperImpl::_S_scalbn(__x, __e); }
+
+    // }}}
     // frexp, modf and copysign implemented in simd_math.h
 #define _GLIBCXX_SIMD_MATH_FALLBACK(__name)                                    \
     template <typename _Tp, typename... _More>                                 \
@@ -1976,7 +2206,6 @@ template <typename _Abi, typename>
     _GLIBCXX_SIMD_MATH_FALLBACK(exp)
     _GLIBCXX_SIMD_MATH_FALLBACK(exp2)
     _GLIBCXX_SIMD_MATH_FALLBACK(expm1)
-    _GLIBCXX_SIMD_MATH_FALLBACK(ldexp)
     _GLIBCXX_SIMD_MATH_FALLBACK_FIXEDRET(int, ilogb)
     _GLIBCXX_SIMD_MATH_FALLBACK(log)
     _GLIBCXX_SIMD_MATH_FALLBACK(log10)
@@ -1985,8 +2214,6 @@ template <typename _Abi, typename>
     _GLIBCXX_SIMD_MATH_FALLBACK(logb)
 
     // modf implemented in simd_math.h
-    _GLIBCXX_SIMD_MATH_FALLBACK(scalbn)
-    _GLIBCXX_SIMD_MATH_FALLBACK(scalbln)
     _GLIBCXX_SIMD_MATH_FALLBACK(cbrt)
     _GLIBCXX_SIMD_MATH_FALLBACK(fabs)
     _GLIBCXX_SIMD_MATH_FALLBACK(pow)
