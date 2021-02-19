@@ -64,6 +64,7 @@ template <typename V>
     vir::test::setFuzzyness<float>(1);
     vir::test::setFuzzyness<double>(1);
     vir::test::setFuzzyness<long double>(2); // because of the bad reference
+    FloatExceptCompare::ignore = true;       // because of the bad reference
 
     using T = typename V::value_type;
     test_values_3arg<V>(
@@ -127,6 +128,7 @@ template <typename V>
 
     vir::test::setFuzzyness<float>(0);
     vir::test::setFuzzyness<double>(0);
+    FloatExceptCompare::ignore = false;
     test_values_3arg<V>(
       {
 #ifdef __STDC_IEC_559__
