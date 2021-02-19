@@ -73,10 +73,10 @@ template <typename V>
 #endif
 	+0., std::__norm_min_v<T>, std::__finite_max_v<T>},
       {10000}, MAKE_TESTER(pow), MAKE_TESTER(fmod), MAKE_TESTER(remainder),
-      MAKE_TESTER_NOFPEXCEPT(copysign),
+      MAKE_TESTER(copysign),
       MAKE_TESTER(nextafter), // MAKE_TESTER(nexttoward),
       MAKE_TESTER(fdim), MAKE_TESTER(fmax), MAKE_TESTER(fmin),
-      MAKE_TESTER_NOFPEXCEPT(isgreater), MAKE_TESTER_NOFPEXCEPT(isgreaterequal),
-      MAKE_TESTER_NOFPEXCEPT(isless), MAKE_TESTER_NOFPEXCEPT(islessequal),
-      MAKE_TESTER_NOFPEXCEPT(islessgreater), MAKE_TESTER_NOFPEXCEPT(isunordered));
+      MAKE_TESTER(isgreater), MAKE_TESTER(isgreaterequal),
+      MAKE_TESTER(isless), MAKE_TESTER(islessequal),
+      MAKE_TESTER(islessgreater), MAKE_TESTER(isunordered));
   }

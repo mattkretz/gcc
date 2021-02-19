@@ -18,7 +18,7 @@
 #include <experimental/simd>
 #include <initializer_list>
 #include <random>
-#include <cfenv>
+#include "floathelpers.h"
 
 template <class T, class A>
   std::experimental::simd<T, A>
@@ -239,145 +239,62 @@ template <class V>
 		 || (abs_x >= min && abs_x <= max);
       }
   }
-
-#define MAKE_TESTER_2(name_, reference_)                                       \
-  [&](auto... inputs) {                                                        \
-    ((where(!isvalid(inputs), inputs) = 1), ...);                              \
-    const auto totest = name_(inputs...);                                      \
-    using R = std::remove_const_t<decltype(totest)>;                           \
-    auto&& expected = [&](const auto&... vs) -> const R {                      \
-      R tmp = {};                                                              \
-      for (std::size_t i = 0; i < R::size(); ++i)                              \
-	tmp[i] = reference_(vs[i]...);                                         \
-      return tmp;                                                              \
-    };                                                                         \
-    const R expect1 = expected(inputs...);                                     \
-    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
-      {                                                                        \
-	((where(!isvalid(expect1), inputs) = 1), ...);                         \
-	const R expect2 = expected(inputs...);                                 \
-	((FUZZY_COMPARE(name_(inputs...), expect2) << "\ninputs = ")           \
-	 << ... << inputs);                                                    \
-      }                                                                        \
-    else                                                                       \
-      ((COMPARE(name_(inputs...), expect1) << "\n" #name_ "(")                 \
-       << ... << inputs)                                                       \
-	<< ")";                                                                \
-  }
-
-#define MAKE_TESTER_NOFPEXCEPT(name_)                                          \
-  [&](auto... inputs) {                                                        \
-    ((where(!isvalid(inputs), inputs) = 1), ...);                              \
-    using R = std::remove_const_t<decltype(name_(inputs...))>;                 \
-    auto&& expected = [&](const auto&... vs) -> const R {                      \
-      R tmp = {};                                                              \
-      for (std::size_t i = 0; i < R::size(); ++i)                              \
-	tmp[i] = std::name_(vs[i]...);                                         \
-      return tmp;                                                              \
-    };                                                                         \
-    const R expect1 = expected(inputs...);                                     \
-    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
-      {                                                                        \
-	((where(!isvalid(expect1), inputs) = 1), ...);                         \
-	std::feclearexcept(FE_ALL_EXCEPT);                                     \
-	asm volatile("");                                                      \
-	auto totest = name_(inputs...);                                        \
-	asm volatile("");                                                      \
-	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
-	 << ... << inputs)                                                     \
-	  << ")";                                                              \
-	const R expect2 = expected(inputs...);                                 \
-	std::feclearexcept(FE_ALL_EXCEPT);                                     \
-	asm volatile("");                                                      \
-	totest = name_(inputs...);                                             \
-	asm volatile("");                                                      \
-	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
-	 << ... << inputs)                                                     \
-	  << ")";                                                              \
-	((FUZZY_COMPARE(totest, expect2) << "\n" #name_ "(") << ... << inputs) \
-	  << ")";                                                              \
-      }                                                                        \
-    else                                                                       \
-      {                                                                        \
-	std::feclearexcept(FE_ALL_EXCEPT);                                     \
-	asm volatile("");                                                      \
-	auto totest = name_(inputs...);                                        \
-	asm volatile("");                                                      \
-	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
-	 << ... << inputs)                                                     \
-	  << ")";                                                              \
-	((COMPARE(totest, expect1) << "\n" #name_ "(") << ... << inputs)       \
-	  << ")";                                                              \
-      }                                                                        \
-  }
-
-#else
-
-#define MAKE_TESTER_2(name_, reference_)                                       \
-  [&](auto... inputs) {                                                        \
-    const auto totest = name_(inputs...);                                      \
-    using R = std::remove_const_t<decltype(totest)>;                           \
-    auto&& expected = [&](const auto&... vs) -> const R {                      \
-      R tmp = {};                                                              \
-      for (std::size_t i = 0; i < R::size(); ++i)                              \
-	tmp[i] = reference_(vs[i]...);                                         \
-      return tmp;                                                              \
-    };                                                                         \
-    const R expect1 = expected(inputs...);                                     \
-    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
-      {                                                                        \
-	((COMPARE(isnan(totest), isnan(expect1)) << #name_ "(")                \
-	 << ... << inputs)                                                     \
-	  << ") = " << totest << " != " << expect1;                            \
-	((where(isnan(expect1), inputs) = 0), ...);                            \
-	((FUZZY_COMPARE(name_(inputs...), expected(inputs...))                 \
-	  << "\nclean = ")                                                     \
-	 << ... << inputs);                                                    \
-      }                                                                        \
-    else                                                                       \
-      ((COMPARE(name_(inputs...), expect1) << "\n" #name_ "(")                 \
-       << ... << inputs)                                                       \
-	<< ")";                                                                \
-  }
-
-#define MAKE_TESTER_NOFPEXCEPT(name_)                                          \
-  [&](auto... inputs) {                                                        \
-    std::feclearexcept(FE_ALL_EXCEPT);                                         \
-    auto totest = name_(inputs...);                                            \
-    ((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")         \
-     << ... << inputs)                                                         \
-      << ")";                                                                  \
-    using R = std::remove_const_t<decltype(totest)>;                           \
-    auto&& expected = [&](const auto&... vs) -> const R {                      \
-      R tmp = {};                                                              \
-      for (std::size_t i = 0; i < R::size(); ++i)                              \
-	tmp[i] = std::name_(vs[i]...);                                         \
-      return tmp;                                                              \
-    };                                                                         \
-    const R expect1 = expected(inputs...);                                     \
-    if constexpr (std::is_floating_point_v<typename R::value_type>)            \
-      {                                                                        \
-	((COMPARE(isnan(totest), isnan(expect1)) << #name_ "(")                \
-	 << ... << inputs)                                                     \
-	  << ") = " << totest << " != " << expect1;                            \
-	((where(isnan(expect1), inputs) = 0), ...);                            \
-	const R expect2 = expected(inputs...);                                 \
-	std::feclearexcept(FE_ALL_EXCEPT);                                     \
-	asm volatile("");                                                      \
-	totest = name_(inputs...);                                             \
-	asm volatile("");                                                      \
-	((COMPARE(std::fetestexcept(FE_ALL_EXCEPT), 0) << "\n" #name_ "(")     \
-	 << ... << inputs)                                                     \
-	  << ")";                                                              \
-	FUZZY_COMPARE(totest, expect2);                                        \
-      }                                                                        \
-    else                                                                       \
-      {                                                                        \
-	((COMPARE(totest, expect1) << "\n" #name_ "(") << ... << inputs)       \
-	  << ")";                                                              \
-      }                                                                        \
-  }
-
 #endif
 
-#define MAKE_TESTER(name_) MAKE_TESTER_2(name_, std::name_)
+template <typename TestF, typename RefF>
+  auto
+  make_tester(const char* fun_name, const TestF& testf, const RefF& reff,
+	      const char* file = __FILE__, const int line = __LINE__)
+  {
+    return [=](auto... inputs) {
+#if __GCC_IEC_559 < 2
+      ((where(!isvalid(inputs), inputs) = 1), ...);
+#endif
+      FloatExceptCompare fec;
+      const auto totest = testf(inputs...);
+      fec.record_first();
+      using R = std::remove_const_t<decltype(totest)>;
+      auto&& expected = [&](const auto&... vs) -> const R {
+	return R([&](auto i) { return reff(vs[i]...); });
+      };
+      const R expect = expected(inputs...);
+      fec.record_second();
+      if constexpr (std::is_floating_point_v<typename R::value_type>)
+	{
+#if __GCC_IEC_559 < 2
+	  ((where(!isvalid(expect), inputs) = 1), ...);
+#endif
+	  COMPARE(isnan(totest), isnan(expect))
+	    .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ") =\ntotest = ",
+			totest, " !=\nexpect = ", expect);
+	  [&](auto... inputs) {
+	    ((where(nan_expect, inputs) = 0), ...);
+	    FUZZY_COMPARE(testf(inputs...), expected(inputs...))
+	      .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ')');
+	  }(inputs...);
+	  fec.verify_equal_state(file, line, '\n', fun_name, '(', inputs...,
+				 ")\nfirst  = ", totest, "\nsecond = ", expect);
+	}
+      else
+	{
+	  COMPARE(totest, expect)
+	    .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ')');
+	  fec.verify_equal_state(file, line, '\n', fun_name, '(', inputs...,
+				 ")\nfirst  = ", totest, "\nsecond = ", expect);
+	}
+    };
+  }
+
+template <typename TestF>
+  auto
+  make_tester(const char* fun_name, const TestF& testf,
+	      const char* file = __FILE__, const int line = __LINE__)
+  { return make_tester(fun_name, testf, testf, file, line); }
+
+#define MAKE_TESTER_2(name_, reference_) \
+  make_tester(#name_, [](auto... xs) { return name_(xs...); }, \
+	      [](auto... xs) { return reference_(xs...); }, __FILE__, __LINE__)
+
+#define MAKE_TESTER(name_) \
+  make_tester(#name_, [](auto... xs) { return name_(xs...); }, \
+	      [](auto... xs) { return std::name_(xs...); }, __FILE__, __LINE__)
