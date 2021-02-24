@@ -311,7 +311,8 @@ Objective-C and Objective-C++ Dialects}.
 -fdiagnostics-show-path-depths @gol
 -fno-show-column @gol
 -fdiagnostics-column-unit=@r{[}display@r{|}byte@r{]} @gol
--fdiagnostics-column-origin=@var{origin}}
+-fdiagnostics-column-origin=@var{origin} @gol
+-fno-diagnostics-aliases}
 
 @item Warning Options
 @xref{Warning Options,,Options to Request or Suppress Warnings}.
@@ -5118,6 +5119,12 @@ Select the origin for column numbers, i.e. the column number assigned to the
 first column.  The default value of 1 corresponds to traditional GCC
 behavior and to the GNU style guide.  Some utilities may perform better with an
 origin of 0; any non-negative value may be specified.
+
+@item -fno-diagnostics-use-aliases
+@opindex fno-diagnostics-use-aliases
+@opindex fdiagnostics-use-aliases
+Do not replace identifiers or scope names with the aliases defined with the
+@code{[[gnu::diagnose_as("alias")]]} attribute.
 
 @item -fdiagnostics-format=@var{FORMAT}
 @opindex fdiagnostics-format

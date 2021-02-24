@@ -35,6 +35,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "internal-fn.h"
 #include "gcc-rich-location.h"
 #include "cp-name-hint.h"
+#include "attribs.h"
 
 #define pp_separate_with_comma(PP) pp_cxx_separate_with (PP, ',')
 #define pp_separate_with_semicolon(PP) pp_cxx_separate_with (PP, ';')
@@ -66,6 +67,7 @@ static void dump_alias_template_specialization (cxx_pretty_printer *, tree, int)
 static void dump_type (cxx_pretty_printer *, tree, int);
 static void dump_typename (cxx_pretty_printer *, tree, int);
 static void dump_simple_decl (cxx_pretty_printer *, tree, tree, int);
+static void dump_decl_name_or_diagnose_as (cxx_pretty_printer *, tree, int);
 static void dump_decl (cxx_pretty_printer *, tree, int);
 static void dump_template_decl (cxx_pretty_printer *, tree, int);
 static void dump_function_decl (cxx_pretty_printer *, tree, int);
@@ -231,7 +233,15 @@ dump_scope (cxx_pretty_printer *pp, tree scope, int flags)
     {
       if (scope != global_namespace)
 	{
-          dump_decl (pp, scope, f);
+	  tree diagnose_as
+	    = flag_diagnostics_use_aliases
+		? lookup_attribute ("diagnose_as", DECL_ATTRIBUTES (scope))
+		: NULL_TREE;
+	  if (diagnose_as)
+	    pp_cxx_ws_string (
+	      pp, TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (diagnose_as))));
+	  else
+	    dump_decl (pp, scope, f);
 	  pp_cxx_colon_colon (pp);
 	}
     }
@@ -764,6 +774,45 @@ class_key_or_enum_as_string (tree t)
     return "struct";
 }
 
+/* Print out an enclosing scope of a template instance by inspecting the tree
+   SPECIAL of the template instantiation and the tree GENERAL of the most
+   general template in parallel under the control of FLAGS while adjusting
+   PARMS as needed. This allows the diagnose_as attribute to override the name
+   of full specializations, while hiding its template parameters, and to
+   override the name of partial specializations without falling back to printing
+   the template parameters of the general template decl.  */
+
+static void
+dump_template_scope (cxx_pretty_printer *pp, tree special, tree general,
+		     tree *parms, int flags)
+{
+  gcc_assert (parms);
+  if (special != general && RECORD_OR_UNION_TYPE_P (special) && *parms)
+    {
+      gcc_assert (RECORD_OR_UNION_TYPE_P (general));
+      const bool tmplate
+	= TYPE_LANG_SPECIFIC (special) && CLASSTYPE_TEMPLATE_INFO (special)
+	    && (TREE_CODE (CLASSTYPE_TI_TEMPLATE (special)) != TEMPLATE_DECL
+		  || PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (special)));
+      dump_template_scope (pp, CP_TYPE_CONTEXT (special),
+			   CP_TYPE_CONTEXT (general),
+			   tmplate ? &TREE_CHAIN(*parms) : parms, flags);
+      tree attr = lookup_attribute ("diagnose_as", TYPE_ATTRIBUTES (special));
+      if (attr)
+	{
+	  pp_cxx_ws_string (pp, TREE_STRING_POINTER (
+				TREE_VALUE (TREE_VALUE (attr))));
+	  if (tmplate)
+	    TREE_VALUE (*parms) = make_tree_vec (0);
+	}
+      else
+	dump_aggr_type (pp, general, flags | TFF_UNQUALIFIED_NAME);
+      pp_cxx_colon_colon (pp);
+    }
+  else
+    dump_scope (pp, general, flags);
+}
+
 /* Print out a class declaration T under the control of FLAGS,
    in the form `class foo'.  */
 
@@ -781,6 +830,7 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 
   tree decl = TYPE_NAME (t);
 
+  tree diagnose_as = NULL_TREE;
   if (decl)
     {
       typdef = (!DECL_ARTIFICIAL (decl)
@@ -804,11 +854,14 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 		&& (TREE_CODE (CLASSTYPE_TI_TEMPLATE (t)) != TEMPLATE_DECL
 		    || PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (t)));
       
-      if (! (flags & TFF_UNQUALIFIED_NAME))
-	dump_scope (pp, CP_DECL_CONTEXT (decl), flags | TFF_SCOPE);
-      flags &= ~TFF_UNQUALIFIED_NAME;
+      tree context = CP_DECL_CONTEXT (decl);
+      tree diagnose_as_specialized = NULL_TREE;
       if (tmplate)
 	{
+	  if (flag_diagnostics_use_aliases)
+	    diagnose_as_specialized
+	      = lookup_attribute ("diagnose_as", TYPE_ATTRIBUTES (t));
+
 	  /* Because the template names are mangled, we have to locate
 	     the most general template, and use that name.  */
 	  tree tpl = TYPE_TI_TEMPLATE (t);
@@ -817,9 +870,61 @@ dump_aggr_type (cxx_pretty_printer *pp, tree t, int flags)
 	    tpl = DECL_TI_TEMPLATE (tpl);
 	  decl = tpl;
 	}
+
+      if (flag_diagnostics_use_aliases)
+	{
+	  diagnose_as = lookup_attribute ("diagnose_as",
+					  TYPE_ATTRIBUTES (TREE_TYPE (decl)));
+	  if (diagnose_as_specialized
+		&& (!diagnose_as || TREE_VALUE (diagnose_as_specialized)
+		      != TREE_VALUE (diagnose_as)))
+	    {
+	      diagnose_as = diagnose_as_specialized;
+	      /* Skip dump_template_parms if diagnose_as applies to a full
+	         specialization.  */
+	      tree args = CLASSTYPE_TI_ARGS (t);
+	      args = INNERMOST_TEMPLATE_ARGS (args);
+	      gcc_assert (args);
+	      tmplate = false;
+	      for (int i = 0; i < NUM_TMPL_ARGS (args); ++i)
+		{
+		  tree arg = TREE_VEC_ELT (args, i);
+		  while (INDIRECT_TYPE_P (arg))
+		    arg = TREE_TYPE (arg);
+		  if (WILDCARD_TYPE_P (arg))
+		    {
+		      tmplate = true;
+		      break;
+		    }
+		}
+	    }
+	  /* Given
+
+	       template <class T> struct [[gnu::diagnose_as("AA")]] A {
+	         struct [[gnu::diagnose_as("BB")]] B {};
+	       };
+
+	     A<int>::B will reach the following branch and find the diagnose_as
+	     attribute for B.  */
+	  else if (!tmplate && !diagnose_as && TYPE_TEMPLATE_INFO (t))
+	    diagnose_as
+	      = lookup_attribute ("diagnose_as",
+				  TYPE_ATTRIBUTES (
+				    TREE_TYPE (TYPE_TI_TEMPLATE (t))));
+
+	  if (diagnose_as && TREE_CHAIN (TREE_VALUE (diagnose_as)))
+	    context = TREE_VALUE (TREE_CHAIN (TREE_VALUE (diagnose_as)));
+	}
+
+      if (! (flags & TFF_UNQUALIFIED_NAME))
+	dump_scope (pp, context, flags | TFF_SCOPE);
+      flags &= ~TFF_UNQUALIFIED_NAME;
     }
 
-  if (LAMBDA_TYPE_P (t))
+  if (diagnose_as)
+    pp_cxx_ws_string (pp, TREE_STRING_POINTER (
+			    TREE_VALUE (TREE_VALUE (diagnose_as))));
+  else if (LAMBDA_TYPE_P (t))
     {
       /* A lambda's "type" is essentially its signature.  */
       pp_string (pp, M_("<lambda"));
@@ -1141,7 +1246,7 @@ dump_simple_decl (cxx_pretty_printer *pp, tree t, tree type, int flags)
 	  pp_string (pp, " capture>");
 	}
       else
-	dump_decl (pp, DECL_NAME (t), flags);
+	dump_decl_name_or_diagnose_as (pp, t, flags);
     }
   else if (DECL_DECOMPOSITION_P (t))
     pp_string (pp, M_("<structured bindings>"));
@@ -1183,6 +1288,25 @@ dump_decl_name (cxx_pretty_printer *pp, tree t, int flags)
     }
 
   pp_cxx_tree_identifier (pp, t);
+}
+
+/* Print the DECL_NAME of DECL unless a different string was requested by the
+   diagnose_as attribute. */
+
+static void
+dump_decl_name_or_diagnose_as (cxx_pretty_printer *pp, tree decl, int flags)
+{
+  if (flag_diagnostics_use_aliases)
+    {
+      tree attr = lookup_attribute ("diagnose_as", DECL_ATTRIBUTES (decl));
+      if (attr && TREE_VALUE (attr))
+	{
+	  pp_cxx_ws_string (
+	    pp, TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr))));
+	  return;
+	}
+    }
+  dump_decl_name (pp, DECL_NAME (decl), flags);
 }
 
 /* Dump a human readable string for the decl T under control of FLAGS.  */
@@ -1230,7 +1354,7 @@ dump_decl (cxx_pretty_printer *pp, tree t, int flags)
 	      || flags & TFF_CLASS_KEY_OR_ENUM))
 	{
 	  pp_cxx_ws_string (pp, "using");
-	  dump_decl (pp, DECL_NAME (t), flags);
+	  dump_decl_name_or_diagnose_as(pp, t, flags);
 	  pp_cxx_whitespace (pp);
 	  pp_cxx_ws_string (pp, "=");
 	  pp_cxx_whitespace (pp);
@@ -1412,7 +1536,7 @@ dump_decl (cxx_pretty_printer *pp, tree t, int flags)
 	      TREE_CODE (DECL_INITIAL (t)) == TEMPLATE_PARM_INDEX))
 	dump_simple_decl (pp, t, TREE_TYPE (t), flags);
       else if (DECL_NAME (t))
-	dump_decl (pp, DECL_NAME (t), flags);
+	dump_decl_name_or_diagnose_as (pp, t, flags);
       else if (DECL_INITIAL (t))
 	dump_expr (pp, DECL_INITIAL (t), flags | TFF_EXPR_IN_PARENS);
       else
@@ -1431,7 +1555,7 @@ dump_decl (cxx_pretty_printer *pp, tree t, int flags)
 	  }
 	dump_type (pp, scope, flags);
 	pp_cxx_colon_colon (pp);
-	dump_decl (pp, DECL_NAME (t), flags);
+	dump_decl_name_or_diagnose_as (pp, t, flags);
 	if (variadic)
 	  pp_cxx_ws_string (pp, "...");
       }
@@ -1671,7 +1795,8 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   tree template_args = NULL_TREE;
   tree template_parms = NULL_TREE;
   int show_return = flags & TFF_RETURN_TYPE || flags & TFF_DECL_SPECIFIERS;
-  int do_outer_scope = ! (flags & TFF_UNQUALIFIED_NAME);
+  bool do_outer_scope = ! (flags & TFF_UNQUALIFIED_NAME);
+  bool do_template_scope = false;
   tree exceptions;
   bool constexpr_p;
   tree ret = NULL_TREE;
@@ -1688,6 +1813,11 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   /* Likewise for the constexpr specifier, in case t is a specialization.  */
   constexpr_p = DECL_DECLARED_CONSTEXPR_P (t);
 
+  /* Keep t before the following branch makes t point to a more general
+     template. Without the specialized template, the diagnose_as attribute on
+     the function is lost. */
+  tree specialized_t = t;
+
   /* Pretty print template instantiations only.  */
   if (DECL_USE_TEMPLATE (t) && DECL_TEMPLATE_INFO (t)
       && !(flags & TFF_NO_TEMPLATE_BINDINGS)
@@ -1699,8 +1829,46 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
       tmpl = most_general_template (t);
       if (tmpl && TREE_CODE (tmpl) == TEMPLATE_DECL)
 	{
+	  /* Inspect whether any record/union type in the context of the
+	     instantiated function template carries a diagnose_as attribute. If
+	     one does, we need to print the scope and template argument list
+	     differently. Consider:
+
+	       template <class T> struct A {
+		 template <class U0, class U1> struct B;
+		 template <class U> struct B<U, int> {
+		   void f();
+		 };
+	       };
+	       using Achar [[gnu::diagnose_as("Achar")]] = A<char>;
+
+	     Now Achar::B<int, int>::f() needs to print as "Achar::B<U, int>::f()
+	     [with U = int]". However, DECL_CONTEXT (t) would print as
+	     "Achar::B<int, int>" and dump_aggr_type has no sensible way to
+	     retrieve A<T>::B<U, int>. tmpl was generalized to A<T>::B<U, int>::f
+	     and thus dump_aggr_type (DECL_CONTEXT (tmpl)) would print
+	     "A<T>::B<U, int> [with T = char, U = int]". I.e. the diagnose_as
+	     attribute on the A<char> instantiation is lost.  */
+	  if (tmpl != t && do_outer_scope && flag_diagnostics_use_aliases)
+	    {
+	      for (tree context = DECL_CONTEXT (t);
+		   context && RECORD_OR_UNION_TYPE_P (context);
+		   context = TYPE_CONTEXT (context))
+		{
+		  if (lookup_attribute ("diagnose_as",
+					TYPE_ATTRIBUTES (context)))
+		    {
+		      do_template_scope = true;
+		      break;
+		    }
+		}
+	    }
+
 	  template_parms = DECL_TEMPLATE_PARMS (tmpl);
 	  t = tmpl;
+	  /* The "[with ...]" clause is printed, thus dump_template_params must
+	     unconditionally present functions as primary templates.  */
+	  dump_function_name_flags |= TFF_AS_PRIMARY;
 	}
     }
 
@@ -1747,6 +1915,25 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   /* Print the function name.  */
   if (!do_outer_scope)
     /* Nothing.  */;
+  else if (do_template_scope)
+    {
+      template_parms = copy_list (template_parms);
+      bool func_template = TREE_TYPE (TREE_VALUE (template_parms)) == t;
+      dump_template_scope(pp, DECL_CONTEXT (specialized_t), DECL_CONTEXT (t),
+			  func_template ? &TREE_CHAIN (template_parms)
+					: &template_parms,
+			  flags);
+      if (TREE_VEC_LENGTH (TREE_VALUE (template_parms)) == 0)
+	{
+	  /* If no template parms are left, make it a NULL_TREE so that no
+	     "[with ]" is printed.  */
+	  tree p = TREE_CHAIN (template_parms);
+	  for (; p && TREE_VEC_LENGTH (TREE_VALUE (p)) == 0; p = TREE_CHAIN (p))
+	    ;
+	  if (!p)
+	    template_parms = template_args = NULL_TREE;
+	}
+    }
   else if (cname)
     {
       dump_type (pp, cname, flags);
@@ -1755,7 +1942,7 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   else
     dump_scope (pp, CP_DECL_CONTEXT (t), flags);
 
-  dump_function_name (pp, t, dump_function_name_flags);
+  dump_function_name (pp, specialized_t, dump_function_name_flags);
 
   if (!(flags & TFF_NO_FUNCTION_ARGUMENTS))
     {
@@ -1935,6 +2122,14 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
   if (TREE_CODE (t) == TEMPLATE_DECL)
     t = DECL_TEMPLATE_RESULT (t);
 
+  if (flag_diagnostics_use_aliases)
+    {
+      tree attr = lookup_attribute ("diagnose_as", DECL_ATTRIBUTES (t));
+      if (attr)
+	name = get_identifier (
+		 TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr))));
+    }
+
   /* Don't let the user see __comp_ctor et al.  */
   if (DECL_CONSTRUCTOR_P (t)
       || DECL_DESTRUCTOR_P (t))
@@ -1989,6 +2184,8 @@ dump_template_parms (cxx_pretty_printer *pp, tree info,
 {
   tree args = info ? TI_ARGS (info) : NULL_TREE;
 
+  if (flags & TFF_AS_PRIMARY)
+    primary = true;
   if (primary && flags & TFF_TEMPLATE_NAME)
     return;
   flags &= ~(TFF_CLASS_KEY_OR_ENUM | TFF_TEMPLATE_NAME);
@@ -3168,7 +3365,7 @@ lang_decl_name (tree decl, int v, bool translate)
            && TREE_CODE (decl) == NAMESPACE_DECL)
     dump_decl (cxx_pp, decl, TFF_PLAIN_IDENTIFIER | TFF_UNQUALIFIED_NAME);
   else
-    dump_decl (cxx_pp, DECL_NAME (decl), TFF_PLAIN_IDENTIFIER);
+    dump_decl_name_or_diagnose_as (cxx_pp, decl, TFF_PLAIN_IDENTIFIER);
 
   return pp_ggc_formatted_text (cxx_pp);
 }
@@ -3953,6 +4150,13 @@ comparable_template_types_p (tree type_a, tree type_b)
   if (!CLASS_TYPE_P (type_b))
     return false;
 
+  /* If one of the types has a diagnose_as attribute set it is presented as a
+     non-template (even if it's a template specialization). */
+  if (flag_diagnostics_use_aliases
+	&& (lookup_attribute ("diagnose_as", TYPE_ATTRIBUTES (type_a))
+	      || lookup_attribute ("diagnose_as", TYPE_ATTRIBUTES (type_b))))
+    return false;
+
   tree tinfo_a = TYPE_TEMPLATE_INFO (type_a);
   tree tinfo_b = TYPE_TEMPLATE_INFO (type_b);
   if (!tinfo_a || !tinfo_b)
@@ -4052,8 +4256,21 @@ print_template_differences (pretty_printer *pp, tree type_a, tree type_b,
   tree tinfo_a = TYPE_TEMPLATE_INFO (type_a);
   tree tinfo_b = TYPE_TEMPLATE_INFO (type_b);
 
-  pp_printf (pp, "%s<",
-	     IDENTIFIER_POINTER (DECL_NAME (TI_TEMPLATE (tinfo_a))));
+  const char* identifier_a
+    = IDENTIFIER_POINTER (DECL_NAME (TI_TEMPLATE (tinfo_a)));
+  if (flag_diagnostics_use_aliases)
+    {
+      /* Locate the most general template, and see whether it carries the
+         diagnose_as attribute. If it does, use it as identifier for type_a. */
+      tree tpl = TI_TEMPLATE (tinfo_a);
+      while (DECL_TEMPLATE_INFO (tpl))
+	tpl = DECL_TI_TEMPLATE (tpl);
+      tree attr = lookup_attribute ("diagnose_as",
+				    TYPE_ATTRIBUTES (TREE_TYPE (tpl)));
+      if (attr)
+	identifier_a = TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr)));
+    }
+  pp_printf (pp, "%s<", identifier_a);
 
   tree args_a = TI_ARGS (tinfo_a);
   tree args_b = TI_ARGS (tinfo_b);

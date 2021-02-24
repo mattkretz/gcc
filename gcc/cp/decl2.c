@@ -1139,6 +1139,48 @@ grokbitfield (const cp_declarator *declarator,
   return value;
 }
 
+/* Return true iff DECL is an alias template of a class template which strictly
+   renames the type.  */
+bool
+is_alias_template_p (tree decl)
+{
+  if (TREE_CODE (decl) != TYPE_DECL)
+    return false;
+
+  tree type = strip_typedefs (TREE_TYPE (decl), nullptr, 0);
+  if (!CLASS_TYPE_P (type) || !CLASSTYPE_TEMPLATE_INFO (type))
+    return false;
+
+  /* Ensure it's a real alias template not just
+       template <class T> struct A {
+	 struct B {};
+	 template <class U> struct C {};
+	 using D [[gnu::diagnose_as]] = B;
+	 using E [[gnu::diagnose_as]] = C<int>;
+       };
+     A<T>::D and A<T>::E are not alias templates.
+     - For A<T>::D, the TREE_TYPE of the innermost template params is A and
+       not B, which would be the case for a real alias template.
+     - For A<T>::E, the innermost template params belong to C but its template
+       args have no wildcard types, which would be the case for a real
+       alias template.  */
+  tree tmpl = CLASSTYPE_TI_TEMPLATE (type);
+  if (tmpl != TREE_TYPE (INNERMOST_TEMPLATE_PARMS (
+			   DECL_TEMPLATE_PARMS (tmpl))))
+    return false;
+
+  tree targs = INNERMOST_TEMPLATE_ARGS (CLASSTYPE_TI_ARGS (type));
+  for (int i = 0; i < NUM_TMPL_ARGS (targs); ++i)
+    {
+      tree arg = TREE_VEC_ELT (targs, i);
+      while (INDIRECT_TYPE_P (arg))
+	arg = TREE_TYPE (arg);
+      if (WILDCARD_TYPE_P (arg))
+	return true;
+    }
+  return false;
+}
+
 
 /* Returns true iff ATTR is an attribute which needs to be applied at
    instantiation time rather than template definition time.  */
@@ -1165,6 +1207,10 @@ is_late_template_attribute (tree attr, tree decl)
       && (is_attribute_p ("unused", name)
 	  || is_attribute_p ("used", name)))
     return false;
+
+  /* Allow alias templates to set diagnose_as on the RHS template.  */
+  if (is_attribute_p ("diagnose_as", name))
+    return !is_alias_template_p (decl);
 
   /* Attribute tls_model wants to modify the symtab.  */
   if (is_attribute_p ("tls_model", name))

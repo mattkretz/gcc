@@ -1606,6 +1606,10 @@ fdiagnostics-show-template-tree
 C++ ObjC++ Var(flag_diagnostics_show_template_tree) Init(0)
 Print hierarchical comparisons when template types are mismatched.
 
+fdiagnostics-use-aliases
+C++ Var(flag_diagnostics_use_aliases) Init(1)
+Replace identifiers or scope names in diagnostics as defined by the diagnose_as attribute.
+
 fdirectives-only
 C ObjC C++ ObjC++
 Preprocess directives only.

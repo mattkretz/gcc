@@ -46,6 +46,7 @@ static tree verify_stmt_tree_r (tree *, int *, void *);
 
 static tree handle_init_priority_attribute (tree *, tree, tree, int, bool *);
 static tree handle_abi_tag_attribute (tree *, tree, tree, int, bool *);
+static tree handle_diagnose_as_attribute (tree *, tree, tree, int, bool *);
 
 /* If REF is an lvalue, returns the kind of lvalue that REF is.
    Otherwise, returns clk_none.  */
@@ -4877,6 +4878,8 @@ const struct attribute_spec cxx_attribute_table[] =
     handle_init_priority_attribute, NULL },
   { "abi_tag", 1, -1, false, false, false, true,
     handle_abi_tag_attribute, NULL },
+  { "diagnose_as", 0, -1, false, false, false, false,
+    handle_diagnose_as_attribute, NULL },
   { NULL, 0, 0, false, false, false, false, NULL, NULL }
 };
 
@@ -5136,6 +5139,154 @@ handle_abi_tag_attribute (tree* node, tree name, tree args,
 		 name, *node);
 	  goto fail;
 	}
+    }
+
+  return NULL_TREE;
+
+ fail:
+  *no_add_attrs = true;
+  return NULL_TREE;
+}
+
+static bool
+check_diagnose_as_redeclaration (const_tree decl, const_tree name,
+				 const_tree old, const_tree new_)
+{
+  if (!old)
+    return true;
+  if (TREE_CODE (TREE_VALUE (old)) == TREE_LIST)
+    old = TREE_VALUE (old);
+  if (TREE_CODE (TREE_VALUE (new_)) == TREE_LIST)
+    new_ = TREE_VALUE (new_);
+  tree old_value = TREE_VALUE (old);
+  tree new_value = TREE_VALUE (new_);
+  if (cp_tree_equal (old_value, new_value))
+    return true;
+  warning (OPT_Wattributes, "%qD redeclared with %<%D(%E)%> "
+			    "attribute", decl, name, new_value);
+  inform (DECL_SOURCE_LOCATION (decl), "previous declaration here");
+  return false;
+}
+
+static tree
+handle_diagnose_as_attribute (tree* node, tree name, tree args,
+			      int flags, bool* no_add_attrs)
+{
+  tree decl = NULL_TREE;
+  const bool is_alias = (TREE_CODE (*node) == TYPE_DECL);
+  if (args && list_length (args) == 2
+	&& TREE_PURPOSE (TREE_CHAIN (args)) == integer_zero_node)
+    /* We're called from handle_diagnose_as_attribute with additional context
+       argument.  */;
+  else if (is_alias)
+    {
+      if (args && (TREE_CHAIN (args)
+		     || TREE_CODE (TREE_VALUE (args)) != STRING_CST))
+	{
+	  warning (OPT_Wattributes,
+		   "%qD attribute requires 0 or 1 NTBS arguments", name);
+	  goto fail;
+	}
+    }
+  else if (!args || TREE_CHAIN (args)
+	     || TREE_CODE (TREE_VALUE (args)) != STRING_CST)
+    {
+      warning (OPT_Wattributes,
+	       "%qD attribute requires a single NTBS argument", name);
+      goto fail;
+    }
+
+  if (is_alias && CLASS_TYPE_P (TREE_TYPE (*node)))
+    { // Apply the attribute to the type alias itself.
+      decl = *node;
+
+      /* Reject alias templates without wildcards on the innermost template args
+         of the RHS type. E.g. template <class> using A = B;  */
+      if (DECL_LANG_SPECIFIC (decl)
+	    && DECL_TEMPLATE_INFO (decl)
+	    && DECL_ALIAS_TEMPLATE_P (DECL_TI_TEMPLATE (decl))
+	    && DECL_TI_TEMPLATE (decl)
+		 == TREE_TYPE (INNERMOST_TEMPLATE_PARMS (
+				 DECL_TEMPLATE_PARMS (
+				   DECL_TI_TEMPLATE (decl)))))
+	return error_mark_node;
+
+      if (!args)
+	{ // turn alias identifier into attribute argument
+	  tree alias_name = DECL_NAME (decl);
+	  tree str = fix_string_type (
+		       build_string(IDENTIFIER_LENGTH (alias_name) + 1,
+				    IDENTIFIER_POINTER (alias_name)));
+	  args = build_tree_list (NULL_TREE, str);
+	}
+      // apply the attribute to the specialization on the RHS.
+      tree type = strip_typedefs (TREE_TYPE (*node), nullptr, 0);
+
+      if (is_alias_template_p (decl))
+	{
+	  type = CLASSTYPE_PRIMARY_TEMPLATE_TYPE (type);
+	  // Warn and skip if the template arguments don't match up like in
+	  //   template <class T> using A = B<int, T>;
+	  if (!same_type_p (TREE_TYPE (decl), type))
+	    return error_mark_node;
+	}
+
+      // Add the DECL_CONTEXT of the alias to the attribute if it is different
+      // to the context of the type.
+      if (!TREE_CHAIN (args)
+	    && CP_DECL_CONTEXT (decl) != CP_TYPE_CONTEXT (type))
+	{
+	  TREE_CHAIN (args) = build_tree_list (integer_zero_node,
+					       CP_DECL_CONTEXT (decl));
+	}
+
+      if (COMPLETE_TYPE_P (type))
+	{
+	  tree rhs = handle_diagnose_as_attribute (
+			 &type, name, args, flags, no_add_attrs);
+	  if (rhs == error_mark_node || *no_add_attrs)
+	    return rhs;
+	  else
+	    TYPE_ATTRIBUTES (type)
+	      = tree_cons (name, args, TYPE_ATTRIBUTES (type));
+	}
+      else
+	{
+	  tree attributes = tree_cons (name, args, NULL_TREE);
+	  cplus_decl_attributes (&type, attributes, ATTR_FLAG_TYPE_IN_PLACE);
+	}
+    }
+  else if (TYPE_P (*node))
+    {
+      if (!OVERLOAD_TYPE_P (*node))
+	return error_mark_node;
+      decl = TYPE_NAME (*node);
+    }
+  else
+    {
+      if (!VAR_OR_FUNCTION_DECL_P (*node)
+	    || DECL_LANGUAGE (*node) != lang_cplusplus)
+	return error_mark_node;
+      decl = *node;
+    }
+
+  // Make sure all declarations have the same diagnose_as string.
+  if (DECL_SOURCE_LOCATION (decl) != input_location)
+    {
+      tree attributes = TYPE_P (*node) ? TYPE_ATTRIBUTES (*node)
+				       : DECL_ATTRIBUTES (decl);
+      if (!check_diagnose_as_redeclaration (
+	     decl, name, lookup_attribute ("diagnose_as", attributes), args))
+	goto fail;
+    }
+  else if (CLASS_TYPE_P (*node) && CLASSTYPE_IMPLICIT_INSTANTIATION (*node))
+    {
+      // The above branch (different source location) is taken for declarations
+      // of type aliases that modify an implicit template specialization on the
+      // RHS. This branch is taken when the template is instantiated via
+      // instantiate_class_template_1, in which case the attribute either
+      // already has the value from the general template or from a type alias.
+      goto fail;
     }
 
   return NULL_TREE;

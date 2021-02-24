@@ -6060,6 +6060,53 @@ handle_namespace_attrs (tree ns, tree attributes)
 	    DECL_ATTRIBUTES (ns) = tree_cons (name, args,
 					      DECL_ATTRIBUTES (ns));
 	}
+      else if (is_attribute_p ("diagnose_as", name))
+	{
+	  if (DECL_NAMESPACE_ALIAS (ns))
+	    { // apply attribute to original namespace
+	      if (!args)
+		{ // turn alias identifier into attribute argument
+		  tree ns_name = DECL_NAME (ns);
+		  tree str = fix_string_type (
+			       build_string(IDENTIFIER_LENGTH (ns_name) + 1,
+					    IDENTIFIER_POINTER (ns_name)));
+		  args = build_tree_list (NULL_TREE, str);
+		}
+	      else if (TREE_CHAIN (args)
+			 || TREE_CODE (TREE_VALUE (args)) != STRING_CST)
+		{
+		  warning (OPT_Wattributes,
+			   "%qD attribute requires 0 or 1 NTBS arguments",
+			   name);
+		  continue;
+		}
+	      tree attributes = tree_cons (name, args, NULL_TREE);
+	      handle_namespace_attrs (ORIGINAL_NAMESPACE (ns), attributes);
+	      continue;
+	    }
+	  if (!args || TREE_CHAIN (args)
+		|| TREE_CODE (TREE_VALUE (args)) != STRING_CST)
+	    {
+	      warning (OPT_Wattributes,
+		       "%qD attribute requires a single NTBS argument",
+		       name);
+	      continue;
+	    }
+	  tree existing
+	    = lookup_attribute ("diagnose_as", DECL_ATTRIBUTES (ns));
+	  if (existing
+		&& !cp_tree_equal (TREE_VALUE (args),
+				   TREE_VALUE (TREE_VALUE (existing))))
+	    {
+	      auto_diagnostic_group d;
+	      warning (OPT_Wattributes, "%qD redeclared with different %qD "
+					"attribute value", ns, name);
+	      inform (DECL_SOURCE_LOCATION (ns), "previous declaration here");
+	      continue;
+	    }
+	  DECL_ATTRIBUTES (ns) = tree_cons (name, args,
+					    DECL_ATTRIBUTES (ns));
+	}
       else
 	{
 	  warning (OPT_Wattributes, "%qD attribute directive ignored",
@@ -6092,7 +6139,7 @@ pop_decl_namespace (void)
 /* Process a namespace-alias declaration.  */
 
 void
-do_namespace_alias (tree alias, tree name_space)
+do_namespace_alias (tree alias, tree name_space, tree attributes)
 {
   if (name_space == error_mark_node)
     return;
@@ -6107,6 +6154,9 @@ do_namespace_alias (tree alias, tree name_space)
   DECL_EXTERNAL (alias) = 1;
   DECL_CONTEXT (alias) = FROB_CONTEXT (current_scope ());
   set_originating_module (alias);
+
+  /* Apply attributes.  */
+  handle_namespace_attrs (alias, attributes);
 
   pushdecl (alias);
 

@@ -2865,6 +2865,51 @@ types (@pxref{Variable Attributes}, @pxref{Type Attributes}.)
 The message attached to the attribute is affected by the setting of
 the @option{-fmessage-length} option.
 
+@item diagnose_as ("@var{string}")
+@itemx diagnose_as
+@cindex @code{diagnose_as} function attribute
+The @code{diagnose_as} attribute modifies how the entity the attribute
+appertains to is diagnosed in compiler messages and @code{__func__},
+@code{__FUNCTION__}, and @code{__PRETTY_FUNCTION__} macros. (The result of
+@code{typeid} is not affected.) If the attribute is applied to a
+@code{namespace}, the specified string replaces the complete enclosing scope.
+The effect of the @code{diagnose_as} attribute can be disabled with the
+@option{-fno-diagnostics-use-aliases} command line option.
+
+The argument @var{string} is optional for type and namespace aliases. If it is
+omitted, the identifier of the type or namespace alias is unconditionally used
+in all places where the type / namespace on the right-hand side is diagnosed.
+
+@smallexample
+namespace Foo @{
+  namespace Bar @{
+    inline namespace v1 [[gnu::diagnose_as("Foobar")]] @{
+      int f() @{
+        // __PRETTY_FUNCTION__ == "void Foobar::f()"
+      @}
+    @}
+  @}
+@}
+// In function 'int Foobar::f()':
+// warning: no return statement in function returning non-void [-Wreturn-type]
+@end smallexample
+
+The @code{diagnose_as} attribute can be used with namespaces, namespace aliases,
+functions, variables, alias declarations (but not alias templates), and
+user-defined types (classes, unions, and enums). If the alias declaration
+aliases a class type (including template specializations), the attribute is
+additionally applied to the class type. Whether the attribute has an effect on
+partial template specializations is unspecified and may depend on several
+different factors.
+
+@smallexample
+template <class T> struct basic_string @{@};
+using string [[gnu::diagnose_as]] = basic_string<char>;
+int f(basic_string<char>) @{@}
+// In function 'int f(string)':
+// warning: no return statement in function returning non-void [-Wreturn-type]
+@end smallexample
+
 @item error ("@var{message}")
 @itemx warning ("@var{message}")
 @cindex @code{error} function attribute
