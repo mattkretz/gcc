@@ -30,6 +30,7 @@ template <typename V>
     vir::test::setFuzzyness<float>(1);
     vir::test::setFuzzyness<double>(1);
     vir::test::setFuzzyness<long double>(1);
+    FloatExceptCompare::ignore = true; // https://sourceware.org/bugzilla/show_bug.cgi?id=27460
     test_values_2arg<V>(
       {
 #ifdef __STDC_IEC_559__
@@ -47,6 +48,7 @@ template <typename V>
       {100000},
 #endif
       MAKE_TESTER(hypot));
+    FloatExceptCompare::ignore = false;
 #if !__FINITE_MATH_ONLY__
     COMPARE(hypot(V(std::__finite_max_v<T>), V(std::__finite_max_v<T>)),
 	    V(std::__infinity_v<T>));

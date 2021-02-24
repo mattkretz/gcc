@@ -961,10 +961,8 @@ template <typename _VV, typename = __detail::__odr_helper>
 	// AVX-512).
 	using namespace __float_bitwise_operators;
 	using namespace __proposed;
-	_V __absx = abs(__x);          // no error
-	_V __absy = abs(__y);          // no error
-	_V __hi = max(__absx, __absy); // no error
-	_V __lo = min(__absy, __absx); // no error
+	_V __absx = abs(__x); // no error
+	_V __absy = abs(__y); // no error
 
 	// round __hi down to the next power-of-2:
 	_GLIBCXX_SIMD_USE_CONSTEXPR_API _V __inf(__infinity_v<_Tp>);
@@ -973,6 +971,8 @@ template <typename _VV, typename = __detail::__odr_helper>
 	if constexpr (__have_neon && !__have_neon_a32)
 	  { // With ARMv7 NEON, we have no subnormals and must use slightly
 	    // different strategy
+	    const _V __hi = max(__absx, __absy); // no error
+	    const _V __lo = min(__absy, __absx); // no error
 	    const _V __hi_exp = __hi & __inf;
 	    _V __scale_back = __hi_exp;
 	    // For large exponents (max & max/2) the inversion comes too close
@@ -999,6 +999,8 @@ template <typename _VV, typename = __detail::__odr_helper>
 				    && all_of(isnormal(__y))))
 #endif
 	  {
+	    const _V __hi = max(__absx, __absy); // no error
+	    const _V __lo = min(__absy, __absx); // no error
 	    const _V __hi_exp = __hi & __inf;
 	    //((__hi + __hi) & __inf) ^ __inf almost works for computing
 	    //__scale,
@@ -1023,6 +1025,31 @@ template <typename _VV, typename = __detail::__odr_helper>
 	else
 	  {
 	    // slower path to support subnormals
+#if __FINITE_MATH_ONLY__ || !(math_errhandling & MATH_ERREXCEPT)
+	    // either no NaN/Inf input possible or FP exceptions are ignored
+	    _V __hi = max(__absx, __absy); // no error
+	    _V __lo = min(__absy, __absx); // no error
+#else
+	    // If x or y is NaN then max(x, y) might raise FE_INVALID. We have to remove NaNs first. At
+	    // the end the return values for __xy_isnan is set to a generic quiet NaN.
+	    const auto __xy_isnan = isunordered(__x, __y);
+	    where(__xy_isnan, __absx) = _Tp();
+	    where(__xy_isnan, __absy) = _Tp();
+	    _V __hi = max(__absx, __absy); // no error
+	    _V __lo = min(__absy, __absx); // no error
+	    auto __hi_isinf = isinf(__hi);
+	    if (any_of(__xy_isnan)) [[__unlikely__]]
+	      __hi_isinf = isinf(__x) || isinf(__y);
+	    // avoid setting __scale to 0 leading to FE_INVALID on __hi * __scale
+	    where(__hi_isinf, __hi) = 0;
+	    where(__hi_isinf, __lo) = 0;
+#endif
+#if math_errhandling & MATH_ERREXCEPT
+	    // Make sure hypot(0, 1/3) doesn't lead to FE_INEXACT on __h1 * __h1.
+	    _V __fixup = __hi; // store __hi as the correct & exact return value
+	    const auto __lo_iszero = __lo == 0;
+	    where(__lo_iszero, __hi) = 0;
+#endif
 	    // if __hi is subnormal, avoid scaling by inf & final mul by 0
 	    // (which yields NaN) by using min()
 	    _V __scale = _V(1 / __norm_min_v<_Tp>);
@@ -1041,7 +1068,7 @@ template <typename _VV, typename = __detail::__odr_helper>
 	    // sqrt(x²+y²) = e*sqrt((x/e)²+(y/e)²):
 	    // this ensures no overflow in the argument to sqrt
 	    _V __r = __hi_exp * sqrt(__h1 * __h1 + __l1 * __l1);
-#ifdef __STDC_IEC_559__
+#if defined __STDC_IEC_559__ && !__FINITE_MATH_ONLY__ && (math_errhandling & MATH_ERREXCEPT)
 	    // fixup for Annex F requirements
 	    // the naive fixup goes like this:
 	    //
@@ -1052,14 +1079,12 @@ template <typename _VV, typename = __detail::__odr_helper>
 	    // The fixup can be prepared in parallel with the sqrt, requiring a
 	    // single blend step after hi_exp * sqrt, reducing latency and
 	    // throughput:
-	    _V __fixup = __hi; // __lo == 0
-	    where(isunordered(__x, __y), __fixup) = __quiet_NaN_v<_Tp>;
-	    where(isinf(__absx) || isinf(__absy), __fixup) = __inf;
-	    where(!(__lo == 0 || isunordered(__x, __y)
-		    || (isinf(__absx) || isinf(__absy))),
-		  __fixup)
-	      = __r;
+	    where(__xy_isnan, __fixup) = __quiet_NaN_v<_Tp>;
+	    where(__hi_isinf, __fixup) = __inf;
+	    where(!(__lo_iszero || __xy_isnan || __hi_isinf), __fixup) = __r;
 	    __r = __fixup;
+#elif (math_errhandling & MATH_ERREXCEPT)
+	    where(__lo_iszero, __r) = __fixup;
 #endif
 	    return __r;
 	  }
