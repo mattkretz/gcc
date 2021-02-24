@@ -1252,6 +1252,39 @@ grokbitfield (const cp_declarator *declarator,
   return value;
 }
 
+/* Return true iff DECL is an alias template of a class template. This predicate
+   also works before the alias template has its DECL_TEMPLATE_INFO.  */
+bool
+is_renaming_alias_template (tree decl)
+{
+  if (TREE_CODE (decl) != TYPE_DECL)
+    return false;
+
+  tree type = strip_typedefs (TREE_TYPE (decl), nullptr, 0);
+  if (!TYPE_LANG_SPECIFIC (type) || !TYPE_TEMPLATE_INFO (type))
+    return false;
+
+  /* Ensure it's a real alias template not just
+       template <class T> struct A {
+	 struct B {};
+	 template <class U> struct C {};
+	 using D [[gnu::diagnose_as]] = B;
+	 using E [[gnu::diagnose_as]] = C<int>;
+       };
+     A<T>::D and A<T>::E are not alias templates.
+     - For A<T>::D, the DECL_PRIMARY_TEMPLATE is A and not B, which would be the
+       case for a real alias template.
+     - For A<T>::E, the innermost template params belong to C but its template
+       args have no wildcard types, which would be the case for a real
+       alias template.  */
+  tree tmpl = CLASSTYPE_TI_TEMPLATE (type);
+  if (!PRIMARY_TEMPLATE_P (tmpl))
+    return false;
+
+  tree targs = INNERMOST_TEMPLATE_ARGS (CLASSTYPE_TI_ARGS (type));
+  return any_dependent_template_arguments_p (targs);
+}
+
 
 /* Returns true iff ATTR is an attribute which needs to be applied at
    instantiation time rather than template definition time.  */
@@ -1278,6 +1311,10 @@ is_late_template_attribute (tree attr, tree decl)
       && (is_attribute_p ("unused", name)
 	  || is_attribute_p ("used", name)))
     return false;
+
+  /* Allow alias templates to set diagnose_as on the RHS template.  */
+  if (is_attribute_p ("diagnose_as", name))
+    return !is_renaming_alias_template (decl);
 
   /* Attribute tls_model wants to modify the symtab.  */
   if (is_attribute_p ("tls_model", name))

@@ -14930,20 +14930,15 @@ cp_parser_declaration (cp_parser* parser, tree prefix_attrs)
 	       || token1->keyword == RID_STATIC
 	       || token1->keyword == RID_INLINE))
     cp_parser_explicit_instantiation (parser);
-  /* If the next token is `namespace', check for a named or unnamed
-     namespace definition.  */
-  else if (token1->keyword == RID_NAMESPACE
-	   && (/* A named namespace definition.  */
-	       (token2->type == CPP_NAME
-		&& (cp_lexer_peek_nth_token (parser->lexer, 3)->type
-		    != CPP_EQ))
-               || (token2->type == CPP_OPEN_SQUARE
-                   && cp_lexer_peek_nth_token (parser->lexer, 3)->type
-                   == CPP_OPEN_SQUARE)
-	       /* An unnamed namespace definition.  */
-	       || token2->type == CPP_OPEN_BRACE
-	       || token2->keyword == RID_ATTRIBUTE))
-    cp_parser_namespace_definition (parser);
+  /* If the next token is `namespace', we have either a namespace alias
+     definition or a namespace definition.  */
+  else if (token1->keyword == RID_NAMESPACE)
+    {
+      cp_parser_parse_tentatively (parser);
+      cp_parser_namespace_alias_definition (parser);
+      if (!cp_parser_parse_definitely (parser))
+	cp_parser_namespace_definition (parser);
+    }
   /* An inline (associated) namespace definition.  */
   else if (token2->keyword == RID_NAMESPACE
 	   && token1->keyword == RID_INLINE)
@@ -21404,15 +21399,20 @@ cp_parser_namespace_alias_definition (cp_parser* parser)
 {
   tree identifier;
   tree namespace_specifier;
+  const location_t start = input_location;
 
   cp_token *token = cp_lexer_peek_token (parser->lexer);
 
   /* Look for the `namespace' keyword.  */
   cp_parser_require_keyword (parser, RID_NAMESPACE, RT_NAMESPACE);
+  /* Look for attributes (GCC extension).  */
+  tree left_attributes = cp_parser_attributes_opt (parser);
   /* Look for the identifier.  */
   identifier = cp_parser_identifier (parser);
   if (identifier == error_mark_node)
     return;
+  /* Look for more attributes (GCC extension).  */
+  tree attributes = attr_chainon (left_attributes, cp_parser_attributes_opt (parser));
   /* Look for the `=' token.  */
   if (!cp_parser_uncommitted_to_tentative_parse_p (parser)
       && cp_lexer_next_token_is (parser->lexer, CPP_OPEN_BRACE))
@@ -21424,7 +21424,15 @@ cp_parser_namespace_alias_definition (cp_parser* parser)
 	cp_lexer_consume_token (parser->lexer);
       return;
     }
-  cp_parser_require (parser, CPP_EQ, RT_EQ);
+  if (!cp_parser_require (parser, CPP_EQ, RT_EQ))
+    {
+      input_location = start;
+      return;
+    }
+  if (left_attributes)
+    pedwarn (input_location, OPT_Wpedantic,
+	     "standard attributes on namespaces aliases must follow "
+	     "the namespace alias name");
   /* Look for the qualified-namespace-specifier.  */
   namespace_specifier
     = cp_parser_qualified_namespace_specifier (parser);
@@ -21433,7 +21441,7 @@ cp_parser_namespace_alias_definition (cp_parser* parser)
   cp_parser_require (parser, CPP_SEMICOLON, RT_SEMICOLON);
 
   /* Register the alias in the symbol table.  */
-  do_namespace_alias (identifier, namespace_specifier);
+  do_namespace_alias (identifier, namespace_specifier, attributes);
 }
 
 /* Parse a qualified-namespace-specifier.
