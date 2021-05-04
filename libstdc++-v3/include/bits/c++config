@@ -299,7 +299,8 @@ namespace std
 #if _GLIBCXX_USE_CXX11_ABI
 namespace std
 {
-  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
+  inline namespace __cxx11
+    __attribute__((__abi_tag__ ("cxx11"), __diagnose_as__("std"))) { }
 }
 namespace __gnu_cxx
 {

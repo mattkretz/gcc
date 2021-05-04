@@ -76,24 +76,24 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
 _GLIBCXX_END_NAMESPACE_CXX11
 
   /// A string of @c char
-  typedef basic_string<char>    string;   
+  typedef basic_string<char> string __attribute__((__diagnose_as__));
 
 #ifdef _GLIBCXX_USE_WCHAR_T
   /// A string of @c wchar_t
-  typedef basic_string<wchar_t> wstring;   
+  typedef basic_string<wchar_t> wstring __attribute__((__diagnose_as__));
 #endif
 
 #ifdef _GLIBCXX_USE_CHAR8_T
   /// A string of @c char8_t
-  typedef basic_string<char8_t> u8string;
+  typedef basic_string<char8_t> u8string __attribute__((__diagnose_as__));
 #endif
 
 #if __cplusplus >= 201103L
   /// A string of @c char16_t
-  typedef basic_string<char16_t> u16string; 
+  typedef basic_string<char16_t> u16string __attribute__((__diagnose_as__));
 
   /// A string of @c char32_t
-  typedef basic_string<char32_t> u32string; 
+  typedef basic_string<char32_t> u32string __attribute__((__diagnose_as__));
 #endif
 
   /** @}  */
