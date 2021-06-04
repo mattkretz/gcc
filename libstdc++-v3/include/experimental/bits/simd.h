@@ -83,13 +83,13 @@ using __m512d [[__gnu__::__vector_size__(64)]] = double;
 using __m512i [[__gnu__::__vector_size__(64)]] = long long;
 #endif
 
-namespace simd_abi {
+namespace simd_abi [[__gnu__::__diagnose_as__("simd_abi")]] {
 // simd_abi forward declarations {{{
 // implementation details:
-struct _Scalar;
+  struct [[__gnu__::__diagnose_as__("scalar")]] _Scalar;
 
 template <int _Np>
-  struct _Fixed;
+  struct [[__gnu__::__diagnose_as__("fixed_size")]] _Fixed;
 
 // There are two major ABIs that appear on different architectures.
 // Both have non-boolean values packed into an N Byte register
@@ -108,28 +108,11 @@ template <int _UsedBytes>
 template <int _UsedBytes>
   struct _VecBltnBtmsk;
 
-template <typename _Tp, int _Np>
-  using _VecN = _VecBuiltin<sizeof(_Tp) * _Np>;
-
-template <int _UsedBytes = 16>
-  using _Sse = _VecBuiltin<_UsedBytes>;
-
-template <int _UsedBytes = 32>
-  using _Avx = _VecBuiltin<_UsedBytes>;
-
-template <int _UsedBytes = 64>
-  using _Avx512 = _VecBltnBtmsk<_UsedBytes>;
-
-template <int _UsedBytes = 16>
-  using _Neon = _VecBuiltin<_UsedBytes>;
-
-// implementation-defined:
-using __sse = _Sse<>;
-using __avx = _Avx<>;
-using __avx512 = _Avx512<>;
-using __neon = _Neon<>;
-using __neon128 = _Neon<16>;
-using __neon64 = _Neon<8>;
+#if defined __i386__ || defined __x86_64__
+using __sse [[__gnu__::__diagnose_as__("[SSE]")]] = _VecBuiltin<16>;
+using __avx [[__gnu__::__diagnose_as__("[AVX]")]] = _VecBuiltin<32>;
+using __avx512 [[__gnu__::__diagnose_as__("[AVX512]")]] = _VecBltnBtmsk<64>;
+#endif
 
 // standard:
 template <typename _Tp, size_t _Np, typename...>
@@ -367,7 +350,7 @@ namespace __detail
    * users link TUs compiled with different flags. This is especially important
    * for using simd in libraries.
    */
-  using __odr_helper
+  using __odr_helper [[__gnu__::__diagnose_as__("[ODR helper]")]]
     = conditional_t<__machine_flags() == 0, _OdrEnforcer,
 		    _MachineFlagsTemplate<__machine_flags(), __floating_point_flags()>>;
 
@@ -692,7 +675,7 @@ template <typename _Abi>
   __is_avx512_abi()
   {
     constexpr auto _Bytes = __abi_bytes_v<_Abi>;
-    return _Bytes <= 64 && is_same_v<simd_abi::_Avx512<_Bytes>, _Abi>;
+    return _Bytes <= 64 && is_same_v<simd_abi::_VecBltnBtmsk<_Bytes>, _Abi>;
   }
 
 // }}}
