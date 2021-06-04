@@ -1,4 +1,5 @@
-This directory contains the GNU Compiler Collection (GCC).
+This directory contains my extended (and unsupported) fork of the
+GNU Compiler Collection (GCC).
 
 The GNU Compiler Collection is free software.  See the files whose
 names start with COPYING for copying permission.  The manuals, and
