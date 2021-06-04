@@ -37,7 +37,7 @@
   {                                                                            \
     _GLIBCXX_BEGIN_NAMESPACE_VERSION                                           \
       namespace experimental {                                                 \
-      inline namespace parallelism_v2 {
+	inline namespace parallelism_v2 [[__gnu__::__diagnose_as__("std\u2093")]] {
 #define _GLIBCXX_SIMD_END_NAMESPACE                                            \
   }                                                                            \
   }                                                                            \
