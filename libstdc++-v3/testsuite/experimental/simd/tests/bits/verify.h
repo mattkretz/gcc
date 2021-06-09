@@ -137,9 +137,9 @@ public:
     {
       if (m_failed)
 	[&] {
-	  __builtin_fprintf(stderr, "%s:%d: (%s):\nInstruction Pointer: %x\n"
-				    "Assertion '%s' failed.\n",
-			    file, line, func, m_ip, cond);
+	  __builtin_fprintf(stderr, "%s:%d: Assertion '%s' failed.\nIn function: %s\n"
+				    "Instruction Pointer: %x\n",
+			    file, line, cond, func, m_ip);
 	  (print(extra_info, int()), ...);
 	}();
     }
@@ -255,7 +255,7 @@ namespace vir {
   namespace test
   {
     template <typename T>
-      inline T _S_fuzzyness = 0;
+      inline T _S_fuzzyness = 0.5;
 
     template <typename T>
       void
@@ -267,7 +267,7 @@ namespace vir {
 #define FUZZY_COMPARE(_a, _b)                                                  \
   ULP_COMPARE(                                                                 \
     _a, _b,                                                                    \
-    vir::test::_S_fuzzyness<vir::test::value_type_t<decltype((_a) + (_b))>>)
+    vir::test::_S_fuzzyness<vir::test::value_type_t<decltype(_a)>>)
 
 template <typename V>
   void

@@ -36,65 +36,57 @@ namespace vir {
     template <typename T>
       using value_type_t = decltype(value_type_impl<T>(int()));
 
-    template <typename T>
-      inline T
-      ulp_distance(const T& val_, const T& ref_)
+    template <typename T0, typename T1>
+      inline T0
+      ulp_distance(T0 val0, const T1& ref1)
       {
-        if constexpr (std::is_floating_point_v<value_type_t<T>>)
+        if constexpr (std::is_floating_point_v<value_type_t<T0>>)
           {
+	    namespace stdx = std::experimental;
+	    using namespace stdx::__float_bitwise_operators;
+	    using std::isnan;
             const int fp_exceptions = std::fetestexcept(FE_ALL_EXCEPT);
-            T val = val_;
-            T ref = ref_;
-
-            T diff = T();
-
-            using std::abs;
-            using std::fpclassify;
-            using std::frexp;
-            using std::isnan;
-            using std::isinf;
-            using std::ldexp;
-            using std::max;
-            using std::experimental::where;
-            using TT = value_type_t<T>;
-
-            where(ref == 0, val) = abs(val);
-            where(ref == 0, diff) = 1;
-            where(ref == 0, ref) = std::__norm_min_v<TT>;
-            where(isinf(ref) && ref == val, ref)
-              = 0; // where(val_ == ref_) = 0 below will fix it up
-
-            where(val == 0, ref) = abs(ref);
-            where(val == 0, diff) += 1;
-            where(val == 0, val) = std::__norm_min_v<TT>;
-
-            using I = decltype(fpclassify(std::declval<T>()));
-            I exp = {};
-            frexp(ref, &exp);
-            // lower bound for exp must be min_exponent to scale the resulting
-            // difference from a denormal correctly
-            exp = max(exp, I(std::__min_exponent_v<TT>));
-            diff += ldexp(abs(ref - val), std::__digits_v<TT> - exp);
-            where(val_ == ref_ || (isnan(val_) && isnan(ref_)), diff) = T();
+	    using T = value_type_t<T0>;
+	    constexpr int mant_bits = std::__digits_v<T> - 1;
+	    constexpr T signexp_mask = -std::__infinity_v<T>;
+	    auto&& cast = [](auto x) {
+	      using Other = std::conditional_t<std::is_same_v<decltype(x), T0>, T1, T0>;
+	      if constexpr (stdx::is_simd_v<decltype(x)>)
+		return stdx::static_simd_cast<Other>(x);
+	      else
+		return static_cast<Other>(x);
+	    };
+	    T0 ref0 = cast(ref1);
+	    T1 val1 = cast(val0);
+	    T1 eps1 = std::__epsilon_v<T>;
+	    if constexpr (stdx::is_simd_v<T0>)
+	      eps1 *= ref1 & T0(signexp_mask);
+	    else
+	      {
+		using I = stdx::__int_for_sizeof_t<value_type_t<T1>>;
+		eps1 *= __builtin_bit_cast(T0, __builtin_bit_cast(I, ref1)
+						 & __builtin_bit_cast(I, signexp_mask));
+	      }
+	    const auto subnormal = abs(ref1) < std::__norm_min_v<T>;
+	    where(subnormal, eps1) = std::__denorm_min_v<T>;
+	    T0 ulp = cast((ref1 - val1) / eps1);
+	    where(val0 == ref0 || (isnan(val0) && isnan(ref0)), ulp) = 0;
             std::feclearexcept(FE_ALL_EXCEPT ^ fp_exceptions);
-            return diff;
+            return ulp;
           }
         else
           {
-            if (val_ > ref_)
-              return val_ - ref_;
+            if (val0 > ref1)
+              return val0 - ref1;
             else
-              return ref_ - val_;
+              return ref1 - val0;
           }
       }
 
-    template <typename T>
-      inline T
-      ulp_distance_signed(const T& _val, const T& _ref)
-      {
-        using std::copysign;
-        return copysign(ulp_distance(_val, _ref), _val - _ref);
-      }
+    template <typename T0, typename T1>
+      inline T0
+      ulp_distance_signed(const T0& val, const T1& ref)
+      { return ulp_distance(val, ref); }
   } // namespace test
 } // namespace vir
 
