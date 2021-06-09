@@ -241,39 +241,60 @@ template <class V>
   }
 #endif
 
-template <typename TestF, typename RefF>
+template <typename TestF, typename RefF, typename ExcF>
   auto
-  make_tester(const char* fun_name, const TestF& testf, const RefF& reff,
-	      const char* file = __FILE__, const int line = __LINE__)
+  make_tester(const char* fun_name, const TestF& testfun, const RefF& reffun,
+	      const ExcF& exceptfun, const char* file = __FILE__, const int line = __LINE__)
   {
     return [=](auto... inputs) {
+      using namespace std::experimental;
+      using namespace std::experimental::__proposed;
+      using V = decltype(testfun(inputs...));
+      using RT = decltype(reffun(std::as_const(inputs)[0]...));
+      using RV = typename std::conditional_t<std::is_same_v<RT, typename V::value_type>,
+					     std::__type_identity<V>, rebind_simd<RT, V>>::type;
+      auto&& expected = [](const auto& fun, const auto&... vs) {
+	RV r{};
+	for (std::size_t i = 0; i < RV::size(); ++i)
+	  r[i] = fun(vs[i]...);
+	return r;
+      };
 #if __GCC_IEC_559 < 2
       ((where(!isvalid(inputs), inputs) = 1), ...);
+      if constexpr (std::is_floating_point_v<RT>)
+	((where(!isvalid(expected(reffun, inputs...)), inputs) = 1), ...);
 #endif
       FloatExceptCompare fec;
-      const auto totest = testf(inputs...);
+      const auto totest = testfun(inputs...);
       fec.record_first();
-      using R = std::remove_const_t<decltype(totest)>;
-      auto&& expected = [&](const auto&... vs) -> const R {
-	return R([&](auto i) { return reff(vs[i]...); });
-      };
-      const R expect = expected(inputs...);
+      // use make_value_unknown to avoid reuse of the result from testfun and thus no fp exceptions
+      RV expect = expected(exceptfun, make_value_unknown(inputs)...);
       fec.record_second();
-      if constexpr (std::is_floating_point_v<typename R::value_type>)
+      if constexpr (!std::is_same_v<RefF, ExcF>)
 	{
-#if __GCC_IEC_559 < 2
-	  ((where(!isvalid(expect), inputs) = 1), ...);
-#endif
-	  COMPARE(isnan(totest), isnan(expect))
+	  asm(""::"m"(expect));
+	  expect = expected(reffun, inputs...);
+	}
+      if constexpr (std::is_floating_point_v<RT>)
+	{
+#if __GCC_IEC_559 >= 2
+	  const auto nan_expect = static_simd_cast<typename V::mask_type>(isnan(expect));
+	  COMPARE(isnan(totest), nan_expect)
 	    .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ") =\ntotest = ",
 			totest, " !=\nexpect = ", expect);
 	  [&](auto... inputs) {
 	    ((where(nan_expect, inputs) = 0), ...);
-	    FUZZY_COMPARE(testf(inputs...), expected(inputs...))
+	    FUZZY_COMPARE(testfun(inputs...), expected(reffun, inputs...))
 	      .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ')');
 	  }(inputs...);
 	  fec.verify_equal_state(file, line, '\n', fun_name, '(', inputs...,
 				 ")\nfirst  = ", totest, "\nsecond = ", expect);
+#else
+	  FUZZY_COMPARE(totest, expect)
+	    .on_failure('\n', file, ':', line, ": ", fun_name, '(', inputs..., ')');
+	  fec.verify_equal_state(file, line, '\n', fun_name, '(', inputs...,
+				 ")\nfirst  = ", totest, "\nsecond = ", expect);
+#endif
 	}
       else
 	{
@@ -285,11 +306,17 @@ template <typename TestF, typename RefF>
     };
   }
 
+template <typename TestF, typename RefF>
+  auto
+  make_tester(const char* fun_name, const TestF& testfun, const RefF& reffun,
+	      const char* file = __FILE__, const int line = __LINE__)
+  { return make_tester(fun_name, testfun, reffun, reffun, file, line); }
+
 template <typename TestF>
   auto
-  make_tester(const char* fun_name, const TestF& testf,
+  make_tester(const char* fun_name, const TestF& testfun,
 	      const char* file = __FILE__, const int line = __LINE__)
-  { return make_tester(fun_name, testf, testf, file, line); }
+  { return make_tester(fun_name, testfun, testfun, testfun, file, line); }
 
 #define MAKE_TESTER_2(name_, reference_) \
   make_tester(#name_, [](auto... xs) { return name_(xs...); }, \

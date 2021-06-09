@@ -27,6 +27,8 @@ class FloatExceptCompare
 
 public:
   static inline bool ignore = false;
+  static inline int ignore_spurious = 0;
+  static inline int ignore_missing = 0;
 
   FloatExceptCompare()
   { reset(); }
@@ -63,15 +65,20 @@ public:
       if (!ignore)
 	{
 	  const int difference = second_state ^ first_state;
-	  COMPARE(first_state, second_state)
-	    .on_failure("\ndifference = ", difference,
-			difference & FE_INEXACT ? " FE_INEXACT" : "",
-			difference & FE_UNDERFLOW ? " FE_UNDERFLOW" : "",
-			difference & FE_OVERFLOW ? " FE_OVERFLOW" : "",
-			difference & FE_DIVBYZERO ? " FE_DIVBYZERO" : "",
-			difference & FE_INVALID ? " FE_INVALID" : "",
-			'\n', file, ':', line, ": called from here.",
-			moreinfo...);
+	  if (difference != 0)
+	    {
+	      if((second_state | (first_state & ignore_spurious))
+		   ^ (first_state | (second_state & ignore_missing)))
+		COMPARE(first_state, second_state)
+		.on_failure("\ndifference = ", difference,
+			    difference & FE_INEXACT ? " FE_INEXACT" : "",
+			    difference & FE_UNDERFLOW ? " FE_UNDERFLOW" : "",
+			    difference & FE_OVERFLOW ? " FE_OVERFLOW" : "",
+			    difference & FE_DIVBYZERO ? " FE_DIVBYZERO" : "",
+			    difference & FE_INVALID ? " FE_INVALID" : "",
+			    '\n', file, ':', line, ": called from here.",
+			    moreinfo...);
+	    }
 	}
     }
 
@@ -90,6 +97,8 @@ class FloatExceptCompare
 {
 public:
   static inline bool ignore = true;
+  static inline int ignore_spurious = 0;
+  static inline int ignore_missing = 0;
 
   void record_first() {}
 
