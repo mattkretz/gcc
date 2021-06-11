@@ -4373,8 +4373,8 @@ template <template <int> class _A0, template <int> class... _Rest>
 	      {
 		using _Bp =
 		  typename __find_next_valid_abi<_A0, _Bytes, _Tp>::type;
-		if constexpr (_Bp::template _S_is_valid_v<
-				_Tp> && _Bp::template _S_size<_Tp> <= _Np)
+		if constexpr (_Bp::template _S_is_valid_v<_Tp>
+				&& _Bp::template _S_full_size<_Tp> <= std::__bit_ceil(_Np))
 		  return _Bp{};
 		else
 		  return
