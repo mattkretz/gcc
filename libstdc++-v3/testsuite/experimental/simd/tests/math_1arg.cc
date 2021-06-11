@@ -88,12 +88,19 @@ template <typename V>
 		      norm_min / 3,
 		      norm_min,
 		      max};
-    test_values<V>(input_values, {10000}, MAKE_TESTER(erf), MAKE_TESTER(erfc),
-		   MAKE_TESTER(tgamma), MAKE_TESTER(lgamma), MAKE_TESTER(ceil),
-		   MAKE_TESTER(floor), MAKE_TESTER(trunc), MAKE_TESTER(round),
-		   MAKE_TESTER(lround), MAKE_TESTER(llround),
-		   MAKE_TESTER(nearbyint), MAKE_TESTER(rint), MAKE_TESTER(lrint),
-		   MAKE_TESTER(llrint), MAKE_TESTER(ilogb));
+
+    test_values<V>(input_values, {10000}, MAKE_TESTER(erf), MAKE_TESTER(erfc), MAKE_TESTER(tgamma),
+		   MAKE_TESTER(lgamma), MAKE_TESTER(nearbyint), MAKE_TESTER(rint),
+		   MAKE_TESTER(lrint), MAKE_TESTER(llrint), MAKE_TESTER(ilogb));
+
+    FloatExceptCompare::ignore_spurious = FE_INEXACT;
+    FloatExceptCompare::ignore_missing = FE_INEXACT;
+
+    test_values<V>(input_values, {10000}, MAKE_TESTER(ceil), MAKE_TESTER(floor), MAKE_TESTER(trunc),
+		   MAKE_TESTER(round), MAKE_TESTER(lround), MAKE_TESTER(llround));
+
+    FloatExceptCompare::ignore_spurious = 0;
+    FloatExceptCompare::ignore_missing = 0;
 
     // sqrt(x) on x87 is precise in 80 bits, but the subsequent rounding can be
     // wrong (up to 1 ULP)
