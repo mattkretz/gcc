@@ -2694,55 +2694,6 @@ template <typename _Abi, typename>
       }
 
     // }}}
-    // _S_round {{{
-    template <typename _Tp, size_t _Np>
-      _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-      _S_round(_SimdWrapper<_Tp, _Np> __x)
-      {
-	// Note that _MM_FROUND_TO_NEAREST_INT rounds ties to even, not away
-	// from zero as required by std::round. Therefore this function is more
-	// complicated.
-	using _V = __vector_type_t<_Tp, _Np>;
-	_V __truncated;
-	if constexpr (__is_avx512_ps<_Tp, _Np>())
-	  __truncated = _mm512_roundscale_ps(__x._M_data, 0x0b);
-	else if constexpr (__is_avx512_pd<_Tp, _Np>())
-	  __truncated = _mm512_roundscale_pd(__x._M_data, 0x0b);
-	else if constexpr (__is_avx_ps<_Tp, _Np>())
-	  __truncated = _mm256_round_ps(__x._M_data,
-					_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	else if constexpr (__is_avx_pd<_Tp, _Np>())
-	  __truncated = _mm256_round_pd(__x._M_data,
-					_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	else if constexpr (__have_sse4_1 && __is_sse_ps<_Tp, _Np>())
-	  __truncated = __auto_bitcast(
-	    _mm_round_ps(__to_intrin(__x),
-			 _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC));
-	else if constexpr (__have_sse4_1 && __is_sse_pd<_Tp, _Np>())
-	  __truncated
-	    = _mm_round_pd(__x._M_data, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	else if constexpr (__is_sse_ps<_Tp, _Np>())
-	  __truncated = __auto_bitcast(
-	    _mm_cvtepi32_ps(_mm_cvttps_epi32(__to_intrin(__x))));
-	else
-	  return _Base::_S_round(__x);
-
-	// x < 0 => truncated <= 0 && truncated >= x => x - truncated <= 0
-	// x > 0 => truncated >= 0 && truncated <= x => x - truncated >= 0
-
-	const _V __rounded
-	  = __truncated
-	    + (__and(_S_absmask<_V>, __x._M_data - __truncated) >= _Tp(.5)
-		 ? __or(__and(_S_signmask<_V>, __x._M_data), _V() + 1)
-		 : _V());
-	if constexpr (__have_sse4_1)
-	  return __rounded;
-	else // adjust for missing range in cvttps_epi32
-	  return __and(_S_absmask<_V>, __x._M_data) < 0x1p23f ? __rounded
-							      : __x._M_data;
-      }
-
-    // }}}
     // _S_nearbyint {{{
     template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
       _GLIBCXX_SIMD_INTRINSIC static _Tp _S_nearbyint(_Tp __x) noexcept
