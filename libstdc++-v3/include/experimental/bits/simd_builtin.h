@@ -2434,15 +2434,16 @@ template <typename _Abi, typename>
 
     // _S_round {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-    _S_round(_SimdWrapper<_Tp, _Np> __x)
-    {
-      const auto __abs_x = _SuperImpl::_S_abs(__x);
-      const auto __t_abs = _SuperImpl::_S_trunc(__abs_x)._M_data;
-      const auto __r_abs // round(abs(x)) =
-	= __t_abs + (__abs_x._M_data - __t_abs >= _Tp(.5) ? _Tp(1) : 0);
-      return __or(__xor(__abs_x._M_data, __x._M_data), __r_abs);
-    }
+      _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
+      _S_round(_SimdWrapper<_Tp, _Np> __x)
+      {
+	// return trunc(x + copysign(.5, x))
+	return _SuperImpl::_S_trunc(
+		 _SimdWrapper<_Tp, _Np>(__x._M_data
+					  + __or(__and(__x._M_data,
+						       _S_signmask<__vector_type_t<_Tp, _Np>>),
+						 __vector_broadcast<_Np, _Tp>(.5))));
+      }
 
     // _S_floor {{{3
     template <typename _Tp, size_t _Np>
