@@ -279,6 +279,99 @@ template <int _Index, int _Total, int _Combine = 1, size_t _Np>
   }
 
 // }}}
+// __force_evaluation {{{
+/** @internal
+ * Ensure the expressions leading up to the @p __x argument are evaluated at least once.
+ *
+ * Example: __force_evaluation(x + y) - y will not optimize to x with -fassociative-math.
+ * _TV is expected to be __vector_type_t<floating-point type, N>.
+ */
+template <typename _TV>
+  [[__gnu__::__flatten__, __gnu__::__const__]]
+  _GLIBCXX_SIMD_INTRINSIC constexpr
+  _TV
+  __force_evaluation(_TV __x) noexcept
+  {
+    if (__builtin_is_constant_evaluated())
+      return __x;
+    else
+      return [&] {
+	if constexpr(__have_sse)
+	  {
+	    if constexpr (sizeof(__x) >= 16)
+	      {
+		asm("" :: "x"(__x));
+		asm("" : "+x"(__x));
+	      }
+	    else if constexpr (is_same_v<__vector_type_t<float, 2>, _TV>)
+	      {
+		asm("" :: "x"(__x[0]), "x"(__x[1]));
+		asm("" : "+x"(__x[0]), "+x"(__x[1]));
+	      }
+	    else
+	      __assert_unreachable<_TV>();
+	  }
+	else if constexpr(__have_neon)
+	  {
+	    asm("" :: "w"(__x));
+	    asm("" : "+w"(__x));
+	  }
+	else if constexpr (__have_power_vmx)
+	  {
+	    if constexpr (is_same_v<__vector_type_t<float, 2>, _TV>)
+	      {
+		asm("" :: "fgr"(__x[0]), "fgr"(__x[1]));
+		asm("" : "+fgr"(__x[0]), "+fgr"(__x[1]));
+	      }
+	    else
+	      {
+		asm("" :: "v"(__x));
+		asm("" : "+v"(__x));
+	      }
+	  }
+	else
+	  {
+	    asm("" :: "g"(__x));
+	    asm("" : "+g"(__x));
+	  }
+	return __x;
+      }();
+  }
+// }}}
+// __plus_minus {{{
+// Returns __x + __y - __y without -fassociative-math optimizing to __x.
+// - _TV must be __vector_type_t<floating-point type, N>.
+// - _UV must be _TV or floating-point type.
+template <typename _TV, typename _UV>
+  [[__gnu__::__const__]]
+  _GLIBCXX_SIMD_INTRINSIC constexpr
+  _TV
+  __plus_minus(_TV __x, _UV __y) noexcept
+  {
+#if defined __clang__ || __GCC_IEC_559 > 0
+    return (__x + __y) - __y;
+#else
+    if (__builtin_is_constant_evaluated()
+	  || (__builtin_constant_p(__x) && __builtin_constant_p(__y)))
+      return (__x + __y) - __y;
+#if defined __i386__ && !defined __SSE_MATH__
+    else if constexpr (sizeof(__x) == 8)
+      { // operations on __x would use the FPU
+	static_assert(is_same_v<_TV, __vector_type_t<float, 2>>);
+	const auto __x4 = __vector_bitcast<float, 4>(__x);
+	if constexpr (is_same_v<_TV, _UV>)
+	  return __vector_bitcast<float, 2>(
+		   __plus_minus(__x4, __vector_bitcast<float, 4>(__y)));
+	else
+	  return __vector_bitcast<float, 2>(__plus_minus(__x4, __y));
+      }
+#endif
+    else
+      return __force_evaluation(__x + __y) - __y;
+#endif
+  }
+
+// }}}
 
 // __vector_convert {{{
 // implementation requires an index sequence
@@ -2339,61 +2432,6 @@ template <typename _Abi, typename>
     }
 
     // }}}3
-    // _S_plus_minus {{{
-    // Returns __x + __y - __y without -fassociative-math optimizing to __x.
-    // - _TV must be __vector_type_t<floating-point type, N>.
-    // - _UV must be _TV or floating-point type.
-    template <typename _TV, typename _UV>
-    _GLIBCXX_SIMD_INTRINSIC static constexpr _TV _S_plus_minus(_TV __x,
-							       _UV __y) noexcept
-    {
-  #if defined __i386__ && !defined __SSE_MATH__
-      if constexpr (sizeof(__x) == 8)
-	{ // operations on __x would use the FPU
-	  static_assert(is_same_v<_TV, __vector_type_t<float, 2>>);
-	  const auto __x4 = __vector_bitcast<float, 4>(__x);
-	  if constexpr (is_same_v<_TV, _UV>)
-	    return __vector_bitcast<float, 2>(
-	      _S_plus_minus(__x4, __vector_bitcast<float, 4>(__y)));
-	  else
-	    return __vector_bitcast<float, 2>(_S_plus_minus(__x4, __y));
-	}
-  #endif
-  #if !defined __clang__ && __GCC_IEC_559 == 0
-      if (__builtin_is_constant_evaluated()
-	  || (__builtin_constant_p(__x) && __builtin_constant_p(__y)))
-	return (__x + __y) - __y;
-      else
-	return [&] {
-	  __x += __y;
-	  if constexpr(__have_sse)
-	    {
-	      if constexpr (sizeof(__x) >= 16)
-		asm("" : "+x"(__x));
-	      else if constexpr (is_same_v<__vector_type_t<float, 2>, _TV>)
-		asm("" : "+x"(__x[0]), "+x"(__x[1]));
-	      else
-		__assert_unreachable<_TV>();
-	    }
-	  else if constexpr(__have_neon)
-	    asm("" : "+w"(__x));
-	  else if constexpr (__have_power_vmx)
-	    {
-	      if constexpr (is_same_v<__vector_type_t<float, 2>, _TV>)
-		asm("" : "+fgr"(__x[0]), "+fgr"(__x[1]));
-	      else
-		asm("" : "+v"(__x));
-	    }
-	  else
-	    asm("" : "+g"(__x));
-	  return __x - __y;
-	}();
-  #else
-      return (__x + __y) - __y;
-  #endif
-    }
-
-    // }}}
     // _S_nearbyint {{{3
     template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
     _GLIBCXX_SIMD_INTRINSIC static _Tp _S_nearbyint(_Tp __x_) noexcept
@@ -2406,7 +2444,7 @@ template <typename _Abi, typename>
       _GLIBCXX_SIMD_USE_CONSTEXPR _V __shifter_abs
 	= _V() + (1ull << (__digits_v<value_type> - 1));
       const _V __shifter = __or(__and(_S_signmask<_V>, __x), __shifter_abs);
-      const _V __shifted = _S_plus_minus(__x, __shifter);
+      const _V __shifted = __plus_minus(__x, __shifter);
       return __absx < __shifter_abs ? __shifted : __x;
     }
 
@@ -2426,7 +2464,7 @@ template <typename _Abi, typename>
       const _V __absx = __and(__x._M_data, _S_absmask<_V>);
       static_assert(__CHAR_BIT__ * sizeof(1ull) >= __digits_v<_Tp>);
       constexpr _Tp __shifter = 1ull << (__digits_v<_Tp> - 1);
-      _V __truncated = _S_plus_minus(__absx, __shifter);
+      _V __truncated = __plus_minus(__absx, __shifter);
       __truncated -= __truncated > __absx ? _V() + 1 : _V();
       return __absx < __shifter ? __or(__xor(__absx, __x._M_data), __truncated)
 				: __x._M_data;
