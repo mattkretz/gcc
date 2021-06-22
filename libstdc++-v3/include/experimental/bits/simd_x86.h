@@ -2581,6 +2581,20 @@ template <typename _Abi, typename>
 
     // }}}
     // math {{{
+    struct _IgnoreFpExceptions
+    {
+      unsigned int _M_mxcsr;
+
+      _IgnoreFpExceptions()
+      {
+	_M_mxcsr = __builtin_ia32_stmxcsr();
+	__builtin_ia32_ldmxcsr((_M_mxcsr | 0x1f80) & ~0x3f);
+      }
+
+      ~_IgnoreFpExceptions()
+      { __builtin_ia32_ldmxcsr(_M_mxcsr); }
+    };
+
     using _Base::_S_abs;
 
     // _S_sqrt {{{
@@ -2677,18 +2691,6 @@ template <typename _Abi, typename>
 	  return __auto_bitcast(_mm_round_ps(__to_intrin(__x), 0xb));
 	else if constexpr (__have_sse4_1 && __is_sse_pd<_Tp, _Np>())
 	  return _mm_round_pd(__x, 0xb);
-	else if constexpr (__is_sse_ps<_Tp, _Np>())
-	  {
-	    auto __truncated
-	      = _mm_cvtepi32_ps(_mm_cvttps_epi32(__to_intrin(__x)));
-	    const auto __no_fractional_values
-	      = __vector_bitcast<int>(__vector_bitcast<_UInt>(__to_intrin(__x))
-				      & 0x7f800000u)
-		< 0x4b000000; // the exponent is so large that no mantissa bits
-			      // signify fractional values (0x3f8 + 23*8 =
-			      // 0x4b0)
-	    return __no_fractional_values ? __truncated : __to_intrin(__x);
-	  }
 	else
 	  return _Base::_S_trunc(__x);
       }
