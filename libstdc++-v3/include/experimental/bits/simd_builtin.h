@@ -30,6 +30,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <cfenv>
 
 _GLIBCXX_SIMD_BEGIN_NAMESPACE
 // _S_allbits{{{
@@ -2038,6 +2039,17 @@ template <typename _Abi, typename>
 
     // }}}
     // math {{{2
+    struct _IgnoreFpExceptions
+    {
+      std::fenv_t _M_env;
+
+      _IgnoreFpExceptions()
+      { std::feholdexcept(&_M_env); }
+
+      ~_IgnoreFpExceptions()
+      { std::fesetenv(&_M_env); }
+    };
+
     // scalb {{{
     template <typename _Tp, size_t _Np>
       static constexpr
@@ -2433,46 +2445,71 @@ template <typename _Abi, typename>
 
     // }}}3
     // _S_nearbyint {{{3
-    template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-    _GLIBCXX_SIMD_INTRINSIC static _Tp _S_nearbyint(_Tp __x_) noexcept
-    {
-      using value_type = typename _TVT::value_type;
-      using _V = typename _TVT::type;
-      const _V __x = __x_;
-      const _V __absx = __and(__x, _S_absmask<_V>);
-      static_assert(__CHAR_BIT__ * sizeof(1ull) >= __digits_v<value_type>);
-      _GLIBCXX_SIMD_USE_CONSTEXPR _V __shifter_abs
-	= _V() + (1ull << (__digits_v<value_type> - 1));
-      const _V __shifter = __or(__and(_S_signmask<_V>, __x), __shifter_abs);
-      const _V __shifted = __plus_minus(__x, __shifter);
-      return __absx < __shifter_abs ? __shifted : __x;
-    }
+    // does not raise FE_INEXACT (i.e. rint w/o fp exceptions)
+    template <typename _Tp, size_t _Np>
+      _GLIBCXX_SIMD_INTRINSIC static
+      _SimdWrapper<_Tp, _Np>
+      _S_nearbyint(_SimdWrapper<_Tp, _Np> __x) noexcept
+      {
+	if constexpr (__detail::_S_handle_fpexcept)
+	  {
+	    typename _SuperImpl::_IgnoreFpExceptions __tmp;
+	    return __force_evaluation(_S_rint(__x));
+	  }
+	else
+	  return _S_rint(__x);
+      }
 
     // _S_rint {{{3
-    template <typename _Tp, typename _TVT = _VectorTraits<_Tp>>
-    _GLIBCXX_SIMD_INTRINSIC static _Tp _S_rint(_Tp __x) noexcept
-    {
-      return _SuperImpl::_S_nearbyint(__x);
-    }
+    // does raise FE_INEXACT
+    template <typename _Tp, size_t _Np>
+      _GLIBCXX_SIMD_INTRINSIC static
+      _SimdWrapper<_Tp, _Np>
+      _S_rint(_SimdWrapper<_Tp, _Np> __x) noexcept
+      {
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	using _TV = __vector_type_t<_Tp, _Np>;
+	// set mantissa bits to 0 to avoid FE_INVALID on x = NaN
+	const _TV __exponent = __and(__x._M_data, __vector_broadcast<_Np>(__infinity_v<_Tp>));
+	constexpr int __mant_bits = __digits_v<_Tp> - 1;
+	_GLIBCXX_SIMD_USE_CONSTEXPR _TV __shifter_abs = _TV() + (_Ip(1) << __mant_bits);
+	const _TV __shifter = __or(__and(_S_signmask<_TV>, __x._M_data), __shifter_abs);
+	const auto __active = __exponent < (_Ip(1) << __mant_bits);
+	const _TV __x0 = __active ? __x._M_data : _TV();
+	const _TV __0x = __active ? _TV() : __x._M_data;
+	return __or(__plus_minus(__x0, __shifter), __0x);
+      }
 
     // _S_trunc {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-    _S_trunc(_SimdWrapper<_Tp, _Np> __x)
-    {
-      using _V = __vector_type_t<_Tp, _Np>;
-      const _V __absx = __and(__x._M_data, _S_absmask<_V>);
-      static_assert(__CHAR_BIT__ * sizeof(1ull) >= __digits_v<_Tp>);
-      constexpr _Tp __shifter = 1ull << (__digits_v<_Tp> - 1);
-      _V __truncated = __plus_minus(__absx, __shifter);
-      __truncated -= __truncated > __absx ? _V() + 1 : _V();
-      return __absx < __shifter ? __or(__xor(__absx, __x._M_data), __truncated)
-				: __x._M_data;
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_trunc(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _TV = __vector_type_t<_Tp, _Np>;
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const _TV __exponent = __and(__x._M_data, __vector_broadcast<_Np>(__infinity_v<_Tp>));
+	constexpr _Tp __shifter = _Ip(1) << __digits_v<_Tp> - 1;
+	const auto __active = __exponent < __shifter;
+	const _TV __x0 = __active ? __x._M_data : _TV();
+	const _TV __0x = __active ? _TV() : __x._M_data;
+	if constexpr (sizeof(_Tp) == 4)
+	  return __or(__convert<_Tp>(__convert<_Ip>(__x0)), __0x);
+	else
+	  {
+	    const _TV __absx = __and(__x0, _S_absmask<_TV>);
+	    // first round with the current rounding mode
+	    _TV __truncated = __plus_minus(__absx, __shifter);
+	    // then turn it into a truncation
+	    __truncated -= __truncated > __absx ? 1 : _TV();
+	    return __or(__or(__and(__x0, _S_signmask<_TV>), __truncated), __0x);
+	  }
+      }
 
     // _S_round {{{3
     template <typename _Tp, size_t _Np>
-      _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _SimdWrapper<_Tp, _Np>
       _S_round(_SimdWrapper<_Tp, _Np> __x)
       {
 	// return trunc(x + copysign(.5, x))
@@ -2485,31 +2522,71 @@ template <typename _Abi, typename>
 
     // _S_floor {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-    _S_floor(_SimdWrapper<_Tp, _Np> __x)
-    {
-      const auto __y = _SuperImpl::_S_trunc(__x)._M_data;
-      const auto __negative_input
-	= __vector_bitcast<_Tp>(__x._M_data < __vector_broadcast<_Np, _Tp>(0));
-      const auto __mask
-	= __andnot(__vector_bitcast<_Tp>(__y == __x._M_data), __negative_input);
-      return __or(__andnot(__mask, __y),
-		  __and(__mask, __y - __vector_broadcast<_Np, _Tp>(1)));
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_floor(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _TV = __vector_type_t<_Tp, _Np>;
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const _TV __exponent = __and(__x._M_data, __vector_broadcast<_Np>(__infinity_v<_Tp>));
+	constexpr _Tp __shifter = _Ip(1) << (__digits_v<_Tp> - 1);
+	const auto __active = __exponent < __shifter;
+	if constexpr (__detail::_S_handle_fpexcept)
+	  {
+	    const _TV __sign_exponent
+	      = __and(__x._M_data, __vector_broadcast<_Np>(-__infinity_v<_Tp>));
+	    const _TV __shifter2 = __shifter + (__sign_exponent < 0 ? __shifter : _TV());
+	    const _TV __x0 = __active ? __x._M_data : _TV();
+	    const _TV __0x = __active ? _TV() : __x._M_data;
+	    // first round with the current rounding mode
+	    _TV __result = __plus_minus(__x0, __shifter2);
+	    // then adjust down for floor
+	    __result -= __result > __x0 ? 1 : _TV();
+	    return __or(__result, __0x);
+	  }
+	else
+	  {
+	    const _TV __x0 = __x._M_data;
+	    const _TV __shifter2 = __shifter + (__x0 < 0 ? __shifter : _TV());
+	    _TV __result = __plus_minus(__x0, __shifter2);
+	    __result -= (__result > __x0 ? 1 : _TV());
+	    return __active ? __result : __x0;
+	  }
+      }
 
     // _S_ceil {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-    _S_ceil(_SimdWrapper<_Tp, _Np> __x)
-    {
-      const auto __y = _SuperImpl::_S_trunc(__x)._M_data;
-      const auto __negative_input
-	= __vector_bitcast<_Tp>(__x._M_data < __vector_broadcast<_Np, _Tp>(0));
-      const auto __inv_mask
-	= __or(__vector_bitcast<_Tp>(__y == __x._M_data), __negative_input);
-      return __or(__and(__inv_mask, __y),
-		  __andnot(__inv_mask, __y + __vector_broadcast<_Np, _Tp>(1)));
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _SimdWrapper<_Tp, _Np>
+      _S_ceil(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _TV = __vector_type_t<_Tp, _Np>;
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const _TV __exponent = __and(__x._M_data, __vector_broadcast<_Np>(__infinity_v<_Tp>));
+	constexpr _Tp __shifter = _Ip(1) << (__digits_v<_Tp> - 1);
+	const auto __active = __exponent < __shifter;
+	if constexpr (__detail::_S_handle_fpexcept)
+	  {
+	    const _TV __sign_exponent
+	      = __and(__x._M_data, __vector_broadcast<_Np>(-__infinity_v<_Tp>));
+	    const _TV __x0 = __active ? __x._M_data : _TV();
+	    const _TV __0x = __active ? _TV() : __x._M_data;
+	    const _TV __shifter2 = __shifter + (__sign_exponent < 0 ? __shifter : _TV());
+	    // first round with the current rounding mode
+	    _TV __result = __plus_minus(__x0, __shifter2);
+	    // then adjust up for ceil
+	    __result += __result < __x0 ? 1 : _TV();
+	    return __or(__result, __0x);
+	  }
+	else
+	  {
+	    const _TV __x0 = __x._M_data;
+	    const _TV __shifter2 = __shifter + (__x0 < 0 ? __shifter : _TV());
+	    _TV __result = __plus_minus(__x0, __shifter2);
+	    __result += (__result < __x0 ? 1 : _TV());
+	    return __active ? __result : __x0;
+	  }
+      }
 
     // _S_isnan {{{3
     template <typename _Tp, size_t _Np>
