@@ -2426,22 +2426,22 @@ template <typename _Abi, typename>
 #undef _GLIBCXX_SIMD_MATH_FALLBACK_FIXEDRET
     // _S_abs {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
-    _S_abs(_SimdWrapper<_Tp, _Np> __x) noexcept
-    {
-      // if (__builtin_is_constant_evaluated())
-      //  {
-      //    return __x._M_data < 0 ? -__x._M_data : __x._M_data;
-      //  }
-      if constexpr (is_floating_point_v<_Tp>)
-	// `v < 0 ? -v : v` cannot compile to the efficient implementation of
-	// masking the signbit off because it must consider v == -0
+      _GLIBCXX_SIMD_INTRINSIC static _SimdWrapper<_Tp, _Np>
+      _S_abs(_SimdWrapper<_Tp, _Np> __x) noexcept
+      {
+	// if (__builtin_is_constant_evaluated())
+	//  {
+	//    return __x._M_data < 0 ? -__x._M_data : __x._M_data;
+	//  }
+	if constexpr (is_floating_point_v<_Tp>)
+	  // `v < 0 ? -v : v` cannot compile to the efficient implementation of
+	  // masking the signbit off because it must consider v == -0
 
-	// ~(-0.) & v would be easy, but breaks with fno-signed-zeros
-	return __and(_S_absmask<__vector_type_t<_Tp, _Np>>, __x._M_data);
-      else
-	return __x._M_data < 0 ? -__x._M_data : __x._M_data;
-    }
+	  // ~(-0.) & v would be easy, but breaks with fno-signed-zeros
+	  return __and(_S_absmask<__vector_type_t<_Tp, _Np>>, __x._M_data);
+	else
+	  return __x._M_data < 0 ? -__x._M_data : __x._M_data;
+      }
 
     // }}}3
     // _S_nearbyint {{{3
@@ -2590,188 +2590,193 @@ template <typename _Abi, typename>
 
     // _S_isnan {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_isnan([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
-    {
-  #if __FINITE_MATH_ONLY__
-      return {}; // false
-  #elif !defined __SUPPORT_SNAN__
-      return ~(__x._M_data == __x._M_data);
-  #elif defined __STDC_IEC_559__
-      using _Ip = __int_for_sizeof_t<_Tp>;
-      const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-      const auto __infn
-	= __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__infinity_v<_Tp>));
-      return __infn < __absn;
-  #else
-  #error "Not implemented: how to support SNaN but non-IEC559 floating-point?"
-  #endif
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_isnan([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+      {
+#if __FINITE_MATH_ONLY__
+	return {}; // false
+#elif !defined __SUPPORT_SNAN__
+	return ~(__x._M_data == __x._M_data);
+#elif defined __STDC_IEC_559__
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
+	const auto __infn
+	  = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__infinity_v<_Tp>));
+	return __infn < __absn;
+#else
+#error "Not implemented: how to support SNaN but non-IEC559 floating-point?"
+#endif
+      }
 
     // _S_isfinite {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_isfinite([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
-    {
-  #if __FINITE_MATH_ONLY__
-      using _UV = typename _MaskMember<_Tp>::_BuiltinType;
-      _GLIBCXX_SIMD_USE_CONSTEXPR _UV __alltrue = ~_UV();
-      return __alltrue;
-  #else
-      // if all exponent bits are set, __x is either inf or NaN
-      using _Ip = __int_for_sizeof_t<_Tp>;
-      const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-      const auto __maxn
-	= __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
-      return __absn <= __maxn;
-  #endif
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_isfinite([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+      {
+#if __FINITE_MATH_ONLY__
+	using _UV = typename _MaskMember<_Tp>::_BuiltinType;
+	_GLIBCXX_SIMD_USE_CONSTEXPR _UV __alltrue = ~_UV();
+	return __alltrue;
+#else
+	// if all exponent bits are set, __x is either inf or NaN
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
+	const auto __maxn
+	  = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
+	return __absn <= __maxn;
+#endif
+      }
 
     // _S_isunordered {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_isunordered(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
-    {
-      return __or(_S_isnan(__x), _S_isnan(__y));
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_isunordered(_SimdWrapper<_Tp, _Np> __x, _SimdWrapper<_Tp, _Np> __y)
+      { return __or(_S_isnan(__x), _S_isnan(__y)); }
 
     // _S_signbit {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_signbit(_SimdWrapper<_Tp, _Np> __x)
-    {
-      using _Ip = __int_for_sizeof_t<_Tp>;
-      return __vector_bitcast<_Ip>(__x) < 0;
-      // Arithmetic right shift (SRA) would also work (instead of compare), but
-      // 64-bit SRA isn't available on x86 before AVX512. And in general,
-      // compares are more likely to be efficient than SRA.
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_signbit(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	return __vector_bitcast<_Ip>(__x) < 0;
+	// Arithmetic right shift (SRA) would also work (instead of compare), but
+	// 64-bit SRA isn't available on x86 before AVX512. And in general,
+	// compares are more likely to be efficient than SRA.
+      }
 
     // _S_isinf {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_isinf([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
-    {
-  #if __FINITE_MATH_ONLY__
-      return {}; // false
-  #else
-      return _SuperImpl::template _S_equal_to<_Tp, _Np>(_SuperImpl::_S_abs(__x),
-							__vector_broadcast<_Np>(
-							  __infinity_v<_Tp>));
-      // alternative:
-      // compare to inf using the corresponding integer type
-      /*
-	 return
-	 __vector_bitcast<_Tp>(__vector_bitcast<__int_for_sizeof_t<_Tp>>(
-			       _S_abs(__x)._M_data)
-	 ==
-	 __vector_bitcast<__int_for_sizeof_t<_Tp>>(__vector_broadcast<_Np>(
-	 __infinity_v<_Tp>)));
-	 */
-  #endif
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_isinf([[maybe_unused]] _SimdWrapper<_Tp, _Np> __x)
+      {
+#if __FINITE_MATH_ONLY__
+	return {}; // false
+#else
+	return _SuperImpl::template _S_equal_to<_Tp, _Np>(_SuperImpl::_S_abs(__x),
+							  __vector_broadcast<_Np>(
+							    __infinity_v<_Tp>));
+	// alternative:
+	// compare to inf using the corresponding integer type
+	/*
+	   return
+	   __vector_bitcast<_Tp>(__vector_bitcast<__int_for_sizeof_t<_Tp>>(
+				 _S_abs(__x)._M_data)
+	   ==
+	   __vector_bitcast<__int_for_sizeof_t<_Tp>>(__vector_broadcast<_Np>(
+	   __infinity_v<_Tp>)));
+	   */
+#endif
+      }
 
     // _S_isnormal {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static _MaskMember<_Tp>
-    _S_isnormal(_SimdWrapper<_Tp, _Np> __x)
-    {
-      using _Ip = __int_for_sizeof_t<_Tp>;
-      const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
-      const auto __minn
-	= __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__norm_min_v<_Tp>));
-  #if __FINITE_MATH_ONLY__
-      return __absn >= __minn;
-  #else
-      const auto __maxn
-	= __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
-      return __minn <= __absn && __absn <= __maxn;
-  #endif
-    }
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      _MaskMember<_Tp>
+      _S_isnormal(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _Ip = __int_for_sizeof_t<_Tp>;
+	const auto __absn = __vector_bitcast<_Ip>(_SuperImpl::_S_abs(__x));
+	const auto __minn
+	  = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__norm_min_v<_Tp>));
+#if __FINITE_MATH_ONLY__
+	return __absn >= __minn;
+#else
+	const auto __maxn
+	  = __vector_bitcast<_Ip>(__vector_broadcast<_Np>(__finite_max_v<_Tp>));
+	return __minn <= __absn && __absn <= __maxn;
+#endif
+      }
 
     // _S_fpclassify {{{3
     template <typename _Tp, size_t _Np>
-    _GLIBCXX_SIMD_INTRINSIC static __fixed_size_storage_t<int, _Np>
-    _S_fpclassify(_SimdWrapper<_Tp, _Np> __x)
-    {
-      using _I = __int_for_sizeof_t<_Tp>;
-      const auto __xn
-	= __vector_bitcast<_I>(__to_intrin(_SuperImpl::_S_abs(__x)));
-      constexpr size_t _NI = sizeof(__xn) / sizeof(_I);
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __minn
-	= __vector_bitcast<_I>(__vector_broadcast<_NI>(__norm_min_v<_Tp>));
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __infn
-	= __vector_bitcast<_I>(__vector_broadcast<_NI>(__infinity_v<_Tp>));
+      _GLIBCXX_SIMD_INTRINSIC static constexpr
+      __fixed_size_storage_t<int, _Np>
+      _S_fpclassify(_SimdWrapper<_Tp, _Np> __x)
+      {
+	using _I = __int_for_sizeof_t<_Tp>;
+	const auto __xn
+	  = __vector_bitcast<_I>(__to_intrin(_SuperImpl::_S_abs(__x)));
+	constexpr size_t _NI = sizeof(__xn) / sizeof(_I);
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __minn
+	  = __vector_bitcast<_I>(__vector_broadcast<_NI>(__norm_min_v<_Tp>));
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __infn
+	  = __vector_bitcast<_I>(__vector_broadcast<_NI>(__infinity_v<_Tp>));
 
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_normal
-	= __vector_broadcast<_NI, _I>(FP_NORMAL);
-  #if !__FINITE_MATH_ONLY__
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_nan
-	= __vector_broadcast<_NI, _I>(FP_NAN);
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_infinite
-	= __vector_broadcast<_NI, _I>(FP_INFINITE);
-  #endif
-  #ifndef __FAST_MATH__
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_subnormal
-	= __vector_broadcast<_NI, _I>(FP_SUBNORMAL);
-  #endif
-      _GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_zero
-	= __vector_broadcast<_NI, _I>(FP_ZERO);
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_normal
+	  = __vector_broadcast<_NI, _I>(FP_NORMAL);
+#if !__FINITE_MATH_ONLY__
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_nan
+	  = __vector_broadcast<_NI, _I>(FP_NAN);
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_infinite
+	  = __vector_broadcast<_NI, _I>(FP_INFINITE);
+#endif
+#ifndef __FAST_MATH__
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_subnormal
+	  = __vector_broadcast<_NI, _I>(FP_SUBNORMAL);
+#endif
+	_GLIBCXX_SIMD_USE_CONSTEXPR auto __fp_zero
+	  = __vector_broadcast<_NI, _I>(FP_ZERO);
 
-      __vector_type_t<_I, _NI>
-	__tmp = __xn < __minn
-  #ifdef __FAST_MATH__
-		  ? __fp_zero
+	__vector_type_t<_I, _NI>
+	  __tmp = __xn < __minn
+#ifdef __FAST_MATH__
+		    ? __fp_zero
   #else
-		  ? (__xn == 0 ? __fp_zero : __fp_subnormal)
+		    ? (__xn == 0 ? __fp_zero : __fp_subnormal)
   #endif
   #if __FINITE_MATH_ONLY__
-		  : __fp_normal;
+		    : __fp_normal;
   #else
-		  : (__xn < __infn ? __fp_normal
-				   : (__xn == __infn ? __fp_infinite : __fp_nan));
+		    : (__xn < __infn ? __fp_normal
+				     : (__xn == __infn ? __fp_infinite : __fp_nan));
   #endif
 
-      if constexpr (sizeof(_I) == sizeof(int))
-	{
-	  using _FixedInt = __fixed_size_storage_t<int, _Np>;
-	  const auto __as_int = __vector_bitcast<int, _Np>(__tmp);
-	  if constexpr (_FixedInt::_S_tuple_size == 1)
-	    return {__as_int};
-	  else if constexpr (_FixedInt::_S_tuple_size == 2
-			     && is_same_v<
-			       typename _FixedInt::_SecondType::_FirstAbi,
-			       simd_abi::scalar>)
-	    return {__extract<0, 2>(__as_int), __as_int[_Np - 1]};
-	  else if constexpr (_FixedInt::_S_tuple_size == 2)
-	    return {__extract<0, 2>(__as_int),
-		    __auto_bitcast(__extract<1, 2>(__as_int))};
-	  else
-	    __assert_unreachable<_Tp>();
-	}
-      else if constexpr (_Np == 2 && sizeof(_I) == 8
-			 && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 2)
-	{
-	  const auto __aslong = __vector_bitcast<_LLong>(__tmp);
-	  return {int(__aslong[0]), {int(__aslong[1])}};
-	}
-  #if _GLIBCXX_SIMD_X86INTRIN
-      else if constexpr (sizeof(_Tp) == 8 && sizeof(__tmp) == 32
-			 && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
-	return {_mm_packs_epi32(__to_intrin(__lo128(__tmp)),
-				__to_intrin(__hi128(__tmp)))};
-      else if constexpr (sizeof(_Tp) == 8 && sizeof(__tmp) == 64
-			 && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
-	return {_mm512_cvtepi64_epi32(__to_intrin(__tmp))};
-  #endif // _GLIBCXX_SIMD_X86INTRIN
-      else if constexpr (__fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
-	return {__call_with_subscripts<_Np>(__vector_bitcast<_LLong>(__tmp),
-					    [](auto... __l) {
-					      return __make_wrapper<int>(__l...);
-					    })};
-      else
-	__assert_unreachable<_Tp>();
-    }
+	if constexpr (sizeof(_I) == sizeof(int))
+	  {
+	    using _FixedInt = __fixed_size_storage_t<int, _Np>;
+	    const auto __as_int = __vector_bitcast<int, _Np>(__tmp);
+	    if constexpr (_FixedInt::_S_tuple_size == 1)
+	      return {__as_int};
+	    else if constexpr (_FixedInt::_S_tuple_size == 2
+				 && is_same_v<
+				      typename _FixedInt::_SecondType::_FirstAbi,
+				      simd_abi::scalar>)
+	      return {__extract<0, 2>(__as_int), __as_int[_Np - 1]};
+	    else if constexpr (_FixedInt::_S_tuple_size == 2)
+	      return {__extract<0, 2>(__as_int),
+		      __auto_bitcast(__extract<1, 2>(__as_int))};
+	    else
+	      __assert_unreachable<_Tp>();
+	  }
+	else if constexpr (_Np == 2 && sizeof(_I) == 8
+			     && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 2)
+	  {
+	    const auto __aslong = __vector_bitcast<_LLong>(__tmp);
+	    return {int(__aslong[0]), {int(__aslong[1])}};
+	  }
+#if _GLIBCXX_SIMD_X86INTRIN
+	else if constexpr (sizeof(_Tp) == 8 && sizeof(__tmp) == 32
+			     && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
+	  return {_mm_packs_epi32(__to_intrin(__lo128(__tmp)),
+				  __to_intrin(__hi128(__tmp)))};
+	else if constexpr (sizeof(_Tp) == 8 && sizeof(__tmp) == 64
+			     && __fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
+	  return {_mm512_cvtepi64_epi32(__to_intrin(__tmp))};
+#endif // _GLIBCXX_SIMD_X86INTRIN
+	else if constexpr (__fixed_size_storage_t<int, _Np>::_S_tuple_size == 1)
+	  return {__call_with_subscripts<_Np>(__vector_bitcast<_LLong>(__tmp),
+					      [](auto... __l) {
+						return __make_wrapper<int>(__l...);
+					      })};
+	else
+	  __assert_unreachable<_Tp>();
+      }
 
     // _S_increment & _S_decrement{{{2
     template <typename _Tp, size_t _Np>
