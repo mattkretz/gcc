@@ -1585,7 +1585,33 @@ name_lookup::adl_template_arg (tree arg)
   /* It's not a template template argument, but it is a type template
      argument.  */
   else if (TYPE_P (arg))
-    adl_type (arg);
+    {
+      if (!COMPLETE_TYPE_P (arg)
+	    && CLASS_TYPE_P (arg)
+	    && CLASSTYPE_TEMPLATE_INSTANTIATION (arg)
+	    && CLASSTYPE_TEMPLATE_INFO (arg)
+	    && PRIMARY_TEMPLATE_P (CLASSTYPE_TI_TEMPLATE (arg)))
+	{
+	  /* Do not instantiate class templates in associated classes with
+	     incomplete template arguments.  */
+	  tree list = INNERMOST_TEMPLATE_ARGS (CLASSTYPE_TI_ARGS (arg));
+	  for (int i = 0; i < TREE_VEC_LENGTH (list); ++i)
+	    {
+	      tree elt = TREE_VEC_ELT (list, i);
+	      if (CLASS_TYPE_P (elt) && !COMPLETE_TYPE_P (elt))
+		{
+		  if (modules_p ())
+		    {
+		      lazy_load_pendings (TYPE_NAME (TYPE_MAIN_VARIANT (elt)));
+		      if (COMPLETE_TYPE_P (elt))
+			continue;
+		    }
+		  return;
+		}
+	    }
+	}
+      adl_type (arg);
+    }
 }
 
 /* Perform ADL lookup.  FNS is the existing lookup result and ARGS are
