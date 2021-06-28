@@ -7943,6 +7943,7 @@ extern tree condition_conversion		(tree);
 extern tree require_complete_type		(tree);
 extern tree require_complete_type_sfinae	(tree, tsubst_flags_t);
 extern tree complete_type			(tree);
+extern tree complete_type_without_instantiation	(tree);
 extern tree complete_type_or_else		(tree, tree);
 extern tree complete_type_or_maybe_complain	(tree, tree, tsubst_flags_t);
 inline bool type_unknown_p			(const_tree);

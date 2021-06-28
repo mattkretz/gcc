@@ -536,9 +536,9 @@ private:
 
  private:
   void adl_expr (tree);
-  void adl_type (tree);
+  void adl_type (tree, bool do_template_instantiation = true);
   void adl_template_arg (tree);
-  void adl_class (tree);
+  void adl_class (tree, bool do_template_instantiation = true);
   void adl_enum (tree);
   void adl_bases (tree);
   void adl_class_only (tree);
@@ -1396,7 +1396,7 @@ name_lookup::adl_bases (tree type)
    namespaces.  --end note] */
 
 void
-name_lookup::adl_class (tree type)
+name_lookup::adl_class (tree type, bool do_template_instantiation)
 {
   /* Backend build structures, such as __builtin_va_list, aren't
      affected by all this.  */
@@ -1410,7 +1410,10 @@ name_lookup::adl_class (tree type)
   if (found_p (type))
     return;
 
-  complete_type (type);
+  if (do_template_instantiation)
+    complete_type (type);
+  else
+    complete_type_without_instantiation (type);
   adl_bases (type);
   mark_found (type);
 
@@ -1483,7 +1486,7 @@ name_lookup::adl_expr (tree expr)
 }
 
 void
-name_lookup::adl_type (tree type)
+name_lookup::adl_type (tree type, bool do_template_instantiation)
 {
   if (!type)
     return;
@@ -1491,8 +1494,8 @@ name_lookup::adl_type (tree type)
   if (TYPE_PTRDATAMEM_P (type))
     {
       /* Pointer to member: associate class type and value type.  */
-      adl_type (TYPE_PTRMEM_CLASS_TYPE (type));
-      adl_type (TYPE_PTRMEM_POINTED_TO_TYPE (type));
+      adl_type (TYPE_PTRMEM_CLASS_TYPE (type), do_template_instantiation);
+      adl_type (TYPE_PTRMEM_POINTED_TO_TYPE (type), do_template_instantiation);
       return;
     }
 
@@ -1501,12 +1504,12 @@ name_lookup::adl_type (tree type)
     case RECORD_TYPE:
       if (TYPE_PTRMEMFUNC_P (type))
 	{
-	  adl_type (TYPE_PTRMEMFUNC_FN_TYPE (type));
+	  adl_type (TYPE_PTRMEMFUNC_FN_TYPE (type), do_template_instantiation);
 	  return;
 	}
       /* FALLTHRU */
     case UNION_TYPE:
-      adl_class (type);
+      adl_class (type, do_template_instantiation);
       return;
 
     case METHOD_TYPE:
@@ -1515,13 +1518,13 @@ name_lookup::adl_type (tree type)
     case FUNCTION_TYPE:
       /* Associate the parameter types.  */
       for (tree args = TYPE_ARG_TYPES (type); args; args = TREE_CHAIN (args))
-	adl_type (TREE_VALUE (args));
+	adl_type (TREE_VALUE (args), do_template_instantiation);
       /* FALLTHROUGH */
 
-    case POINTER_TYPE:
     case REFERENCE_TYPE:
+    case POINTER_TYPE:
     case ARRAY_TYPE:
-      adl_type (TREE_TYPE (type));
+      adl_type (TREE_TYPE (type), false);
       return;
 
     case ENUMERAL_TYPE:
@@ -1534,10 +1537,11 @@ name_lookup::adl_type (tree type)
       return;
 
     case TYPE_PACK_EXPANSION:
-      adl_type (PACK_EXPANSION_PATTERN (type));
+      adl_type (PACK_EXPANSION_PATTERN (type), do_template_instantiation);
       return;
 
     default:
+      gcc_assert (TREE_CODE (type) != REFERENCE_TYPE);
       break;
     }
 }
@@ -1585,7 +1589,7 @@ name_lookup::adl_template_arg (tree arg)
   /* It's not a template template argument, but it is a type template
      argument.  */
   else if (TYPE_P (arg))
-    adl_type (arg);
+    adl_type (arg, false);
 }
 
 /* Perform ADL lookup.  FNS is the existing lookup result and ARGS are
