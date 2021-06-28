@@ -1603,7 +1603,11 @@ name_lookup::adl_template_arg (tree arg)
     }
   /* It's not a template template argument, but it is a type template
      argument.  */
-  else if (TYPE_P (arg))
+  else if (TYPE_P (arg)
+	  /* Do not instantiate class templates in associated classes.  */
+	     && (COMPLETE_TYPE_P (arg)
+		   || !(CLASS_TYPE_P (arg)
+			  && CLASSTYPE_TEMPLATE_INSTANTIATION (arg))))
     adl_type (arg);
 }
 
