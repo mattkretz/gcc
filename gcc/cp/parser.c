@@ -20876,7 +20876,8 @@ cp_parser_namespace_alias_definition (cp_parser* parser)
   cp_parser_require_keyword (parser, RID_NAMESPACE, RT_NAMESPACE);
   /* Look for attributes (GCC extension).  */
   tree attributes = cp_parser_attributes_opt (parser);
-  if (attributes)
+  if (attributes
+	&& !cp_parser_uncommitted_to_tentative_parse_p (parser))
     pedwarn (input_location, OPT_Wpedantic,
 	     "standard attributes on namespaces aliases must follow "
 	     "the namespace alias name");

@@ -5205,10 +5205,7 @@ handle_diagnose_as_attribute (tree* node, tree name, tree args,
       if (DECL_LANG_SPECIFIC (decl)
 	    && DECL_TEMPLATE_INFO (decl)
 	    && DECL_ALIAS_TEMPLATE_P (DECL_TI_TEMPLATE (decl))
-	    && DECL_TI_TEMPLATE (decl)
-		 == TREE_TYPE (INNERMOST_TEMPLATE_PARMS (
-				 DECL_TEMPLATE_PARMS (
-				   DECL_TI_TEMPLATE (decl)))))
+	    && PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (decl)))
 	return error_mark_node;
 
       if (!args)

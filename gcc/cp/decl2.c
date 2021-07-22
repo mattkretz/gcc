@@ -1159,14 +1159,13 @@ is_alias_template_p (tree decl)
 	 using E [[gnu::diagnose_as]] = C<int>;
        };
      A<T>::D and A<T>::E are not alias templates.
-     - For A<T>::D, the TREE_TYPE of the innermost template params is A and
-       not B, which would be the case for a real alias template.
+     - For A<T>::D, the DECL_PRIMARY_TEMPLATE is A and not B, which would be the
+       case for a real alias template.
      - For A<T>::E, the innermost template params belong to C but its template
        args have no wildcard types, which would be the case for a real
        alias template.  */
   tree tmpl = CLASSTYPE_TI_TEMPLATE (type);
-  if (tmpl != TREE_TYPE (INNERMOST_TEMPLATE_PARMS (
-			   DECL_TEMPLATE_PARMS (tmpl))))
+  if (!PRIMARY_TEMPLATE_P (tmpl))
     return false;
 
   tree targs = INNERMOST_TEMPLATE_ARGS (CLASSTYPE_TI_ARGS (type));

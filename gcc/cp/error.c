@@ -1866,9 +1866,8 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
 
 	  template_parms = DECL_TEMPLATE_PARMS (tmpl);
 	  t = tmpl;
-	  /* The "[with ...]" clause is printed, thus dump_template_params must
-	     unconditionally present functions as primary templates.  */
-	  dump_function_name_flags |= TFF_AS_PRIMARY;
+	  /* The "[with ...]" clause is printed, don't print template params. */
+	  dump_function_name_flags |= TFF_TEMPLATE_NAME;
 	}
     }
 
@@ -2165,11 +2164,10 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
 
   if (DECL_TEMPLATE_INFO (t)
       && !(flags & TFF_TEMPLATE_NAME)
-      && !DECL_FRIEND_PSEUDO_TEMPLATE_INSTANTIATION (t)
+      && DECL_USE_TEMPLATE (t)
       && (TREE_CODE (DECL_TI_TEMPLATE (t)) != TEMPLATE_DECL
 	  || PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (t))))
-    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), !DECL_USE_TEMPLATE (t),
-                         flags);
+    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), false, flags);
 }
 
 /* Dump the template parameters from the template info INFO under control of
@@ -2184,8 +2182,6 @@ dump_template_parms (cxx_pretty_printer *pp, tree info,
 {
   tree args = info ? TI_ARGS (info) : NULL_TREE;
 
-  if (flags & TFF_AS_PRIMARY)
-    primary = true;
   if (primary && flags & TFF_TEMPLATE_NAME)
     return;
   flags &= ~(TFF_CLASS_KEY_OR_ENUM | TFF_TEMPLATE_NAME);

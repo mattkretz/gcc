@@ -107,11 +107,11 @@ using X0int [[gnu::diagnose_as("[int|int]")]] = X0<int, int>;
 void h() {
   TEST("constexpr const char* @1::@3::fun:3()",
       A::C<int>().h());
-  TEST("constexpr const char* @1::@3::fun:2<T>() [with T = float]",
+  TEST("constexpr const char* @1::@3::fun:2() [with T = float]",
       A::C<int>().g<float>());
   TEST("constexpr const char* @1::@2<U>::fun:3() [with U = char]",
       A::C<char>().h());
-  TEST("constexpr const char* @1::@2<U>::fun:2<T>() [with T = float; U = char]",
+  TEST("constexpr const char* @1::@2<U>::fun:2() [with T = float; U = char]",
       A::C<char>().g<float>());
   TEST("constexpr const char* foo::barchar::A'<T0, T1>::f() [with T0 = char; T1 = char]",
       (foo::Bar<char>::A<char, char>().f()));
@@ -131,22 +131,22 @@ void h() {
       (foo::Bar<float>::A<int, int>().f()));
   TEST("static constexpr const char* foo::barchar::f()",
       foo::Bar<char>::f());
-  TEST("static constexpr const char* foo::BarPtr<P*>::f<U>() [with U = int; P = char]",
+  TEST("static constexpr const char* foo::BarPtr<P*>::f() [with U = int; P = char]",
       foo::Bar<char*>::f());
-  TEST("static constexpr const char* foo::BarPtr<P*>::f<U>() [with U = int; P = float]",
+  TEST("static constexpr const char* foo::BarPtr<P*>::f() [with U = int; P = float]",
       foo::Bar<float*>::f());
   TEST("static constexpr const char* foo::Bar'<U>::f() [with U = float]",
       foo::Bar<float>::f());
   TEST("static constexpr const char* foo::SpecialBar::f()",
       foo::Bar<void>::f());
-  TEST("static constexpr const char* X.0<T0, U0>::X1<T1, U1>::X2'::f-1<T3, U3>() [with T3 = long int; U3 = long long int; T1 = short int; U1 = int; T0 = char; U0 = short int]",
+  TEST("static constexpr const char* X.0<T0, U0>::X1<T1, U1>::X2'::f-1() [with T3 = long int; U3 = long long int; T1 = short int; U1 = int; T0 = char; U0 = short int]",
       (X0<char, short>::X1<short, int>::X2<int, long>::f<long, long long>()));
-  TEST("static constexpr const char* X.0<T0, U0>::X1<T1, U1>::X2<T2, U2>::f-1<T3, U3>() [with T3 = long int; U3 = long long int; T2 = long int; U2 = int; T1 = short int; U1 = int; T0 = char; U0 = short int]",
+  TEST("static constexpr const char* X.0<T0, U0>::X1<T1, U1>::X2<T2, U2>::f-1() [with T3 = long int; U3 = long long int; T2 = long int; U2 = int; T1 = short int; U1 = int; T0 = char; U0 = short int]",
       (X0<char, short>::X1<short, int>::X2<long, int>::f<long, long long>()));
-  TEST("static constexpr const char* X.0<T0, U0>::X.3::f-1<T3, U3>() [with T3 = long int; U3 = long long int; T0 = char; U0 = short int]",
+  TEST("static constexpr const char* X.0<T0, U0>::X.3::f-1() [with T3 = long int; U3 = long long int; T0 = char; U0 = short int]",
       (X0<char, short>::X3::f<long, long long>()));
-  TEST("static constexpr const char* [int|int]::f-1<T3, U3>() [with T3 = long int; U3 = long long int]",
+  TEST("static constexpr const char* [int|int]::f-1() [with T3 = long int; U3 = long long int]",
       (X0<int, int>::f<long, long long>()));
-  TEST("static constexpr const char* [int|int]::X.3::f-1<T3, U3>() [with T3 = long int; U3 = long long int]",
+  TEST("static constexpr const char* [int|int]::X.3::f-1() [with T3 = long int; U3 = long long int]",
       (X0<int, int>::X3::f<long, long long>()));
 }

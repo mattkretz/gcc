@@ -93,8 +93,8 @@ namespace A
 	  static_assert(__builtin_strcmp(__FUNCTION__, "fun:4") == 0, "");
 	  constexpr const char* ref
 	    = is_int<U>()
-		? "void @1::@3::fun:4<T>() [with T = float]"
-		: "void @1::@2<U>::fun:4<T>() [with T = float; U = char]";
+		? "void @1::@3::fun:4() [with T = float]"
+		: "void @1::@2<U>::fun:4() [with T = float; U = char]";
 	  static_assert(__builtin_strcmp(__PRETTY_FUNCTION__, ref) == 0, "");
 #endif
 	}
