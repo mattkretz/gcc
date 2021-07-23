@@ -349,7 +349,9 @@ template <typename _TV, typename _UV>
   _TV
   __plus_minus(_TV __x, _UV __y) noexcept
   {
-#if defined __clang__ || __GCC_IEC_559 > 0
+#if __has_builtin(__builtin_assoc_barrier)
+    return __builtin_assoc_barrier(__builtin_assoc_barrier(__x + __y) - __y);
+#elif defined __clang__ || __GCC_IEC_559 > 0
     return (__x + __y) - __y;
 #else
     if (__builtin_is_constant_evaluated()
