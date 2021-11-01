@@ -86,11 +86,11 @@ static void dump_exception_spec (cxx_pretty_printer *, tree, int);
 static void dump_template_argument (cxx_pretty_printer *, tree, int);
 static void dump_template_argument_list (cxx_pretty_printer *, tree, int);
 static void dump_template_parameter (cxx_pretty_printer *, tree, int);
-static void dump_template_bindings (cxx_pretty_printer *, tree, tree,
-                                    vec<tree, va_gc> *);
+static void dump_template_bindings (cxx_pretty_printer *, tree, tree, tree,
+                                    vec<tree, va_gc> *, int);
 static void dump_scope (cxx_pretty_printer *, tree, int);
 static void dump_template_parms (cxx_pretty_printer *, tree, int, int);
-static int get_non_default_template_args_count (tree, int);
+static int args_or_non_default_template_args_count (tree, int);
 static const char *function_category (tree);
 static void maybe_print_constexpr_context (diagnostic_context *);
 static void maybe_print_instantiation_context (diagnostic_context *);
@@ -276,24 +276,23 @@ dump_template_argument (cxx_pretty_printer *pp, tree arg, int flags)
     }
 }
 
-/* Count the number of template arguments ARGS whose value does not
-   match the (optional) default template parameter in PARAMS  */
+/* Returns GET_NON_DEFAULT_TEMPLATE_ARGS_COUNT (ARGS) unless FLAGS requests the
+   full count of template args.  */
 
 static int
-get_non_default_template_args_count (tree args, int flags)
+args_or_non_default_template_args_count (tree args, int flags)
 {
-  int n = TREE_VEC_LENGTH (INNERMOST_TEMPLATE_ARGS (args));
+  gcc_assert (!TMPL_ARGS_HAVE_MULTIPLE_LEVELS (args));
 
   if (/* We use this flag when generating debug information.  We don't
 	 want to expand templates at this point, for this may generate
 	 new decls, which gets decl counts out of sync, which may in
 	 turn cause codegen differences between compilations with and
 	 without -g.  */
-      (flags & TFF_NO_OMIT_DEFAULT_TEMPLATE_ARGUMENTS) != 0
-      || !flag_pretty_templates)
-    return n;
+      (flags & TFF_NO_OMIT_DEFAULT_TEMPLATE_ARGUMENTS) != 0)
+    return NUM_TMPL_ARGS (args);
 
-  return GET_NON_DEFAULT_TEMPLATE_ARGS_COUNT (INNERMOST_TEMPLATE_ARGS (args));
+  return GET_NON_DEFAULT_TEMPLATE_ARGS_COUNT (args);
 }
 
 /* Dump a template-argument-list ARGS (always a TREE_VEC) under control
@@ -302,7 +301,7 @@ get_non_default_template_args_count (tree args, int flags)
 static void
 dump_template_argument_list (cxx_pretty_printer *pp, tree args, int flags)
 {
-  int n = get_non_default_template_args_count (args, flags);
+  int n = args_or_non_default_template_args_count (args, flags);
   int need_comma = 0;
   int i;
 
@@ -373,7 +372,7 @@ dump_template_parameter (cxx_pretty_printer *pp, tree parm, int flags)
 
 static void
 dump_template_bindings (cxx_pretty_printer *pp, tree parms, tree args,
-                        vec<tree, va_gc> *typenames)
+			tree used_parms, vec<tree, va_gc> *typenames, int flags)
 {
   /* Print "[with" and ']', conditional on whether anything is printed at all.
      This is tied to whether a semicolon is needed to separate multiple template
@@ -418,23 +417,47 @@ dump_template_bindings (cxx_pretty_printer *pp, tree parms, tree args,
       /* Don't crash if we had an invalid argument list.  */
       if (TMPL_ARGS_DEPTH (args) >= lvl)
 	lvl_args = TMPL_ARGS_LEVEL (args, lvl);
+      const int len = TREE_VEC_LENGTH (p);
+      const int non_default_len
+	= lvl_args ? args_or_non_default_template_args_count (lvl_args, flags)
+		   : len;
 
-      for (i = 0; i < TREE_VEC_LENGTH (p); ++i)
+      for (i = 0; i < len; ++i, ++arg_idx)
 	{
+	  const tree parm_i = TREE_VEC_ELT (p, i);
+	  gcc_assert (TREE_CODE (parm_i) == TREE_LIST);
+	  const tree parm_val = TREE_VALUE (parm_i);
+	  const tree parm_type = TREE_CODE (parm_val) == TYPE_DECL
+				   || TREE_CODE (parm_val) == TEMPLATE_DECL
+				   ? TREE_TYPE (parm_val)
+				   : TREE_CODE (parm_val) == PARM_DECL
+				       ? DECL_ARG_TYPE (parm_val)
+				       : NULL_TREE;
+
+	  /* If the template parameter is defaulted and does not appear in
+	     used_parms (function arguments, return type, or exception
+	     specifier), skip the parameter.  */
+	  if (i >= non_default_len)
+	    {
+	      tree it;
+	      for (it = used_parms; it && TREE_VALUE (it) != parm_type;
+		   it = TREE_CHAIN (it))
+		;
+	      if (!it)
+		continue;
+	    }
+
 	  tree arg = NULL_TREE;
 
 	  /* Don't crash if we had an invalid argument list.  */
 	  if (lvl_args && NUM_TMPL_ARGS (lvl_args) > arg_idx)
 	    arg = TREE_VEC_ELT (lvl_args, arg_idx);
 
-	  tree parm_i = TREE_VEC_ELT (p, i);
 	  /* If the template argument repeats the template parameter (T = T),
 	     skip the parameter.*/
 	  if (arg && TREE_CODE (arg) == TEMPLATE_TYPE_PARM
-		&& TREE_CODE (parm_i) == TREE_LIST
-		&& TREE_CODE (TREE_VALUE (parm_i)) == TYPE_DECL
-		&& TREE_CODE (TREE_TYPE (TREE_VALUE (parm_i)))
-		     == TEMPLATE_TYPE_PARM
+		&& TREE_CODE (parm_val) == TYPE_DECL
+		&& TREE_CODE (TREE_TYPE (parm_val)) == TEMPLATE_TYPE_PARM
 		&& DECL_NAME (TREE_VALUE (parm_i))
 		     == DECL_NAME (TREE_CHAIN (arg)))
 	    continue;
@@ -454,8 +477,6 @@ dump_template_bindings (cxx_pretty_printer *pp, tree parms, tree args,
 	    }
 	  else
 	    pp_string (pp, M_("<missing>"));
-
-	  ++arg_idx;
 	}
 
       parms = TREE_CHAIN (parms);
@@ -1650,8 +1671,30 @@ dump_substitution (cxx_pretty_printer *pp,
   if (template_parms != NULL_TREE && template_args != NULL_TREE
       && !(flags & TFF_NO_TEMPLATE_BINDINGS))
     {
-      vec<tree, va_gc> *typenames = t ? find_typenames (t) : NULL;
-      dump_template_bindings (pp, template_parms, template_args, typenames);
+      vec<tree, va_gc> *typenames = nullptr;
+      tree used_parms = NULL_TREE;
+      if (t)
+	{
+	  typenames = find_typenames (t);
+	  const tree fn = TREE_TYPE (DECL_TEMPLATE_RESULT (t));
+	  if (TREE_CODE (fn) == METHOD_TYPE)
+	    {
+	      /* For methods, we have to skip walking TYPE_METHOD_BASETYPE and
+		 the hidden "self" function parameter. Otherwise, we'll discover
+		 all template parameters of class templates in the function's
+		 context.  */
+	      used_parms = find_template_parameters (TREE_TYPE (fn),
+						     template_parms);
+	      for (tree arg = TREE_CHAIN (TYPE_ARG_TYPES (fn)); arg;
+		   arg = TREE_CHAIN (arg))
+		used_parms = chainon (used_parms, find_template_parameters
+						    (arg, template_parms));
+	    }
+	  else
+	    used_parms = find_template_parameters (fn, template_parms);
+	}
+      dump_template_bindings (pp, template_parms, template_args, used_parms,
+			      typenames, flags);
     }
 }
 
@@ -1705,8 +1748,15 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   constexpr_p = (DECL_DECLARED_CONSTEXPR_P (t)
 		 && !decl_implicit_constexpr_p (t));
 
-  /* Pretty print template instantiations only.  */
-  if (DECL_USE_TEMPLATE (t) && DECL_TEMPLATE_INFO (t)
+  /* Keep t before the following branch makes t point to a more general
+     template. Without the specialized template, the information about defaulted
+     template arguments is lost.  */
+  tree specialized_t = t;
+  int specialized_flags = 0;
+
+  /* Pretty print only template instantiations. Don't pretty print explicit
+     specializations like 'template <> void fun<int> (int)'.  */
+  if (DECL_TEMPLATE_INSTANTIATION (t) && DECL_TEMPLATE_INFO (t)
       && !(flags & TFF_NO_TEMPLATE_BINDINGS)
       && flag_pretty_templates)
     {
@@ -1718,6 +1768,9 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
 	{
 	  template_parms = DECL_TEMPLATE_PARMS (tmpl);
 	  t = tmpl;
+	  /* The "[with ...]" clause is printed, thus dump functions printing
+	     SPECIALIZED_T need to add TFF_AS_PRIMARY to their flags.  */
+	  specialized_flags = TFF_AS_PRIMARY;
 	}
     }
 
@@ -1727,8 +1780,8 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   fntype = TREE_TYPE (t);
   parmtypes = FUNCTION_FIRST_USER_PARMTYPE (t);
 
-  if (DECL_CLASS_SCOPE_P (t))
-    cname = DECL_CONTEXT (t);
+  if (DECL_CLASS_SCOPE_P (specialized_t))
+    cname = DECL_CONTEXT (specialized_t);
   /* This is for partially instantiated template methods.  */
   else if (TREE_CODE (fntype) == METHOD_TYPE)
     cname = TREE_TYPE (TREE_VALUE (parmtypes));
@@ -1766,7 +1819,7 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
     /* Nothing.  */;
   else if (cname)
     {
-      dump_type (pp, cname, flags);
+      dump_type (pp, cname, flags | specialized_flags);
       pp_cxx_colon_colon (pp);
     }
   else
@@ -1776,7 +1829,8 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
      scope of the function, so avoid printing redundant scope qualifiers.  */
   auto cds = make_temp_override (current_dump_scope, CP_DECL_CONTEXT (t));
 
-  dump_function_name (pp, t, dump_function_name_flags);
+  dump_function_name (pp, specialized_t,
+		      dump_function_name_flags | specialized_flags);
 
   if (!(flags & TFF_NO_FUNCTION_ARGUMENTS))
     {
@@ -1822,26 +1876,6 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
 	  dump_type (pp, base, TFF_PLAIN_IDENTIFIER);
 	  pp_character (pp, ']');
 	}
-    }
-  else if (template_args)
-    {
-      bool need_comma = false;
-      int i;
-      pp_cxx_begin_template_argument_list (pp);
-      template_args = INNERMOST_TEMPLATE_ARGS (template_args);
-      for (i = 0; i < TREE_VEC_LENGTH (template_args); ++i)
-	{
-	  tree arg = TREE_VEC_ELT (template_args, i);
-	  if (need_comma)
-	    pp_separate_with_comma (pp);
-	  if (ARGUMENT_PACK_P (arg))
-	    pp_cxx_left_brace (pp);
-	  dump_template_argument (pp, arg, TFF_PLAIN_IDENTIFIER);
-	  if (ARGUMENT_PACK_P (arg))
-	    pp_cxx_right_brace (pp);
-	  need_comma = true;
-	}
-      pp_cxx_end_template_argument_list (pp);
     }
 }
 
@@ -1989,13 +2023,35 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
 
   dump_module_suffix (pp, t);
 
+/* Print function template parameters if:
+   1. t is template, and
+   2. the caller didn't request to only print the template-name, and
+   3. t actually has template parameters that are not indirect parameters from
+      enclosing scopes, i.e. either
+      - t is a friend template specialization
+	(eg. template<class T> struct X { friend void foo<T>(int); }; since
+	PRIMARY_TEMPLATE_P requires a TEMPLATE_DECL, this case must be checked
+	before PRIMARY_TEMPLATE_P is safe to call), or
+      - t is a primary template (own template header),
+      and
+   4. either
+      - flags requests to show no function arguments, in which case deduced
+	types could be hidden and thus need to be printed, or
+      - at least one function template argument was given explicitly and the
+	diagnostics output should reflect the code as it was written,
+
+  Whether t is a specialization of a template informs the PRIMARY parameter of
+  dump_template_parms.
+ */
   if (DECL_TEMPLATE_INFO (t)
       && !(flags & TFF_TEMPLATE_NAME)
-      && !DECL_FRIEND_PSEUDO_TEMPLATE_INSTANTIATION (t)
       && (TREE_CODE (DECL_TI_TEMPLATE (t)) != TEMPLATE_DECL
-	  || PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (t))))
-    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), !DECL_USE_TEMPLATE (t),
-                         flags);
+	    || PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (t)))
+      && ((flags & TFF_NO_FUNCTION_ARGUMENTS)
+	    || (DECL_TI_ARGS (t)
+		  && EXPLICIT_TEMPLATE_ARGS_P (INNERMOST_TEMPLATE_ARGS
+						 (DECL_TI_ARGS (t))))))
+    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), !DECL_USE_TEMPLATE (t), flags);
 }
 
 /* Dump the template parameters from the template info INFO under control of
@@ -2010,6 +2066,8 @@ dump_template_parms (cxx_pretty_printer *pp, tree info,
 {
   tree args = info ? TI_ARGS (info) : NULL_TREE;
 
+  if (flags & TFF_AS_PRIMARY)
+    primary = true;
   if (primary && flags & TFF_TEMPLATE_NAME)
     return;
   flags &= ~(TFF_CLASS_KEY_OR_ENUM | TFF_TEMPLATE_NAME);
@@ -2019,10 +2077,11 @@ dump_template_parms (cxx_pretty_printer *pp, tree info,
      to crash producing error messages.  */
   if (args && !primary)
     {
-      int len, ix;
-      len = get_non_default_template_args_count (args, flags);
+      int ix;
 
       args = INNERMOST_TEMPLATE_ARGS (args);
+      int len = args_or_non_default_template_args_count (args, flags);
+      gcc_assert (len <= NUM_TMPL_ARGS (args));
       for (ix = 0; ix != len; ix++)
 	{
 	  tree arg = TREE_VEC_ELT (args, ix);
@@ -2047,25 +2106,35 @@ dump_template_parms (cxx_pretty_printer *pp, tree info,
       tree parms = DECL_TEMPLATE_PARMS (tpl);
       int len, ix;
 
-      parms = TREE_CODE (parms) == TREE_LIST ? TREE_VALUE (parms) : NULL_TREE;
-      len = parms ? TREE_VEC_LENGTH (parms) : 0;
-
-      for (ix = 0; ix != len; ix++)
+      if (TREE_CODE (parms) == TREE_LIST)
 	{
-	  tree parm;
+	  parms = INNERMOST_TEMPLATE_PARMS (parms);
+	  if (args)
+	    {
+	      len = args_or_non_default_template_args_count
+		      (INNERMOST_TEMPLATE_ARGS (args), flags);
+	      gcc_assert (len <= TREE_VEC_LENGTH (parms));
+	    }
+	  else
+	    len = TREE_VEC_LENGTH (parms);
 
-          if (TREE_VEC_ELT (parms, ix) == error_mark_node)
-            {
-              pp_string (pp, M_("<template parameter error>"));
-              continue;
-            }
+	  for (ix = 0; ix != len; ix++)
+	    {
+	      tree parm;
 
-          parm = TREE_VALUE (TREE_VEC_ELT (parms, ix));
+	      if (TREE_VEC_ELT (parms, ix) == error_mark_node)
+		{
+		  pp_string (pp, M_("<template parameter error>"));
+		  continue;
+		}
 
-	  if (ix)
-	    pp_separate_with_comma (pp);
+	      parm = TREE_VALUE (TREE_VEC_ELT (parms, ix));
 
-	  dump_decl (pp, parm, flags & ~TFF_DECL_SPECIFIERS);
+	      if (ix)
+		pp_separate_with_comma (pp);
+
+	      dump_decl (pp, parm, flags & ~TFF_DECL_SPECIFIERS);
+	    }
 	}
     }
   pp_cxx_end_template_argument_list (pp);
@@ -3192,7 +3261,8 @@ lang_decl_name (tree decl, int v, bool translate)
     }
 
   if (TREE_CODE (decl) == FUNCTION_DECL)
-    dump_function_name (cxx_pp, decl, TFF_PLAIN_IDENTIFIER);
+    dump_function_name (cxx_pp, decl,
+			TFF_PLAIN_IDENTIFIER | TFF_NO_FUNCTION_ARGUMENTS);
   else if ((DECL_NAME (decl) == NULL_TREE)
            && TREE_CODE (decl) == NAMESPACE_DECL)
     dump_decl (cxx_pp, decl, TFF_PLAIN_IDENTIFIER | TFF_UNQUALIFIED_NAME);
@@ -4089,10 +4159,10 @@ print_template_differences (pretty_printer *pp, tree type_a, tree type_b,
   gcc_assert (TREE_CODE (args_a) == TREE_VEC);
   gcc_assert (TREE_CODE (args_b) == TREE_VEC);
   int flags = 0;
-  int len_a = get_non_default_template_args_count (args_a, flags);
   args_a = INNERMOST_TEMPLATE_ARGS (args_a);
-  int len_b = get_non_default_template_args_count (args_b, flags);
+  int len_a = args_or_non_default_template_args_count (args_a, flags);
   args_b = INNERMOST_TEMPLATE_ARGS (args_b);
+  int len_b = args_or_non_default_template_args_count (args_b, flags);
   /* Determine the maximum range of args for which non-default template args
      were used; beyond this, only default args (if any) were used, and so
      they will be equal from this point onwards.

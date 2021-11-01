@@ -8,11 +8,11 @@ struct A
 
 void foo(void)
 {
-  A<void> a = 0;		// { dg-error "A<void, 0, 1>" }
+  A<void> a = 0;		// { dg-error "A<void>" }
 }
 
-template <class T> T f(T);	    // { dg-message "int f<int>.int." }
-template <class T> T f(T, int = 0); // { dg-message "" }
+template <class T> T f(T);	    // { dg-message "int f.int." }
+template <class T> T f(T, int = 0); // { dg-message "int f.int, int." }
 
 template <class T>
 struct B

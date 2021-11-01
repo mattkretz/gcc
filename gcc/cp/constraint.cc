@@ -2882,10 +2882,11 @@ get_mapped_args (tree t, tree args)
       tree level = make_tree_vec (list.length ());
       for (unsigned j = 0; j < list.length(); ++j)
 	TREE_VEC_ELT (level, j) = list[j];
+      /* None of the args at any level are defaulted.  */
+      SET_NON_DEFAULT_TEMPLATE_ARGS_COUNT (level, list.length());
       SET_TMPL_ARGS_LEVEL (args, i + 1, level);
       list.release ();
     }
-  SET_NON_DEFAULT_TEMPLATE_ARGS_COUNT (args, 0);
 
   if (TMPL_ARGS_HAVE_MULTIPLE_LEVELS (args)
       && TMPL_ARGS_DEPTH (args) == 1)

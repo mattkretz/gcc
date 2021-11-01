@@ -10145,6 +10145,10 @@ grokfndecl (tree ctype,
 	  /* A friend declaration of the form friend void f<>().  Record
 	     the information in the TEMPLATE_ID_EXPR.  */
 	  SET_DECL_IMPLICIT_INSTANTIATION (decl);
+	  /* Set the template args as explicitly specified - they were certainly
+	     not deduced from function arguments.  */
+	  if (args)
+	    SET_EXPLICIT_TEMPLATE_ARGS_COUNT (args, NUM_TMPL_ARGS (args));
 
 	  gcc_assert (identifier_p (fns) || OVL_P (fns));
 	  DECL_TEMPLATE_INFO (decl) = build_template_info (fns, args);

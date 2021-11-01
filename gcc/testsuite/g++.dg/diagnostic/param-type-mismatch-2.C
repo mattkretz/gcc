@@ -141,7 +141,7 @@ int test_7 (int first, const char *second, float third)
                                          |
                                          const char*
      { dg-end-multiline-output "" } */
-  // { dg-message "initializing argument 2 of 'int test_7\\(int, T, float\\) .with T = const char\\*\\*.'" "" { target *-*-* } test_7_decl }
+  // { dg-message "initializing argument 2 of 'int test_7<T>\\(int, T, float\\) .with T = const char\\*\\*.'" "" { target *-*-* } test_7_decl }
   /* { dg-begin-multiline-output "" }
  int test_7 (int one, T two, float three);
                       ~~^~~
