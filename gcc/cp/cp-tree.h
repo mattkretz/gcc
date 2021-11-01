@@ -3724,25 +3724,29 @@ struct GTY(()) lang_decl {
   ((struct tree_template_info*)TEMPLATE_INFO_CHECK (NODE))->args
 #define TI_PENDING_TEMPLATE_FLAG(NODE) \
   TREE_LANG_FLAG_1 (TEMPLATE_INFO_CHECK (NODE))
-/* For a given TREE_VEC containing a template argument list,
-   this property contains the number of arguments that are not
-   defaulted.  */
+/* For a given TREE_VEC containing a template argument list (but not multiple
+   levels of arguments), this property contains the number of arguments that are
+   not defaulted and optionally the number of explicitly specified template
+   arguments. It is either a INT_CST denoting the number of non-default
+   arguments, or a TREE_LIST with TREE_PURPOSE denoting the number of explicitly
+   given template arguments of a function template, and TREE_VALUE denoting the
+   number of non-default arguments.  */
 #define NON_DEFAULT_TEMPLATE_ARGS_COUNT(NODE) \
   TREE_CHAIN (TREE_VEC_CHECK (NODE))
 
 /* Below are the setter and getter of the NON_DEFAULT_TEMPLATE_ARGS_COUNT
    property.  */
 #define SET_NON_DEFAULT_TEMPLATE_ARGS_COUNT(NODE, INT_VALUE) \
-  NON_DEFAULT_TEMPLATE_ARGS_COUNT(NODE) = build_int_cst (NULL_TREE, INT_VALUE)
-#if CHECKING_P
+  set_non_default_template_args_count (TREE_VEC_CHECK (NODE), INT_VALUE)
+
 #define GET_NON_DEFAULT_TEMPLATE_ARGS_COUNT(NODE) \
-    int_cst_value (NON_DEFAULT_TEMPLATE_ARGS_COUNT (NODE))
-#else
-#define GET_NON_DEFAULT_TEMPLATE_ARGS_COUNT(NODE) \
-  NON_DEFAULT_TEMPLATE_ARGS_COUNT (NODE) \
-  ? int_cst_value (NON_DEFAULT_TEMPLATE_ARGS_COUNT (NODE)) \
-  : TREE_VEC_LENGTH (INNERMOST_TEMPLATE_ARGS (NODE))
-#endif
+  get_non_default_template_args_count (TREE_VEC_CHECK (NODE))
+
+#define EXPLICIT_TEMPLATE_ARGS_P(NODE) \
+  (get_explicit_template_args_count (TREE_VEC_CHECK (NODE)) > 0)
+
+#define SET_EXPLICIT_TEMPLATE_ARGS_COUNT(NODE, INT_VALUE) \
+  set_explicit_template_args_count (TREE_VEC_CHECK (NODE), INT_VALUE)
 
 /* The list of access checks that were deferred during parsing
    which need to be performed at template instantiation time.
@@ -6032,7 +6036,8 @@ enum auto_deduction_context
        identical to their defaults.
    TFF_NO_TEMPLATE_BINDINGS: do not print information about the template
        arguments for a function template specialization.
-   TFF_POINTER: we are printing a pointer type.  */
+   TFF_POINTER: we are printing a pointer type.
+   TFF_AS_PRIMARY: show the template like a primary template.  */
 
 #define TFF_PLAIN_IDENTIFIER			(0)
 #define TFF_SCOPE				(1)
@@ -6050,6 +6055,7 @@ enum auto_deduction_context
 #define TFF_NO_OMIT_DEFAULT_TEMPLATE_ARGUMENTS	(1 << 12)
 #define TFF_NO_TEMPLATE_BINDINGS		(1 << 13)
 #define TFF_POINTER		                (1 << 14)
+#define TFF_AS_PRIMARY		                (1 << 15)
 
 /* These constants can be used as bit flags to control strip_typedefs.
 
@@ -7261,6 +7267,10 @@ extern void pop_access_scope			(tree);
 extern bool check_template_shadow		(tree);
 extern bool check_auto_in_tmpl_args             (tree, tree);
 extern tree get_innermost_template_args		(tree, int);
+extern void set_non_default_template_args_count (tree args, int count);
+extern int  get_non_default_template_args_count (tree args);
+extern void set_explicit_template_args_count (tree args, int count);
+extern bool get_explicit_template_args_count (tree args);
 extern void maybe_begin_member_template_processing (tree);
 extern void maybe_end_member_template_processing (void);
 extern tree finish_member_template_decl		(tree);

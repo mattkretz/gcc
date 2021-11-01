@@ -6157,7 +6157,9 @@ trees_out::core_vals (tree t)
       /* We stash NON_DEFAULT_TEMPLATE_ARGS_COUNT on TREE_CHAIN!  */
       gcc_checking_assert (!t->type_common.common.chain
 			   || (TREE_CODE (t->type_common.common.chain)
-			       == INTEGER_CST));
+			       == INTEGER_CST)
+			   || (TREE_CODE (t->type_common.common.chain)
+			       == TREE_LIST));
       WT (t->type_common.common.chain);
       break;
 
