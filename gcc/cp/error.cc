@@ -1326,9 +1326,10 @@ dump_decl_name (cxx_pretty_printer *pp, tree t, int flags)
    otherwise.  */
 
 static tree
-lookup_diagnose_as_attribute (cxx_pretty_printer *, tree attributes)
+lookup_diagnose_as_attribute (cxx_pretty_printer *pp, tree attributes)
 {
-  if (!flag_diagnostics_use_aliases)
+  /* Ignore diagnose_as when printing DWARF strings.  */
+  if (!flag_diagnostics_use_aliases || (pp->flags & pp_c_flag_gnu_v3) != 0)
     return NULL_TREE;
   tree attr = lookup_attribute ("diagnose_as", attributes);
   if (!attr)
@@ -1344,6 +1345,8 @@ static void
 dump_diagnose_as_alias (cxx_pretty_printer *pp, tree diagnose_as, tree context,
 			int flags)
 {
+  /* A DWARF string should never use a diagnose_as alias.  */
+  gcc_assert ((pp->flags & pp_c_flag_gnu_v3) == 0);
 
   if (! (flags & TFF_UNQUALIFIED_NAME))
     {
