@@ -43,8 +43,8 @@ int main()
   f3<float>(1);    // { dg-warning "'void f3<a>\\(a\\) .with a = float.'" }
   f3<float, 2>(1); // { dg-warning "'void f3<a, b>\\(a\\) .with a = float; int b = 2.'" }
   f4(1.);          // { dg-warning "'void f4\\(a\\) .with a = double.'" }
-  f4(1);           // { dg-warning "'void f4<int>\\(int\\)'" }
-  f4(1.f);         // { dg-warning "'void f4\\(float\\)'" }
+  f4(1);           // { dg-warning "'void f4<a>\\(a\\) .with a = int.'" }
+  f4(1.f);         // { dg-warning "'void f4\\(a\\) .with a = float.'" }
 
   f0(0); // { dg-error "" }
   f1(0); // { dg-error "" }

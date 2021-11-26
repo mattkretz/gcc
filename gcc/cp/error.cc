@@ -1754,9 +1754,8 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
   tree specialized_t = t;
   int specialized_flags = 0;
 
-  /* Pretty print only template instantiations. Don't pretty print explicit
-     specializations like 'template <> void fun<int> (int)'.  */
-  if (DECL_TEMPLATE_INSTANTIATION (t) && DECL_TEMPLATE_INFO (t)
+  /* Pretty print template instantiations only.  */
+  if (DECL_USE_TEMPLATE (t) && DECL_TEMPLATE_INFO (t)
       && !(flags & TFF_NO_TEMPLATE_BINDINGS)
       && flag_pretty_templates)
     {
@@ -2024,9 +2023,11 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
   dump_module_suffix (pp, t);
 
 /* Print function template parameters if:
-   1. t is template, and
-   2. the caller didn't request to only print the template-name, and
-   3. t actually has template parameters that are not indirect parameters from
+   1. t is a template, and
+   2. t is a specialization of a template (so that __FUNCTION__ of
+      'template <class T> void f(T)' is 'f' and not 'f<T>'), and
+   3. the caller didn't request to only print the template-name, and
+   4. t actually has template parameters that are not indirect parameters from
       enclosing scopes, i.e. either
       - t is a friend template specialization
 	(eg. template<class T> struct X { friend void foo<T>(int); }; since
@@ -2034,7 +2035,7 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
 	before PRIMARY_TEMPLATE_P is safe to call), or
       - t is a primary template (own template header),
       and
-   4. either
+   5. either
       - flags requests to show no function arguments, in which case deduced
 	types could be hidden and thus need to be printed, or
       - at least one function template argument was given explicitly and the
@@ -2044,6 +2045,7 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
   dump_template_parms.
  */
   if (DECL_TEMPLATE_INFO (t)
+      && DECL_USE_TEMPLATE (t)
       && !(flags & TFF_TEMPLATE_NAME)
       && (TREE_CODE (DECL_TI_TEMPLATE (t)) != TEMPLATE_DECL
 	    || PRIMARY_TEMPLATE_P (DECL_TI_TEMPLATE (t)))
@@ -2051,7 +2053,7 @@ dump_function_name (cxx_pretty_printer *pp, tree t, int flags)
 	    || (DECL_TI_ARGS (t)
 		  && EXPLICIT_TEMPLATE_ARGS_P (INNERMOST_TEMPLATE_ARGS
 						 (DECL_TI_ARGS (t))))))
-    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), !DECL_USE_TEMPLATE (t), flags);
+    dump_template_parms (pp, DECL_TEMPLATE_INFO (t), false, flags);
 }
 
 /* Dump the template parameters from the template info INFO under control of

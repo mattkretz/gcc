@@ -35,7 +35,7 @@ template<> void f1<int> (int)
   
   if (strcmp (function, "f1<int>"))
     bad = true;
-  if (strcmp (pretty, "void f1<int>(int)"))
+  if (strcmp (pretty, "void f1<T>(T) [with T = int]"))
     bad = true;
 }
 

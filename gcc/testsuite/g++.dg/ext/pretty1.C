@@ -60,7 +60,7 @@ __assert_fail (const char *cond, const char *file, unsigned int line,
   abort ();
 }
 
-// { dg-final { scan-assembler "int bar<int>\\(int\\)" } }
+// { dg-final { scan-assembler "int bar<T>\\(T\\).*with T = int" } }
 // { dg-final { scan-assembler "top level" } }
 // { dg-final { scan-assembler "int main\\(\\)" } }
 // { dg-final { scan-assembler "int bar\\(T\\).*with T = double" } }
