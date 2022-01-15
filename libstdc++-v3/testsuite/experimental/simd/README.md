@@ -139,6 +139,14 @@ allowed_distance)` macros.
   test then shows as "XFAIL: ...". If the test passes, the test shows "XPASS: 
   ...".
 
+* `// timeout: <seconds>`
+  Set a fixed timeout in seconds for this test. This overrides the default and 
+  command line argument.
+
+* `// timeout-factor: <scale factor>`
+  Multiply the timeout, after scaling with the `--timeout-factor` command line 
+  argument, with the specified factor.
+
 All patterns are matched via
 ```sh
 case '<test context>' in
@@ -147,7 +155,7 @@ case '<test context>' in
   ;;
 esac
 ```
-The `<CXXFLAGS pattern>` is implicitly adds a `*` wildcard before and after the 
+The `<CXXFLAGS pattern>` implicitly adds a `*` wildcard before and after the 
 pattern. Thus, the `CXXFLAGS` pattern matches a substring and all other 
 patterns require a full match.
 
