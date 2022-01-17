@@ -223,7 +223,6 @@ pass() {
 }
 
 unsupported() {
-  test
   [ $output_mode -ge $verbose ] && echo "UNSUPPORTED: $src $type $abiflag ($*)"
   echo "UNSUPPORTED: $src $type $abiflag ($*)" >> "$sum"
   echo "UNSUPPORTED: $src $type $abiflag ($*)" >> "$log"
@@ -438,7 +437,23 @@ verify_test() {
 
 write_log_and_verbose "$CXX $src $@ -D_GLIBCXX_SIMD_TESTTYPE=$type $abiflag -o $exe"
 {
-  timeout --foreground $timeout "$CXX" "$src" "$@" "-D_GLIBCXX_SIMD_TESTTYPE=$type" $abiflag -o "$exe" 2>&1 <&-
+  # Custom timeout mechanism for killing $CXX together with its children while
+  # also handling SIGINT on the driver script correctly. (timeout --foreground
+  # does fails to kill the cc1plus child, thrashing the machine.)
+  sh -s -- "$@" <<EOF
+    pid=\$\$
+    (
+      t=$timeout
+      while [ \$t -gt 0 ]; do
+        sleep 1s
+        kill -0 \$pid || exit 0
+        t=\$((t-1))
+      done
+      kill \$pid
+      echo "###exitstatus### 124"
+    ) 2>/dev/null &
+    exec "$CXX" "$src" "\$@" "-D_GLIBCXX_SIMD_TESTTYPE=$type" $abiflag -o "$exe" 2>&1 <&-
+EOF
   printf "###exitstatus### %d\n" $?
 } | verify_compilation || exit 0
 if [ -n "$sim" ]; then
