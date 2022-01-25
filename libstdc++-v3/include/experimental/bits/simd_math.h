@@ -778,24 +778,29 @@ template <typename _Tp, typename _Abi, typename = __detail::__odr_helper>
 #endif // _GLIBCXX_SIMD_X86INTRIN }}}
     else
       {
+	// The logb functions extract the exponent of x, as a signed integer value in floating-point
+	// format. If x is subnormal it is treated as though it were normalized; [...]
+	// Annex F:
+	// — logb(±0) returns −∞ and raises the "divide-by-zero" floating-point exception.
+	// — logb(±∞) returns +∞.
+	// The returned value is exact and is independent of the current rounding direction mode.
 	using _V = simd<_Tp, _Abi>;
 	using namespace std::experimental::__proposed;
 	auto __is_normal = isnormal(__x);
 
 	// work on abs(__x) to reflect the return value on Linux for negative
 	// inputs (domain-error => implementation-defined value is returned)
-	const _V abs_x = abs(__x);
+	const _V __abs_x = abs(__x);
 
 	// __exponent(__x) returns the exponent value (bias removed) as
 	// simd<_Up> with integral _Up
 	auto&& __exponent = [](const _V& __v) {
 	  using namespace std::experimental::__proposed;
-	  using _IV = rebind_simd_t<
-	    conditional_t<sizeof(_Tp) == sizeof(_LLong), _LLong, int>, _V>;
+	  using _IV = rebind_simd_t<__int_for_sizeof_t<_Tp>, _V>;
 	  return (simd_bit_cast<_IV>(__v) >> (__digits_v<_Tp> - 1))
 		 - (__max_exponent_v<_Tp> - 1);
 	};
-	_V __r = static_simd_cast<_V>(__exponent(abs_x));
+	_V __r = static_simd_cast<_V>(__exponent(__abs_x));
 	if (_GLIBCXX_SIMD_IS_LIKELY(all_of(__is_normal)))
 	  // without corner cases (nan, inf, subnormal, zero) we have our
 	  // answer:
@@ -811,9 +816,9 @@ template <typename _Tp, typename _Abi, typename = __detail::__odr_helper>
 	  // at this point everything but subnormals is handled
 	  return __r;
 	// subnormals repeat the exponent extraction after multiplication of the
-	// input with __a floating point value that has 112 (0x70) in its exponent
+	// input with a floating point value that has 112 (0x70) in its exponent
 	// (not too big for sp and large enough for dp)
-	const _V __scaled = abs_x * _Tp(0x1p112);
+	const _V __scaled = __abs_x * _Tp(0x1p112);
 	_V __scaled_exp = static_simd_cast<_V>(__exponent(__scaled) - 112);
 	where(__is_normal, __scaled_exp) = __r;
 	return __scaled_exp;
