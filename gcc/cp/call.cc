@@ -5526,7 +5526,8 @@ build_conditional_expr (const op_location_t &loc,
       args->quick_push (arg2);
       args->quick_push (arg3);
       tree fnname = ovl_op_identifier (false, COND_EXPR);
-      tree fns = lookup_name_real (fnname, 0, 1, /*block_p=*/true, 0, 0);
+      tree fns = lookup_name (fnname, LOOK_where::BLOCK_NAMESPACE,
+			      LOOK_want::NORMAL);
       fns = lookup_arg_dependent (fnname, fns, args);
 
       return build_new_function_call (fns, &args, complain);
@@ -5752,7 +5753,8 @@ build_conditional_expr (const op_location_t &loc,
 	args->quick_push (arg2);
 	args->quick_push (arg3);
 	tree fnname = ovl_op_identifier (false, COND_EXPR);
-	tree fns = lookup_name_real (fnname, 0, 1, /*block_p=*/true, 0, 0);
+	tree fns = lookup_name (fnname, LOOK_where::BLOCK_NAMESPACE,
+				LOOK_want::NORMAL);
 	fns = lookup_arg_dependent (fnname, fns, args);
 	add_candidates (fns, NULL_TREE, args, NULL_TREE, NULL_TREE, false,
 			NULL_TREE, NULL_TREE, LOOKUP_IMPLICIT, &candidates,
