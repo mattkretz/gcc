@@ -3251,9 +3251,10 @@ defaulted_late_check (tree fn)
 
   if (kind == sfk_conditional_operator)
     {
-      if (TREE_CODE( TREE_VALUE (TYPE_ARG_TYPES (TREE_TYPE (fn)))) != BOOLEAN_TYPE)
-	error("defaulted declaration %q+D requires the type of the first "
-	      "operand to be bool", fn);
+      if (TREE_CODE( TREE_VALUE (TYPE_ARG_TYPES (TREE_TYPE (fn))))
+	    != BOOLEAN_TYPE)
+	error("defaulted declaration %q+D requires type of first operand to be "
+	      "%<bool%>", fn);
       return;
     }
 
