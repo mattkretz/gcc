@@ -102,13 +102,14 @@ require_complete_type (tree value)
   return require_complete_type_sfinae (value, tf_warning_or_error);
 }
 
-/* Try to complete TYPE, if it is incomplete.  For example, if TYPE is
-   a template instantiation, do the instantiation.  Returns TYPE,
+/* Try to complete TYPE, if it is incomplete.  If TYPE is a template
+   instantiation, do the instantiation if requested by
+   DO_TEMPLATE_INSTANTIATION.  Returns TYPE,
    whether or not it could be completed, unless something goes
    horribly wrong, in which case the error_mark_node is returned.  */
 
-tree
-complete_type (tree type)
+static tree
+complete_type_1 (tree type, bool do_template_instantiation)
 {
   if (type == NULL_TREE)
     /* Rather than crash, we return something sure to cause an error
@@ -119,7 +120,7 @@ complete_type (tree type)
     ;
   else if (TREE_CODE (type) == ARRAY_TYPE)
     {
-      tree t = complete_type (TREE_TYPE (type));
+      tree t = complete_type_1 (TREE_TYPE (type), do_template_instantiation);
       unsigned int needs_constructing, has_nontrivial_dtor;
       if (COMPLETE_TYPE_P (t) && !dependent_type_p (type))
 	layout_type (type);
@@ -139,11 +140,23 @@ complete_type (tree type)
 	/* TYPE could be a class member we've not loaded the definition of.  */ 
 	lazy_load_pendings (TYPE_NAME (TYPE_MAIN_VARIANT (type)));
 
-      if (CLASSTYPE_TEMPLATE_INSTANTIATION (type))
+      if (do_template_instantiation && CLASSTYPE_TEMPLATE_INSTANTIATION (type))
 	instantiate_class_template (TYPE_MAIN_VARIANT (type));
     }
 
   return type;
+}
+
+tree
+complete_type (tree type)
+{
+  return complete_type_1 (type, true);
+}
+
+tree
+complete_type_without_instantiation (tree type)
+{
+  return complete_type_1 (type, false);
 }
 
 /* Like complete_type, but issue an error if the TYPE cannot be completed.

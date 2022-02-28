@@ -30,16 +30,24 @@ test01()
     __builtin_abort();
 }
 
-class Incomplete {};
-
 void
 test02()
 {
+  Ptr<Wrap<Wrap<Incomplete> > > ptr;
+  if (!ptr)
+    __builtin_abort();
+}
+
+class Incomplete {};
+
+void
+test03()
+{
   Ptr<Wrap<Incomplete> > ptr;
-  if (!!ptr)
+  if (!ptr)
     __builtin_abort();
 
-  Wrap<Incomplete> foo; // shouldn't change the result of !ptr
+  Wrap<Incomplete> foo; // changes the result of !ptr
   if (!!ptr)
     __builtin_abort();
 }
@@ -48,6 +56,7 @@ int main()
 {
   test01();
   test02();
+  test03();
   return 0;
 }
 
