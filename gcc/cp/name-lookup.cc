@@ -1411,7 +1411,24 @@ name_lookup::adl_class (tree type, bool do_template_instantiation)
     return;
 
   if (do_template_instantiation)
-    complete_type (type);
+    {
+      complete_type (type);
+      /* P2600R0 3.1
+         Return types of conversion operators are associated entities.  */
+      tree convs = lookup_conversions (type);
+      for (; convs; convs = TREE_CHAIN (convs))
+	{
+	  tree fn_decl = TREE_VALUE (convs);
+	  tree conv_type = DECL_CONV_FN_TYPE (fn_decl);
+	  if (TREE_CODE (conv_type) == REFERENCE_TYPE)
+	    conv_type = TREE_TYPE (conv_type);
+	  /* For conversion operator return types, instantiate templates.  But
+	     don't add conversion operators of conv_type as associated
+	     entities.  */
+	  complete_type (conv_type);
+	  adl_type (conv_type, false);
+	}
+    }
   else
     complete_type_without_instantiation (type);
   adl_bases (type);
