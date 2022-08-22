@@ -6985,12 +6985,31 @@ build_op_subscript (const op_location_t &loc, tree obj,
 
   tree type = TREE_TYPE (obj);
 
+  // non-member operator[]
+  tree fnname = ovl_op_identifier (ARRAY_REF);
+  vec<tree, va_gc> *nonmem_args;
+  if (args && *args)
+    vec_alloc (nonmem_args, (*args)->length () + 1);
+  else
+    vec_alloc (nonmem_args, 1);
+  nonmem_args->quick_push (obj);
+  if (args && *args)
+    {
+      tree arg;
+      for (unsigned ix = 0; (*args)->iterate (ix, &arg); ++ix)
+	nonmem_args->quick_push (arg);
+    }
+  fns = lookup_name (fnname, LOOK_where::BLOCK_NAMESPACE);
+  fns = lookup_arg_dependent (fnname, fns, nonmem_args);
+  add_candidates (fns, NULL_TREE, nonmem_args, NULL_TREE,
+		  NULL_TREE, false, NULL_TREE, NULL_TREE,
+		  LOOKUP_NORMAL, &candidates, complain);
+
   obj = prep_operand (obj);
 
   if (TYPE_BINFO (type))
     {
-      fns = lookup_fnfields (TYPE_BINFO (type), ovl_op_identifier (ARRAY_REF),
-			     1, complain);
+      fns = lookup_fnfields (TYPE_BINFO (type), fnname, 1, complain);
       if (fns == error_mark_node)
 	return error_mark_node;
     }
