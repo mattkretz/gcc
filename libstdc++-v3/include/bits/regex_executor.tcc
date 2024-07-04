@@ -393,7 +393,7 @@ namespace __detail
     void _Executor<_BiIter, _Alloc, _TraitsT, __dfs_mode>::
     _M_handle_backref(_Match_mode __match_mode, _StateIdT __i)
     {
-      __glibcxx_assert(__dfs_mode);
+      static_assert(__dfs_mode);
 
       const auto& __state = _M_nfa[__i];
       auto& __submatch = _M_cur_results[__state._M_backref_index];
@@ -502,6 +502,8 @@ namespace __detail
 	}
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wc++17-extensions"
   template<typename _BiIter, typename _Alloc, typename _TraitsT,
 	   bool __dfs_mode>
     void _Executor<_BiIter, _Alloc, _TraitsT, __dfs_mode>::
@@ -529,7 +531,11 @@ namespace __detail
 	case _S_opcode_match:
 	  _M_handle_match(__match_mode, __i); break;
 	case _S_opcode_backref:
-	  _M_handle_backref(__match_mode, __i); break;
+	  if constexpr (__dfs_mode)
+	    _M_handle_backref(__match_mode, __i);
+	  else
+	    __glibcxx_assert(false);
+	  break;
 	case _S_opcode_accept:
 	  _M_handle_accept(__match_mode, __i); break;
 	case _S_opcode_alternative:
@@ -538,6 +544,7 @@ namespace __detail
 	  __glibcxx_assert(false);
 	}
     }
+#pragma GCC diagnostic pop
 
   // Return whether now is at some word boundary.
   template<typename _BiIter, typename _Alloc, typename _TraitsT,
