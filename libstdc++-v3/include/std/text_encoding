@@ -476,14 +476,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       const auto __i = (_Rep::id)__id;
       const auto __r = std::lower_bound(_S_reps, std::end(_S_reps) - 1, __i);
+      // Preconditions: i has the value of one of the enumerators of id.
+      __glibcxx_precondition(__r->_M_id == __i);
       if (__r->_M_id == __i) [[likely]]
 	return __r;
       else
-	{
-	  // Preconditions: i has the value of one of the enumerators of id.
-	  __glibcxx_assert(__r->_M_id == __i);
-	  return _S_reps + 1; // id::unknown
-	}
+	return _S_reps + 1; // id::unknown
     }
   };
 
@@ -507,25 +505,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr value_type
     operator*() const
     {
+      __glibcxx_precondition(_M_dereferenceable());
       if (_M_dereferenceable()) [[likely]]
 	return _M_rep->_M_name;
       else
-	{
-	  __glibcxx_assert(_M_dereferenceable());
-	  return "";
-	}
+	return "";
     }
 
     constexpr _Iterator&
     operator++()
     {
+      __glibcxx_precondition(_M_dereferenceable());
       if (_M_dereferenceable()) [[likely]]
 	++_M_rep;
       else
-	{
-	  __glibcxx_assert(_M_dereferenceable());
-	  *this = _Iterator{};
-	}
+	*this = _Iterator{};
       return *this;
     }
 
@@ -534,13 +528,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       const bool __decrementable
 	= _M_rep != nullptr && _M_rep[-1]._M_id == _M_id;
+      __glibcxx_precondition(__decrementable);
       if (__decrementable) [[likely]]
 	--_M_rep;
       else
-	{
-	  __glibcxx_assert(__decrementable);
-	  *this = _Iterator{};
-	}
+	*this = _Iterator{};
       return *this;
     }
 
@@ -567,6 +559,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr _Iterator&
     operator+=(difference_type __n)
     {
+      __glibcxx_precondition(__n == 0 || _M_rep != nullptr);
       if (_M_rep != nullptr)
 	{
 	  if (__n > 0)
@@ -586,8 +579,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		*this = _Iterator{};
 	    }
 	}
-      if (__n != 0)
-	__glibcxx_assert(_M_rep != nullptr);
       return *this;
     }
 
@@ -603,10 +594,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr difference_type
     operator-(const _Iterator& __i) const
     {
+      __glibcxx_precondition(_M_id == __i._M_id);
       if (_M_id == __i._M_id)
 	return _M_rep - __i._M_rep;
-      __glibcxx_assert(_M_id == __i._M_id);
-      return __gnu_cxx::__int_traits<difference_type>::__max;
+      else
+	return __gnu_cxx::__int_traits<difference_type>::__max;
     }
 
     constexpr bool
@@ -619,7 +611,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr strong_ordering
     operator<=>(const _Iterator& __i) const
     {
-      __glibcxx_assert(_M_id == __i._M_id);
+      __glibcxx_precondition(_M_id == __i._M_id);
       return _M_rep <=> __i._M_rep;
     }
 

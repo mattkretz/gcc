@@ -96,7 +96,7 @@ inline namespace fundamentals_v2
 #pragma GCC diagnostic pop
 
       bool __overflow = __builtin_mul_overflow(__r, __n2, &__r);
-      __glibcxx_assert(!__overflow);
+      __glibcxx_ifndr_assert(!__overflow);
       return __r;
     }
 } // namespace fundamentals_v2

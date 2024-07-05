@@ -1075,21 +1075,21 @@ inline namespace v1
     execution_context&
     context() const noexcept
     {
-      __glibcxx_assert( _M_target );
+      __glibcxx_precondition( _M_target );
       return _M_target->context();
     }
 
     void
     on_work_started() const noexcept
     {
-      __glibcxx_assert( _M_target );
+      __glibcxx_precondition( _M_target );
       return _M_target->on_work_started();
     }
 
     void
     on_work_finished() const noexcept
     {
-      __glibcxx_assert( _M_target );
+      __glibcxx_precondition( _M_target );
       return _M_target->on_work_finished();
     }
 

@@ -453,7 +453,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	static_assert(!__reference_converts_from_temporary(_ResT, _DerefT),
 		      "operator* must not return a dangling reference");
 #endif
-	__glibcxx_assert(get() != pointer());
+	__glibcxx_precondition(get() != pointer());
 	return *get();
       }
 
@@ -732,7 +732,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       typename std::add_lvalue_reference<element_type>::type
       operator[](size_t __i) const
       {
-	__glibcxx_assert(get() != pointer());
+	__glibcxx_precondition(get() != pointer());
 	return get()[__i];
       }
 

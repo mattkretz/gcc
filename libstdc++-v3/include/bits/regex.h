@@ -1970,7 +1970,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       const_reference
       operator[](size_type __sub) const
       {
-	__glibcxx_assert( ready() );
+	__glibcxx_precondition( ready() );
 	return __sub < size()
 	       ? _Unchecked::operator[](__sub)
 	       : _M_unmatched_sub();
@@ -1987,7 +1987,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       const_reference
       prefix() const
       {
-	__glibcxx_assert( ready() );
+	__glibcxx_precondition( ready() );
 	return !empty() ? _M_prefix() : _M_unmatched_sub();
       }
 
@@ -2002,7 +2002,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       const_reference
       suffix() const
       {
-	__glibcxx_assert( ready() );
+	__glibcxx_precondition( ready() );
 	return !empty() ? _M_suffix() : _M_unmatched_sub();
       }
 

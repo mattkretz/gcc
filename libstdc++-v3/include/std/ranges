@@ -667,7 +667,7 @@ namespace ranges
       : _M_value(__value), _M_bound(__bound)
       {
 	if constexpr (totally_ordered_with<_Winc, _Bound>)
-	  __glibcxx_assert( bool(__value <= __bound) );
+	  __glibcxx_precondition( bool(__value <= __bound) );
       }
 
       constexpr explicit
@@ -1490,14 +1490,14 @@ namespace views::__adaptor
 	constexpr iterator_t<_Range>
 	_M_get(const _Range&) const
 	{
-	  __glibcxx_assert(_M_has_value());
+	  __glibcxx_precondition(_M_has_value());
 	  return **this;
 	}
 
 	constexpr void
 	_M_set(const _Range&, const iterator_t<_Range>& __it)
 	{
-	  __glibcxx_assert(!_M_has_value());
+	  __glibcxx_precondition(!_M_has_value());
 	  std::construct_at(std::__addressof(this->_M_payload._M_payload),
 			    in_place, __it);
 	  this->_M_payload._M_engaged = true;
@@ -1539,14 +1539,14 @@ namespace views::__adaptor
 	constexpr iterator_t<_Range>
 	_M_get(_Range& __r) const
 	{
-	  __glibcxx_assert(_M_has_value());
+	  __glibcxx_precondition(_M_has_value());
 	  return ranges::begin(__r) + _M_offset;
 	}
 
 	constexpr void
 	_M_set(_Range& __r, const iterator_t<_Range>& __it)
 	{
-	  __glibcxx_assert(!_M_has_value());
+	  __glibcxx_precondition(!_M_has_value());
 	  _M_offset = __it - ranges::begin(__r);
 	}
       };
@@ -1752,7 +1752,7 @@ namespace views::__adaptor
 	if (_M_cached_begin._M_has_value())
 	  return {this, _M_cached_begin._M_get(_M_base)};
 
-	__glibcxx_assert(_M_pred.has_value());
+	__glibcxx_precondition(_M_pred.has_value());
 	auto __it = ranges::find_if(ranges::begin(_M_base),
 				    ranges::end(_M_base),
 				    std::ref(*_M_pred));
@@ -2571,7 +2571,7 @@ namespace views::__adaptor
       constexpr explicit
       drop_view(_Vp __base, range_difference_t<_Vp> __count)
 	: _M_base(std::move(__base)), _M_count(__count)
-      { __glibcxx_assert(__count >= 0); }
+      { __glibcxx_precondition(__count >= 0); }
 
       constexpr _Vp
       base() const& requires copy_constructible<_Vp>
@@ -2745,7 +2745,7 @@ namespace views::__adaptor
 	if (_M_cached_begin._M_has_value())
 	  return _M_cached_begin._M_get(_M_base);
 
-	__glibcxx_assert(_M_pred.has_value());
+	__glibcxx_precondition(_M_pred.has_value());
 	auto __it = ranges::find_if_not(ranges::begin(_M_base),
 					ranges::end(_M_base),
 					std::cref(*_M_pred));
@@ -6055,7 +6055,7 @@ namespace views::__adaptor
     constexpr explicit
     chunk_view(_Vp __base, range_difference_t<_Vp> __n)
       : _M_base(std::move(__base)), _M_n(__n)
-    { __glibcxx_assert(__n >= 0); }
+    { __glibcxx_precondition(__n >= 0); }
 
     constexpr _Vp
     base() const & requires copy_constructible<_Vp>
@@ -6120,14 +6120,14 @@ namespace views::__adaptor
     constexpr value_type
     operator*() const
     {
-      __glibcxx_assert(*this != default_sentinel);
+      __glibcxx_precondition(*this != default_sentinel);
       return value_type(*_M_parent);
     }
 
     constexpr _OuterIter&
     operator++()
     {
-      __glibcxx_assert(*this != default_sentinel);
+      __glibcxx_precondition(*this != default_sentinel);
       ranges::advance(*_M_parent->_M_current, _M_parent->_M_remainder,
 		      ranges::end(_M_parent->_M_base));
       _M_parent->_M_remainder = _M_parent->_M_n;
@@ -6225,14 +6225,14 @@ namespace views::__adaptor
     constexpr range_reference_t<_Vp>
     operator*() const
     {
-      __glibcxx_assert(*this != default_sentinel);
+      __glibcxx_precondition(*this != default_sentinel);
       return **_M_parent->_M_current;
     }
 
     constexpr _InnerIter&
     operator++()
     {
-      __glibcxx_assert(*this != default_sentinel);
+      __glibcxx_precondition(*this != default_sentinel);
       ++*_M_parent->_M_current;
       if (*_M_parent->_M_current == ranges::end(_M_parent->_M_base))
 	_M_parent->_M_remainder = 0;
@@ -6289,7 +6289,7 @@ namespace views::__adaptor
     constexpr explicit
     chunk_view(_Vp __base, range_difference_t<_Vp> __n)
     : _M_base(std::move(__base)), _M_n(__n)
-    { __glibcxx_assert(__n > 0); }
+    { __glibcxx_precondition(__n > 0); }
 
     constexpr _Vp
     base() const & requires copy_constructible<_Vp>
@@ -6410,14 +6410,14 @@ namespace views::__adaptor
     constexpr value_type
     operator*() const
     {
-      __glibcxx_assert(_M_current != _M_end);
+      __glibcxx_precondition(_M_current != _M_end);
       return views::take(subrange(_M_current, _M_end), _M_n);
     }
 
     constexpr _Iterator&
     operator++()
     {
-      __glibcxx_assert(_M_current != _M_end);
+      __glibcxx_precondition(_M_current != _M_end);
       _M_missing = ranges::advance(_M_current, _M_n, _M_end);
       return *this;
     }
@@ -6452,7 +6452,8 @@ namespace views::__adaptor
     {
       if (__x > 0)
 	{
-	  __glibcxx_assert(ranges::distance(_M_current, _M_end) > _M_n * (__x - 1));
+	  __glibcxx_precondition(__x <= 0
+				   || ranges::distance(_M_current, _M_end) > _M_n * (__x - 1));
 	  _M_missing = ranges::advance(_M_current, _M_n * __x, _M_end);
 	}
       else if (__x < 0)
@@ -6614,7 +6615,7 @@ namespace views::__adaptor
     constexpr explicit
     slide_view(_Vp __base, range_difference_t<_Vp> __n)
     : _M_base(std::move(__base)), _M_n(__n)
-    { __glibcxx_assert(__n > 0); }
+    { __glibcxx_precondition(__n > 0); }
 
     // _GLIBCXX_RESOLVE_LIB_DEFECTS
     // 3848. adjacent_view, adjacent_transform_view and slide_view missing base accessor
@@ -6967,7 +6968,7 @@ namespace views::__adaptor
     constexpr iterator_t<_Vp>
     _M_find_next(iterator_t<_Vp> __current)
     {
-      __glibcxx_assert(_M_pred.has_value());
+      __glibcxx_precondition(_M_pred.has_value());
       auto __pred = [this]<typename _Tp, typename _Up>(_Tp&& __x, _Up&& __y) {
 	return !bool((*_M_pred)(std::forward<_Tp>(__x), std::forward<_Up>(__y)));
       };
@@ -6978,13 +6979,13 @@ namespace views::__adaptor
     constexpr iterator_t<_Vp>
     _M_find_prev(iterator_t<_Vp> __current) requires bidirectional_range<_Vp>
     {
-      __glibcxx_assert(_M_pred.has_value());
+      __glibcxx_precondition(_M_pred.has_value());
       auto __pred = [this]<typename _Tp, typename _Up>(_Tp&& __x, _Up&& __y) {
 	return !bool((*_M_pred)(std::forward<_Up>(__y), std::forward<_Tp>(__x)));
       };
       auto __rbegin = std::make_reverse_iterator(__current);
       auto __rend = std::make_reverse_iterator(ranges::begin(_M_base));
-      __glibcxx_assert(__rbegin != __rend);
+      __glibcxx_precondition(__rbegin != __rend);
       auto __it = ranges::adjacent_find(__rbegin, __rend, __pred).base();
       return ranges::prev(__it, 1, ranges::begin(_M_base));
     }
@@ -7016,7 +7017,7 @@ namespace views::__adaptor
     constexpr _Iterator
     begin()
     {
-      __glibcxx_assert(_M_pred.has_value());
+      __glibcxx_precondition(_M_pred.has_value());
       iterator_t<_Vp> __it;
       if (_M_cached_begin._M_has_value())
 	__it = _M_cached_begin._M_get(_M_base);
@@ -7077,14 +7078,14 @@ namespace views::__adaptor
     constexpr value_type
     operator*() const
     {
-      __glibcxx_assert(_M_current != _M_next);
+      __glibcxx_precondition(_M_current != _M_next);
       return ranges::subrange(_M_current, _M_next);
     }
 
     constexpr _Iterator&
     operator++()
     {
-      __glibcxx_assert(_M_current != _M_next);
+      __glibcxx_precondition(_M_current != _M_next);
       _M_current = _M_next;
       _M_next = _M_parent->_M_find_next(_M_current);
       return *this;
@@ -7708,7 +7709,7 @@ namespace views::__adaptor
     : _M_value(__value), _M_bound(__bound)
     {
       if constexpr (!same_as<_Bound, unreachable_sentinel_t>)
-	__glibcxx_assert(__bound >= 0);
+	__glibcxx_precondition(__bound >= 0);
     }
 
     constexpr explicit
@@ -7765,7 +7766,7 @@ namespace views::__adaptor
     : _M_value(__value), _M_current(__bound)
     {
       if constexpr (!same_as<_Bound, unreachable_sentinel_t>)
-	__glibcxx_assert(__bound >= 0);
+	__glibcxx_precondition(__bound >= 0);
     }
 
     friend repeat_view;
@@ -7803,7 +7804,7 @@ namespace views::__adaptor
     operator--()
     {
       if constexpr (!same_as<_Bound, unreachable_sentinel_t>)
-	__glibcxx_assert(_M_current > 0);
+	__glibcxx_precondition(_M_current > 0);
       --_M_current;
       return *this;
     }
@@ -7820,7 +7821,7 @@ namespace views::__adaptor
     operator+=(difference_type __n)
     {
       if constexpr (!same_as<_Bound, unreachable_sentinel_t>)
-	__glibcxx_assert(_M_current + __n >= 0);
+	__glibcxx_precondition(_M_current + __n >= 0);
       _M_current += __n;
       return *this;
     }
@@ -7829,7 +7830,7 @@ namespace views::__adaptor
     operator-=(difference_type __n)
     {
       if constexpr (!same_as<_Bound, unreachable_sentinel_t>)
-	__glibcxx_assert(_M_current - __n >= 0);
+	__glibcxx_precondition(_M_current - __n >= 0);
       _M_current -= __n;
       return *this;
     }
@@ -7981,7 +7982,7 @@ namespace views::__adaptor
     constexpr explicit
     stride_view(_Vp __base, range_difference_t<_Vp> __stride)
     : _M_base(std::move(__base)), _M_stride(__stride)
-    { __glibcxx_assert(__stride > 0); }
+    { __glibcxx_precondition(__stride > 0); }
 
     constexpr _Vp
     base() const& requires copy_constructible<_Vp>
@@ -8121,7 +8122,7 @@ namespace views::__adaptor
     constexpr _Iterator&
     operator++()
     {
-      __glibcxx_assert(_M_current != _M_end);
+      __glibcxx_precondition(_M_current != _M_end);
       _M_missing = ranges::advance(_M_current, _M_stride, _M_end);
       return *this;
     }
@@ -8159,7 +8160,8 @@ namespace views::__adaptor
     {
       if (__n > 0)
 	{
-	  __glibcxx_assert(ranges::distance(_M_current, _M_end) > _M_stride * (__n - 1));
+	  __glibcxx_precondition(
+	    __n <= 0 || ranges::distance(_M_current, _M_end) > _M_stride * (__n - 1));
 	  _M_missing = ranges::advance(_M_current, _M_stride * __n, _M_end);
 	}
       else if (__n < 0)
@@ -8452,7 +8454,7 @@ namespace views::__adaptor
 					static_cast<_ST>(ranges::size(std::get<_Is>(_M_bases))),
 					&__size)
 		 || ...);
-	    __glibcxx_assert(!__overflow);
+	    __glibcxx_precondition(!__overflow);
 	  }
 	else
 #endif
@@ -8703,7 +8705,7 @@ namespace views::__adaptor
 		  auto __size = ranges::ssize(__r);
 		  auto __begin = ranges::begin(__r);
 		  auto __offset = __it - __begin;
-		  __glibcxx_assert(__offset + __x >= 0 && __offset + __x <= __size);
+		  __glibcxx_precondition(__offset + __x >= 0 && __offset + __x <= __size);
 		}
 #endif
 	      __it += __x;
@@ -8739,7 +8741,7 @@ namespace views::__adaptor
 	    bool __overflow
 	      = (__builtin_add_overflow(__sum, _M_scaled_distance<_Is>(__t), &__sum)
 		 || ...);
-	    __glibcxx_assert(!__overflow);
+	    __glibcxx_precondition(!__overflow);
 	  }
 	else
 #endif
@@ -8758,7 +8760,7 @@ namespace views::__adaptor
       if constexpr (integral<difference_type>)
 	{
 	  bool __overflow = __builtin_mul_overflow(__dist, _M_scaled_size<_Nm+1>(), &__dist);
-	  __glibcxx_assert(!__overflow);
+	  __glibcxx_precondition(!__overflow);
 	}
       else
 #endif
@@ -8778,7 +8780,7 @@ namespace views::__adaptor
 	  if constexpr (integral<difference_type>)
 	    {
 	      bool __overflow = __builtin_mul_overflow(__size, _M_scaled_size<_Nm+1>(), &__size);
-	      __glibcxx_assert(!__overflow);
+	      __glibcxx_precondition(!__overflow);
 	    }
 	  else
 #endif
@@ -9909,7 +9911,7 @@ namespace ranges
     constexpr decltype(auto)
     operator*() const
     {
-      __glibcxx_assert(!_M_it.valueless_by_exception());
+      __glibcxx_precondition(!_M_it.valueless_by_exception());
       using reference = __detail::__concat_reference_t<__maybe_const_t<_Const, _Vs>...>;
       return std::visit([](auto&& __it) -> reference { return *__it; }, _M_it);
     }
@@ -9941,7 +9943,7 @@ namespace ranges
     operator--()
       requires __detail::__concat_is_bidirectional<_Const, _Vs...>
     {
-      __glibcxx_assert(!_M_it.valueless_by_exception());
+      __glibcxx_precondition(!_M_it.valueless_by_exception());
       _M_invoke_with_runtime_index([this]<size_t _Idx>() {
 	_M_prev<_Idx>();
       });
@@ -9961,7 +9963,7 @@ namespace ranges
     operator+=(difference_type __n)
       requires __detail::__concat_is_random_access<_Const, _Vs...>
     {
-      __glibcxx_assert(!_M_it.valueless_by_exception());
+      __glibcxx_precondition(!_M_it.valueless_by_exception());
       _M_invoke_with_runtime_index([this, __n]<size_t _Idx>() {
 	auto __begin = ranges::begin(std::get<_Idx>(_M_parent->_M_views));
 	if (__n > 0)
@@ -9989,15 +9991,15 @@ namespace ranges
     operator==(const _Iterator& __x, const _Iterator& __y)
       requires (equality_comparable<iterator_t<__maybe_const_t<_Const, _Vs>>> && ...)
     {
-      __glibcxx_assert(!__x._M_it.valueless_by_exception());
-      __glibcxx_assert(!__y._M_it.valueless_by_exception());
+      __glibcxx_precondition(!__x._M_it.valueless_by_exception());
+      __glibcxx_precondition(!__y._M_it.valueless_by_exception());
       return __x._M_it == __y._M_it;
     }
 
     friend constexpr bool
     operator==(const _Iterator& __it, default_sentinel_t)
     {
-      __glibcxx_assert(!__it._M_it.valueless_by_exception());
+      __glibcxx_precondition(!__it._M_it.valueless_by_exception());
       constexpr auto __last_idx = sizeof...(_Vs) - 1;
       return (__it._M_it.index() == __last_idx
 	      && (std::get<__last_idx>(__it._M_it)

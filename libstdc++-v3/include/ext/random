@@ -436,8 +436,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __alpha_val, _RealType __beta_val = _RealType(1))
 	: _M_alpha(__alpha_val), _M_beta(__beta_val)
 	{
-	  __glibcxx_assert(_M_alpha > _RealType(0));
-	  __glibcxx_assert(_M_beta > _RealType(0));
+	  __glibcxx_precondition(_M_alpha > _RealType(0));
+	  __glibcxx_precondition(_M_beta > _RealType(0));
 	}
 
 	_RealType
@@ -690,27 +690,23 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  _GLIBCXX_DEBUG_ASSERT(std::distance(__meanbegin, __meanend)
 				<= _Dimen);
 	  const auto __dist = std::distance(__varcovbegin, __varcovend);
-	  _GLIBCXX_DEBUG_ASSERT(__dist == _Dimen * _Dimen
-				|| __dist == _Dimen * (_Dimen + 1) / 2
-				|| __dist == _Dimen);
+	  __glibcxx_precondition(__dist == _Dimen * _Dimen
+				   || __dist == _Dimen * (_Dimen + 1) / 2
+				   || __dist == _Dimen);
 
 	  if (__dist == _Dimen * _Dimen)
 	    _M_init_full(__meanbegin, __meanend, __varcovbegin, __varcovend);
 	  else if (__dist == _Dimen * (_Dimen + 1) / 2)
 	    _M_init_lower(__meanbegin, __meanend, __varcovbegin, __varcovend);
 	  else
-	    {
-	      __glibcxx_assert(__dist == _Dimen);
-	      _M_init_diagonal(__meanbegin, __meanend,
-			       __varcovbegin, __varcovend);
-	    }
+	    _M_init_diagonal(__meanbegin, __meanend, __varcovbegin, __varcovend);
 	}
 
 	param_type(std::initializer_list<_RealType> __mean,
 		   std::initializer_list<_RealType> __varcov)
 	{
 	  _GLIBCXX_DEBUG_ASSERT(__mean.size() <= _Dimen);
-	  _GLIBCXX_DEBUG_ASSERT(__varcov.size() == _Dimen * _Dimen
+	  __glibcxx_precondition(__varcov.size() == _Dimen * _Dimen
 				|| __varcov.size() == _Dimen * (_Dimen + 1) / 2
 				|| __varcov.size() == _Dimen);
 
@@ -721,11 +717,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    _M_init_lower(__mean.begin(), __mean.end(),
 			  __varcov.begin(), __varcov.end());
 	  else
-	    {
-	      __glibcxx_assert(__varcov.size() == _Dimen);
-	      _M_init_diagonal(__mean.begin(), __mean.end(),
-			       __varcov.begin(), __varcov.end());
-	    }
+	    _M_init_diagonal(__mean.begin(), __mean.end(), __varcov.begin(), __varcov.end());
 	}
 
 	std::array<_RealType, _Dimen>
@@ -1006,8 +998,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   result_type __sigma_val = result_type(1))
 	: _M_nu(__nu_val), _M_sigma(__sigma_val)
 	{
-	  __glibcxx_assert(_M_nu >= result_type(0));
-	  __glibcxx_assert(_M_sigma > result_type(0));
+	  __glibcxx_precondition(_M_nu >= result_type(0));
+	  __glibcxx_precondition(_M_sigma > result_type(0));
 	}
 
 	result_type
@@ -1263,8 +1255,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   result_type __omega_val = result_type(1))
 	: _M_mu(__mu_val), _M_omega(__omega_val)
 	{
-	  __glibcxx_assert(_M_mu >= result_type(0.5L));
-	  __glibcxx_assert(_M_omega > result_type(0));
+	  __glibcxx_precondition(_M_mu >= result_type(0.5L));
+	  __glibcxx_precondition(_M_omega > result_type(0));
 	}
 
 	result_type
@@ -1511,8 +1503,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   result_type __mu_val = result_type(1))
 	: _M_alpha(__alpha_val), _M_mu(__mu_val)
 	{
-	  __glibcxx_assert(_M_alpha > result_type(0));
-	  __glibcxx_assert(_M_mu > result_type(0));
+	  __glibcxx_precondition(_M_alpha > result_type(0));
+	  __glibcxx_precondition(_M_mu > result_type(0));
 	}
 
 	result_type
@@ -1762,9 +1754,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   result_type __nu_val = result_type(1))
 	: _M_lambda(__lambda_val), _M_mu(__mu_val), _M_nu(__nu_val)
 	{
-	  __glibcxx_assert(_M_lambda > result_type(0));
-	  __glibcxx_assert(_M_mu > result_type(0));
-	  __glibcxx_assert(_M_nu > result_type(0));
+	  __glibcxx_precondition(_M_lambda > result_type(0));
+	  __glibcxx_precondition(_M_mu > result_type(0));
+	  __glibcxx_precondition(_M_nu > result_type(0));
 	}
 
 	result_type
@@ -2017,7 +2009,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(result_type __a, result_type __b = result_type(1))
 	: _M_a(__a), _M_b(__b)
 	{
-	  __glibcxx_assert(_M_a <= _M_b);
+	  __glibcxx_precondition(_M_a <= _M_b);
 	}
 
 	result_type
@@ -2267,8 +2259,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(result_type __q, result_type __omega = result_type(1))
 	: _M_q(__q), _M_omega(__omega)
 	{
-	  __glibcxx_assert(_M_q > result_type(0));
-	  __glibcxx_assert(_M_q < result_type(1));
+	  __glibcxx_precondition(_M_q > result_type(0));
+	  __glibcxx_precondition(_M_q < result_type(1));
 	}
 
 	result_type
@@ -2514,9 +2506,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   _RealType __c = _RealType(1))
 	: _M_a(__a), _M_b(__b), _M_c(__c)
 	{
-	  __glibcxx_assert(_M_a <= _M_b);
-	  __glibcxx_assert(_M_b <= _M_c);
-	  __glibcxx_assert(_M_a < _M_c);
+	  __glibcxx_precondition(_M_a <= _M_b);
+	  __glibcxx_precondition(_M_b <= _M_c);
+	  __glibcxx_precondition(_M_a < _M_c);
 
 	  _M_r_ab = (_M_b - _M_a) / (_M_c - _M_a);
 	  _M_f_ab_ac = (_M_b - _M_a) * (_M_c - _M_a);
@@ -2783,8 +2775,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	: _M_mu(__mu), _M_kappa(__kappa)
 	{
 	  const _RealType __pi = __gnu_cxx::__math_constants<_RealType>::__pi;
-	  __glibcxx_assert(_M_mu >= -__pi && _M_mu <= __pi);
-	  __glibcxx_assert(_M_kappa >= _RealType(0));
+	  __glibcxx_precondition(_M_mu >= -__pi && _M_mu <= __pi);
+	  __glibcxx_precondition(_M_kappa >= _RealType(0));
 
 	  auto __tau = std::sqrt(_RealType(4) * _M_kappa * _M_kappa
 				 + _RealType(1)) + _RealType(1);
@@ -3030,8 +3022,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   result_type __n = 1)
 	: _M_N{__N}, _M_K{__K}, _M_n{__n}
 	{
-	  __glibcxx_assert(_M_N >= _M_K);
-	  __glibcxx_assert(_M_N >= _M_n);
+	  __glibcxx_precondition(_M_N >= _M_K);
+	  __glibcxx_precondition(_M_N >= _M_n);
 	}
 
 	result_type
@@ -3301,7 +3293,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(result_type __a, result_type __b = result_type(1))
 	: _M_a(__a), _M_b(__b)
 	{
-	  __glibcxx_assert(_M_b > result_type(0));
+	  __glibcxx_precondition(_M_b > result_type(0));
 	}
 
 	result_type
@@ -3717,7 +3709,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __radius)
 	: _M_radius(__radius)
 	{
-	  __glibcxx_assert(_M_radius > _RealType(0));
+	  __glibcxx_precondition(_M_radius > _RealType(0));
 	}
 
 	_RealType

@@ -108,7 +108,7 @@ namespace __detail
 		 ? _M_extended_spec_char
 		 : nullptr),
     _M_at_bracket_start(false)
-    { __glibcxx_assert(_M_spec_char); }
+    { __glibcxx_precondition(_M_spec_char); }
 
   protected:
     const char*

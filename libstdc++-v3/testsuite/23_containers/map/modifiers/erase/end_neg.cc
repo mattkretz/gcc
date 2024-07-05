@@ -15,7 +15,7 @@
 // with this library; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-// { dg-options "-D_GLIBCXX_ASSERTIONS" }
+// { dg-options "-D_GLIBCXX_ASSERTIONS -D_GLIBCXX_HARDEN=1" }
 // { dg-do run { xfail *-*-* } }
 
 #include <map>
@@ -33,3 +33,5 @@ main()
 {
   test01();
 }
+
+// { dg-warning "precondition failure" "" { target *-*-* } 0 }

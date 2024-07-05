@@ -542,7 +542,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const_reference
       operator[] (size_type __pos) const _GLIBCXX_NOEXCEPT
       {
-	__glibcxx_assert(__pos <= this->size());
+	__glibcxx_precondition(__pos <= this->size());
 	return this->_M_data()[__pos];
       }
 
@@ -561,7 +561,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
         // Allow pos == size() both in C++98 mode, as v3 extension,
 	// and in C++11 mode.
-	__glibcxx_assert(__pos <= this->size());
+	__glibcxx_precondition(__pos <= this->size());
         // In pedantic mode be strict in C++98 mode.
 	_GLIBCXX_DEBUG_PEDASSERT(__cplusplus >= 201103L
 				 || __pos < this->size());

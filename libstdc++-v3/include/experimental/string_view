@@ -184,7 +184,7 @@ inline namespace fundamentals_v1
       constexpr const _CharT&
       operator[](size_type __pos) const
       {
-	__glibcxx_assert(__pos < this->_M_len);
+	__glibcxx_precondition(__pos < this->_M_len);
 	return *(this->_M_str + __pos);
       }
 
@@ -203,14 +203,14 @@ inline namespace fundamentals_v1
       constexpr const _CharT&
       front() const
       {
-	__glibcxx_assert(this->_M_len > 0);
+	__glibcxx_precondition(this->_M_len > 0);
 	return *this->_M_str;
       }
 
       constexpr const _CharT&
       back() const
       {
-	__glibcxx_assert(this->_M_len > 0);
+	__glibcxx_precondition(this->_M_len > 0);
 	return *(this->_M_str + this->_M_len - 1);
       }
 
@@ -223,7 +223,7 @@ inline namespace fundamentals_v1
       constexpr void
       remove_prefix(size_type __n)
       {
-	__glibcxx_assert(this->_M_len >= __n);
+	__glibcxx_precondition(this->_M_len >= __n);
 	this->_M_str += __n;
 	this->_M_len -= __n;
       }

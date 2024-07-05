@@ -430,7 +430,7 @@ namespace __detail
     {
       if constexpr (__dfs_mode)
 	{
-	  __glibcxx_assert(!_M_has_sol);
+	  __glibcxx_precondition(!_M_has_sol);
 	  if (__match_mode == _Match_mode::_Exact)
 	    _M_has_sol = _M_current == _M_end;
 	  else

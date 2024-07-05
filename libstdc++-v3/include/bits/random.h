@@ -1898,7 +1898,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __a, _RealType __b = _RealType(1))
 	: _M_a(__a), _M_b(__b)
 	{
-	  __glibcxx_assert(_M_a <= _M_b);
+	  __glibcxx_precondition(_M_a <= _M_b);
 	}
 
 	result_type
@@ -2135,7 +2135,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __mean, _RealType __stddev = _RealType(1))
 	: _M_mean(__mean), _M_stddev(__stddev)
 	{
-	  __glibcxx_assert(_M_stddev > _RealType(0));
+	  __glibcxx_precondition(_M_stddev > _RealType(0));
 	}
 
 	_RealType
@@ -2588,7 +2588,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __alpha_val, _RealType __beta_val = _RealType(1))
 	: _M_alpha(__alpha_val), _M_beta(__beta_val)
 	{
-	  __glibcxx_assert(_M_alpha > _RealType(0));
+	  __glibcxx_precondition(_M_alpha > _RealType(0));
 	  _M_initialize();
 	}
 
@@ -3743,7 +3743,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       param_type(double __p)
       : _M_p(__p)
       {
-	__glibcxx_assert((_M_p >= 0.0) && (_M_p <= 1.0));
+	__glibcxx_precondition((_M_p >= 0.0) && (_M_p <= 1.0));
       }
 
       double
@@ -3971,7 +3971,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_IntType __t, double __p = 0.5)
 	: _M_t(__t), _M_p(__p)
 	{
-	  __glibcxx_assert((_M_t >= _IntType(0))
+	  __glibcxx_precondition((_M_t >= _IntType(0))
 				&& (_M_p >= 0.0)
 				&& (_M_p <= 1.0));
 	  _M_initialize();
@@ -4217,7 +4217,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(double __p)
 	: _M_p(__p)
 	{
-	  __glibcxx_assert((_M_p > 0.0) && (_M_p < 1.0));
+	  __glibcxx_precondition((_M_p > 0.0) && (_M_p < 1.0));
 	  _M_initialize();
 	}
 
@@ -4433,7 +4433,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_IntType __k, double __p = 0.5)
 	: _M_k(__k), _M_p(__p)
 	{
-	  __glibcxx_assert((_M_k > 0) && (_M_p > 0.0) && (_M_p <= 1.0));
+	  __glibcxx_precondition((_M_k > 0) && (_M_p > 0.0) && (_M_p <= 1.0));
 	}
 
 	_IntType
@@ -4671,7 +4671,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(double __mean)
 	: _M_mean(__mean)
 	{
-	  __glibcxx_assert(_M_mean > 0.0);
+	  __glibcxx_precondition(_M_mean > 0.0);
 	  _M_initialize();
 	}
 
@@ -4902,7 +4902,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	param_type(_RealType __lambda)
 	: _M_lambda(__lambda)
 	{
-	  __glibcxx_assert(_M_lambda > _RealType(0));
+	  __glibcxx_precondition(_M_lambda > _RealType(0));
 	}
 
 	_RealType

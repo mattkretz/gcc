@@ -476,10 +476,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 				    void>::__type
     advance(istreambuf_iterator<_CharT>& __i, _Distance __n)
     {
+      __glibcxx_precondition(__n >= 0);
       if (__n == 0)
 	return;
 
-      __glibcxx_assert(__n > 0);
       __glibcxx_requires_cond(!__i._M_at_eof(),
 			      _M_message(__gnu_debug::__msg_inc_istreambuf)
 			      ._M_iterator(__i));

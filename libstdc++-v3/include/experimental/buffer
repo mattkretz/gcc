@@ -503,7 +503,7 @@ inline namespace v1
 
       __dynamic_buffer_base(_Sequence& __seq, size_t __maximum_size) noexcept
       : _M_seq(__seq), _M_size(__seq.size()), _M_max_size(__maximum_size)
-      { __glibcxx_assert(__seq.size() <= __maximum_size); }
+      { __glibcxx_precondition(__seq.size() <= __maximum_size); }
 
       __dynamic_buffer_base(__dynamic_buffer_base&&) = default;
 

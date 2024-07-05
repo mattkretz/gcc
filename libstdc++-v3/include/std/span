@@ -80,7 +80,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	// Used for runtime sizes that must satisfy the precondition.
 	constexpr
 	__extent_storage([[maybe_unused]] size_t __n) noexcept
-	{ __glibcxx_assert(__n == _Extent); }
+	{ __glibcxx_precondition(__n == _Extent); }
 
 	// Used for constant sizes that are already known to be correct.
 	consteval
@@ -283,7 +283,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       front() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *this->_M_ptr;
       }
 
@@ -291,7 +291,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       back() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *(this->_M_ptr + (size() - 1));
       }
 
@@ -299,7 +299,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       operator[](size_type __idx) const noexcept
       {
-	__glibcxx_assert(__idx < size());
+	__glibcxx_precondition(__idx < size());
 	return *(this->_M_ptr + __idx);
       }
 
@@ -372,7 +372,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	first() const noexcept
 	{
 	  if constexpr (_Extent == dynamic_extent)
-	    __glibcxx_assert(_Count <= size());
+	    __glibcxx_precondition(_Count <= size());
 	  else
 	    static_assert(_Count <= extent);
 	  using _Sp = span<element_type, _Count>;
@@ -383,7 +383,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr span<element_type, dynamic_extent>
       first(size_type __count) const noexcept
       {
-	__glibcxx_assert(__count <= size());
+	__glibcxx_precondition(__count <= size());
 	return span<element_type>(this->data(), __count);
       }
 
@@ -393,7 +393,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	last() const noexcept
 	{
 	  if constexpr (_Extent == dynamic_extent)
-	    __glibcxx_assert(_Count <= size());
+	    __glibcxx_precondition(_Count <= size());
 	  else
 	    static_assert(_Count <= extent);
 	  using _Sp = span<element_type, _Count>;
@@ -404,7 +404,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr span<element_type, dynamic_extent>
       last(size_type __count) const noexcept
       {
-	__glibcxx_assert(__count <= size());
+	__glibcxx_precondition(__count <= size());
 	return span<element_type>(this->data() + (this->size() - __count),
 				  __count);
       }
@@ -417,7 +417,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (_Extent == dynamic_extent)
 	    {
-	      __glibcxx_assert(_Offset <= size());
+	      __glibcxx_precondition(_Offset <= size());
 	    }
 	  else
 	    static_assert(_Offset <= extent);
@@ -430,8 +430,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    {
 	      if constexpr (_Extent == dynamic_extent)
 		{
-		  __glibcxx_assert(_Count <= size());
-		  __glibcxx_assert(_Count <= (size() - _Offset));
+		  __glibcxx_precondition(_Count <= size());
+		  __glibcxx_precondition(_Count <= (size() - _Offset));
 		}
 	      else
 		{
@@ -447,14 +447,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       subspan(size_type __offset, size_type __count = dynamic_extent) const
       noexcept
       {
-	__glibcxx_assert(__offset <= size());
+	__glibcxx_precondition(__offset <= size());
+	__glibcxx_precondition(__count == dynamic_extent || __count <= size());
+	__glibcxx_precondition(__count == dynamic_extent || __offset + __count <= size());
 	if (__count == dynamic_extent)
 	  __count = this->size() - __offset;
-	else
-	  {
-	    __glibcxx_assert(__count <= size());
-	    __glibcxx_assert(__offset + __count <= size());
-	  }
 	return span<element_type>(this->data() + __offset, __count);
       }
 

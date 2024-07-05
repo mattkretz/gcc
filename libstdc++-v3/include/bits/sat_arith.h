@@ -98,7 +98,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr _Tp
     div_sat(_Tp __x, _Tp __y) noexcept
     {
-      __glibcxx_assert(__y != 0);
+      __glibcxx_precondition(__y != 0);
       if constexpr (is_signed_v<_Tp>)
 	if (__x == __gnu_cxx::__int_traits<_Tp>::__min && __y == _Tp(-1))
 	  return __gnu_cxx::__int_traits<_Tp>::__max;

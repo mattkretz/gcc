@@ -985,8 +985,8 @@ namespace __detail
     __path_iter_distance(const iterator& __first, const iterator& __last)
     noexcept
     {
-      __glibcxx_assert(__first._M_path != nullptr);
-      __glibcxx_assert(__first._M_path == __last._M_path);
+      __glibcxx_precondition(__first._M_path != nullptr);
+      __glibcxx_precondition(__first._M_path == __last._M_path);
       if (__first._M_is_multi())
 	return std::distance(__first._M_cur, __last._M_cur);
       else if (__first._M_at_end == __last._M_at_end)
@@ -998,15 +998,15 @@ namespace __detail
     friend void
     __path_iter_advance(iterator& __i, difference_type __n) noexcept
     {
+      __glibcxx_precondition(__n == -1 || __n == 0 || __n == 1
+			       || (__i._M_path != nullptr && __i._M_is_multi()));
       if (__n == 1)
 	++__i;
       else if (__n == -1)
 	--__i;
       else if (__n != 0)
 	{
-	  __glibcxx_assert(__i._M_path != nullptr);
-	  __glibcxx_assert(__i._M_is_multi());
-	  // __glibcxx_assert(__i._M_path->_M_cmpts.end() - __i._M_cur >= __n);
+	  // __glibcxx_precondition(__i._M_path->_M_cmpts.end() - __i._M_cur >= __n);
 	  __i._M_cur += __n;
 	}
     }
@@ -1358,46 +1358,34 @@ namespace __detail
   inline path::iterator&
   path::iterator::operator++() noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition((_M_is_multi() && _M_cur != _M_path->_M_cmpts.end()) || !_M_at_end);
     if (_M_is_multi())
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.end());
-	++_M_cur;
-      }
+      ++_M_cur;
     else
-      {
-	__glibcxx_assert(!_M_at_end);
-	_M_at_end = true;
-      }
+      _M_at_end = true;
     return *this;
   }
 
   inline path::iterator&
   path::iterator::operator--() noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition((_M_is_multi() && _M_cur != _M_path->_M_cmpts.begin()) || _M_at_end);
     if (_M_is_multi())
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.begin());
-	--_M_cur;
-      }
+      --_M_cur;
     else
-      {
-	__glibcxx_assert(_M_at_end);
-	_M_at_end = false;
-      }
+      _M_at_end = false;
     return *this;
   }
 
   inline path::iterator::reference
   path::iterator::operator*() const noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition(!_M_is_multi() || _M_cur != _M_path->_M_cmpts.end());
     if (_M_is_multi())
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.end());
-	return *_M_cur;
-      }
+      return *_M_cur;
     return *_M_path;
   }
 

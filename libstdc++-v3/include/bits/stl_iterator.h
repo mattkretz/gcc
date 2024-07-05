@@ -1958,7 +1958,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(_S_noexcept<const _It2&, const _Sent2&>())
       : _M_valueless(), _M_index(__x._M_index)
       {
-	__glibcxx_assert(__x._M_has_value());
+	__glibcxx_precondition(__x._M_has_value());
 	if (_M_index == 0)
 	  {
 	    if constexpr (is_trivially_default_constructible_v<_It>)
@@ -2068,7 +2068,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	       && is_nothrow_assignable_v<_It&, const _It2&>
 	       && is_nothrow_assignable_v<_Sent&, const _Sent2&>)
       {
-	__glibcxx_assert(__x._M_has_value());
+	__glibcxx_precondition(__x._M_has_value());
 	_M_assign(__x);
 	return *this;
       }
@@ -2095,7 +2095,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr decltype(auto)
     operator*()
     {
-      __glibcxx_assert(_M_index == 0);
+      __glibcxx_precondition(_M_index == 0);
       return *_M_it;
     }
 
@@ -2103,7 +2103,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr decltype(auto)
     operator*() const requires __detail::__dereferenceable<const _It>
     {
-      __glibcxx_assert(_M_index == 0);
+      __glibcxx_precondition(_M_index == 0);
       return *_M_it;
     }
 
@@ -2111,7 +2111,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr auto
     operator->() const requires __detail::__common_iter_has_arrow<_It>
     {
-      __glibcxx_assert(_M_index == 0);
+      __glibcxx_precondition(_M_index == 0);
       if constexpr (is_pointer_v<_It> || requires { _M_it.operator->(); })
 	return _M_it;
       else if constexpr (is_reference_v<iter_reference_t<_It>>)
@@ -2126,7 +2126,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr common_iterator&
     operator++()
     {
-      __glibcxx_assert(_M_index == 0);
+      __glibcxx_precondition(_M_index == 0);
       ++_M_it;
       return *this;
     }
@@ -2134,7 +2134,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     constexpr decltype(auto)
     operator++(int)
     {
-      __glibcxx_assert(_M_index == 0);
+      __glibcxx_precondition(_M_index == 0);
       if constexpr (forward_iterator<_It>)
 	{
 	  common_iterator __tmp = *this;
@@ -2225,7 +2225,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     noexcept(noexcept(ranges::iter_move(std::declval<const _It&>())))
     requires input_iterator<_It>
     {
-      __glibcxx_assert(__i._M_index == 0);
+      __glibcxx_precondition(__i._M_index == 0);
       return ranges::iter_move(__i._M_it);
     }
 
@@ -2236,8 +2236,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(noexcept(ranges::iter_swap(std::declval<const _It&>(),
 					  std::declval<const _It2&>())))
       {
-	__glibcxx_assert(__x._M_index == 0);
-	__glibcxx_assert(__y._M_index == 0);
+	__glibcxx_precondition(__x._M_index == 0);
+	__glibcxx_precondition(__y._M_index == 0);
 	return ranges::iter_swap(__x._M_it, __y._M_it);
       }
 
@@ -2386,7 +2386,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr
       counted_iterator(_It __i, iter_difference_t<_It> __n)
       : _M_current(std::move(__i)), _M_length(__n)
-      { __glibcxx_assert(__n >= 0); }
+      { __glibcxx_precondition(__n >= 0); }
 
       template<typename _It2>
 	requires convertible_to<const _It2&, _It>
@@ -2425,7 +2425,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator*()
       noexcept(noexcept(*_M_current))
       {
-	__glibcxx_assert( _M_length > 0 );
+	__glibcxx_precondition( _M_length > 0 );
 	return *_M_current;
       }
 
@@ -2435,7 +2435,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(noexcept(*_M_current))
       requires __detail::__dereferenceable<const _It>
       {
-	__glibcxx_assert( _M_length > 0 );
+	__glibcxx_precondition( _M_length > 0 );
 	return *_M_current;
       }
 
@@ -2448,7 +2448,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr counted_iterator&
       operator++()
       {
-	__glibcxx_assert(_M_length > 0);
+	__glibcxx_precondition(_M_length > 0);
 	++_M_current;
 	--_M_length;
 	return *this;
@@ -2457,7 +2457,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr decltype(auto)
       operator++(int)
       {
-	__glibcxx_assert(_M_length > 0);
+	__glibcxx_precondition(_M_length > 0);
 	--_M_length;
 	__try
 	  {
@@ -2508,7 +2508,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator+=(iter_difference_t<_It> __n)
       requires random_access_iterator<_It>
       {
-	__glibcxx_assert(__n <= _M_length);
+	__glibcxx_precondition(__n <= _M_length);
 	_M_current += __n;
 	_M_length -= __n;
 	return *this;
@@ -2541,7 +2541,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       operator-=(iter_difference_t<_It> __n)
       requires random_access_iterator<_It>
       {
-	__glibcxx_assert(-__n <= _M_length);
+	__glibcxx_precondition(-__n <= _M_length);
 	_M_current -= __n;
 	_M_length += __n;
 	return *this;
@@ -2553,7 +2553,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(noexcept(_M_current[__n]))
       requires random_access_iterator<_It>
       {
-	__glibcxx_assert(__n < _M_length);
+	__glibcxx_precondition(__n < _M_length);
 	return _M_current[__n];
       }
 
@@ -2582,7 +2582,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       noexcept(noexcept(ranges::iter_move(__i._M_current)))
       requires input_iterator<_It>
       {
-	__glibcxx_assert( __i._M_length > 0 );
+	__glibcxx_precondition( __i._M_length > 0 );
 	return ranges::iter_move(__i._M_current);
       }
 
@@ -2592,7 +2592,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		  const counted_iterator<_It2>& __y)
 	noexcept(noexcept(ranges::iter_swap(__x._M_current, __y._M_current)))
 	{
-	  __glibcxx_assert( __x._M_length > 0 && __y._M_length > 0 );
+	  __glibcxx_precondition( __x._M_length > 0 && __y._M_length > 0 );
 	  ranges::iter_swap(__x._M_current, __y._M_current);
 	}
 

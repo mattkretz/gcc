@@ -283,9 +283,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       memory_order __b __attribute__ ((__unused__))
 	= __m & __memory_order_mask;
-      __glibcxx_assert(__b != memory_order_consume);
-      __glibcxx_assert(__b != memory_order_acquire);
-      __glibcxx_assert(__b != memory_order_acq_rel);
+      __glibcxx_precondition(__b != memory_order_consume);
+      __glibcxx_precondition(__b != memory_order_acquire);
+      __glibcxx_precondition(__b != memory_order_acq_rel);
 
       __atomic_clear (&_M_i, int(__m));
     }
@@ -295,9 +295,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       memory_order __b __attribute__ ((__unused__))
 	= __m & __memory_order_mask;
-      __glibcxx_assert(__b != memory_order_consume);
-      __glibcxx_assert(__b != memory_order_acquire);
-      __glibcxx_assert(__b != memory_order_acq_rel);
+      __glibcxx_precondition(__b != memory_order_consume);
+      __glibcxx_precondition(__b != memory_order_acquire);
+      __glibcxx_precondition(__b != memory_order_acq_rel);
 
       __atomic_clear (&_M_i, int(__m));
     }
@@ -470,9 +470,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_acquire);
-	__glibcxx_assert(__b != memory_order_acq_rel);
-	__glibcxx_assert(__b != memory_order_consume);
+	__glibcxx_precondition(__b != memory_order_acquire);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_consume);
 
 	__atomic_store_n(&_M_i, __i, int(__m));
       }
@@ -483,9 +483,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_acquire);
-	__glibcxx_assert(__b != memory_order_acq_rel);
-	__glibcxx_assert(__b != memory_order_consume);
+	__glibcxx_precondition(__b != memory_order_acquire);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_consume);
 
 	__atomic_store_n(&_M_i, __i, int(__m));
       }
@@ -495,8 +495,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_release);
-	__glibcxx_assert(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_release);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
 
 	return __atomic_load_n(&_M_i, int(__m));
       }
@@ -506,8 +506,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_release);
-	__glibcxx_assert(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_release);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
 
 	return __atomic_load_n(&_M_i, int(__m));
       }
@@ -531,7 +531,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       compare_exchange_weak(__int_type& __i1, __int_type __i2,
 			    memory_order __m1, memory_order __m2) noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_i, &__i1, __i2, 1,
 					   int(__m1), int(__m2));
@@ -542,7 +542,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			    memory_order __m1,
 			    memory_order __m2) volatile noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_i, &__i1, __i2, 1,
 					   int(__m1), int(__m2));
@@ -568,7 +568,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       compare_exchange_strong(__int_type& __i1, __int_type __i2,
 			      memory_order __m1, memory_order __m2) noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_i, &__i1, __i2, 0,
 					   int(__m1), int(__m2));
@@ -579,7 +579,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			      memory_order __m1,
 			      memory_order __m2) volatile noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_i, &__i1, __i2, 0,
 					   int(__m1), int(__m2));
@@ -799,9 +799,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
 
-	__glibcxx_assert(__b != memory_order_acquire);
-	__glibcxx_assert(__b != memory_order_acq_rel);
-	__glibcxx_assert(__b != memory_order_consume);
+	__glibcxx_precondition(__b != memory_order_acquire);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_consume);
 
 	__atomic_store_n(&_M_p, __p, int(__m));
       }
@@ -812,9 +812,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_acquire);
-	__glibcxx_assert(__b != memory_order_acq_rel);
-	__glibcxx_assert(__b != memory_order_consume);
+	__glibcxx_precondition(__b != memory_order_acquire);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_consume);
 
 	__atomic_store_n(&_M_p, __p, int(__m));
       }
@@ -824,8 +824,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_release);
-	__glibcxx_assert(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_release);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
 
 	return __atomic_load_n(&_M_p, int(__m));
       }
@@ -835,8 +835,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	memory_order __b __attribute__ ((__unused__))
 	  = __m & __memory_order_mask;
-	__glibcxx_assert(__b != memory_order_release);
-	__glibcxx_assert(__b != memory_order_acq_rel);
+	__glibcxx_precondition(__b != memory_order_release);
+	__glibcxx_precondition(__b != memory_order_acq_rel);
 
 	return __atomic_load_n(&_M_p, int(__m));
       }
@@ -861,7 +861,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			    memory_order __m1,
 			    memory_order __m2) noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_p, &__p1, __p2, 1,
 					   int(__m1), int(__m2));
@@ -872,7 +872,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			    memory_order __m1,
 			    memory_order __m2) volatile noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_p, &__p1, __p2, 1,
 					   int(__m1), int(__m2));
@@ -883,7 +883,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			      memory_order __m1,
 			      memory_order __m2) noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_p, &__p1, __p2, 0,
 					   int(__m1), int(__m2));
@@ -894,7 +894,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			      memory_order __m1,
 			      memory_order __m2) volatile noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__m2));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__m2));
 
 	return __atomic_compare_exchange_n(&_M_p, &__p1, __p2, 0,
 					   int(__m1), int(__m2));
@@ -989,7 +989,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			 bool __is_weak,
 			 memory_order __s, memory_order __f) noexcept
       {
-	__glibcxx_assert(__is_valid_cmpexch_failure_order(__f));
+	__glibcxx_precondition(__is_valid_cmpexch_failure_order(__f));
 
 	using _Vp = _Val<_Tp>;
 	_Tp* const __pval = std::__addressof(__val);
@@ -1538,7 +1538,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       explicit
       __atomic_ref(_Tp& __t) : _M_ptr(std::__addressof(__t))
       {
-	__glibcxx_assert(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
+	__glibcxx_precondition(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
       }
 
       __atomic_ref(const __atomic_ref&) noexcept = default;
@@ -1651,7 +1651,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       explicit
       __atomic_ref(_Tp& __t) : _M_ptr(&__t)
       {
-	__glibcxx_assert(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
+	__glibcxx_precondition(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
       }
 
       __atomic_ref(const __atomic_ref&) noexcept = default;
@@ -1826,7 +1826,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       explicit
       __atomic_ref(_Fp& __t) : _M_ptr(&__t)
       {
-	__glibcxx_assert(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
+	__glibcxx_precondition(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
       }
 
       __atomic_ref(const __atomic_ref&) noexcept = default;
@@ -1955,7 +1955,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       explicit
       __atomic_ref(_Tp*& __t) : _M_ptr(std::__addressof(__t))
       {
-	__glibcxx_assert(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
+	__glibcxx_precondition(((__UINTPTR_TYPE__)_M_ptr % required_alignment) == 0);
       }
 
       __atomic_ref(const __atomic_ref&) noexcept = default;

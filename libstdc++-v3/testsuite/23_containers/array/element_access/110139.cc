@@ -3,3 +3,4 @@
 #include <array>
 template class std::array<int, 0>;
 // { dg-bogus "ambiguous overload" "" { target *-*-* } 0 }
+// { dg-error "precondition failure" "" { target *-*-* } 0 }

@@ -375,7 +375,7 @@ namespace
       if (m_bytes < sizeof(m_buf) && (m_bytes + bytes) <= sizeof(m_buf))
 	return m_buf + std::__exchange(m_bytes, m_bytes + bytes);
 
-      __glibcxx_assert(m_ptr == nullptr);
+      __glibcxx_precondition(m_ptr == nullptr);
 
       m_ptr = operator new(bytes);
       m_bytes = bytes;
@@ -450,7 +450,7 @@ namespace
 	  chars_format& fmt, buffered_string& buf)
   {
     // fmt has the value of one of the enumerators of chars_format.
-    __glibcxx_assert(valid_fmt(fmt));
+    __glibcxx_precondition(valid_fmt(fmt));
 
     string_view res;
 
