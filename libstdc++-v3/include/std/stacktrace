@@ -234,7 +234,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       current(size_type __skip, size_type __max_depth,
 	      const allocator_type& __alloc = allocator_type()) noexcept
       {
-	__glibcxx_assert(__skip <= (size_type(-1) - __max_depth));
+	__glibcxx_precondition(__skip <= (size_type(-1) - __max_depth));
 
 	basic_stacktrace __ret(__alloc);
 	if (__max_depth == 0) [[unlikely]]
@@ -442,7 +442,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const_reference
       operator[](size_type __n) const noexcept
       {
-	__glibcxx_assert(__n < size());
+	__glibcxx_precondition(__n < size());
 	return begin()[__n];
       }
 
@@ -484,7 +484,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  std::swap(_M_alloc, __other._M_alloc);
 	else if constexpr (!_AllocTraits::is_always_equal::value)
 	  {
-	    __glibcxx_assert(_M_alloc == __other._M_alloc);
+	    __glibcxx_precondition(_M_alloc == __other._M_alloc);
 	  }
       }
 

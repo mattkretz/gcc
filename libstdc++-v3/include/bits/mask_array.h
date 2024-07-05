@@ -155,7 +155,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline mask_array<_Tp>&
     mask_array<_Tp>::operator=(const mask_array<_Tp>& __a)
     {
-      __glibcxx_assert(__a._M_sz == _M_sz);
+      __glibcxx_precondition(__a._M_sz == _M_sz);
       std::__valarray_copy(__a._M_array, __a._M_mask,
 			   _M_sz, _M_array, _M_mask);
       return *this;
@@ -170,7 +170,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline void
     mask_array<_Tp>::operator=(const valarray<_Tp>& __v) const
     {
-      __glibcxx_assert(__v.size() == _M_sz);
+      __glibcxx_precondition(__v.size() == _M_sz);
       std::__valarray_copy(_Array<_Tp>(__v), __v.size(), _M_array, _M_mask);
     }
 
@@ -179,7 +179,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       inline void
       mask_array<_Tp>::operator=(const _Expr<_Ex, _Tp>& __e) const
       {
-	__glibcxx_assert(__e.size() == _M_sz);
+	__glibcxx_precondition(__e.size() == _M_sz);
 	std::__valarray_copy(__e, __e.size(), _M_array, _M_mask);
       }
 
@@ -190,7 +190,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline void								\
     mask_array<_Tp>::operator _Op##=(const valarray<_Tp>& __v) const	\
     {									\
-      __glibcxx_assert(__v.size() == _M_sz);				\
+      __glibcxx_precondition(__v.size() == _M_sz);				\
       _Array_augmented_##_Name(_M_array, _M_mask,			\
 			       _Array<_Tp>(__v), __v.size());		\
     }									\
@@ -200,7 +200,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       inline void							\
       mask_array<_Tp>::operator _Op##=(const _Expr<_Dom, _Tp>& __e) const\
       {									\
-	__glibcxx_assert(__e.size() == _M_sz);				\
+	__glibcxx_precondition(__e.size() == _M_sz);				\
 	_Array_augmented_##_Name(_M_array, _M_mask, __e, __e.size());   \
       }
 

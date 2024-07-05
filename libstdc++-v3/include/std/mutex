@@ -396,7 +396,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   public:
 
     timed_mutex() = default;
-    ~timed_mutex() { __glibcxx_assert( !_M_locked ); }
+    ~timed_mutex() { __glibcxx_precondition( !_M_locked ); }
 
     timed_mutex(const timed_mutex&) = delete;
     timed_mutex& operator=(const timed_mutex&) = delete;
@@ -448,7 +448,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     unlock()
     {
       lock_guard<mutex> __lk(_M_mut);
-      __glibcxx_assert( _M_locked );
+      __glibcxx_precondition( _M_locked );
       _M_locked = false;
       _M_cv.notify_one();
     }
@@ -477,7 +477,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   public:
 
     recursive_timed_mutex() = default;
-    ~recursive_timed_mutex() { __glibcxx_assert( _M_count == 0 ); }
+    ~recursive_timed_mutex() { __glibcxx_precondition( _M_count == 0 ); }
 
     recursive_timed_mutex(const recursive_timed_mutex&) = delete;
     recursive_timed_mutex& operator=(const recursive_timed_mutex&) = delete;
@@ -549,8 +549,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     unlock()
     {
       lock_guard<mutex> __lk(_M_mut);
-      __glibcxx_assert( _M_owner == this_thread::get_id() );
-      __glibcxx_assert( _M_count > 0 );
+      __glibcxx_precondition( _M_owner == this_thread::get_id() );
+      __glibcxx_precondition( _M_count > 0 );
       if (--_M_count == 0)
 	{
 	  _M_owner = {};

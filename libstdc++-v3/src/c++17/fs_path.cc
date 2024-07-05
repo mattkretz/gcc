@@ -192,7 +192,7 @@ inline
 path::path(basic_string_view<value_type> __str, _Type __type)
 : _M_pathname(__str)
 {
-  __glibcxx_assert(__type != _Type::_Multi);
+  __glibcxx_precondition(__type != _Type::_Multi);
   _M_cmpts.type(__type);
 }
 
@@ -264,9 +264,9 @@ struct path::_List::_Impl
 void path::_List::_Impl_deleter::operator()(_Impl* p) const noexcept
 {
   p = _Impl::notype(p);
+  __glibcxx_precondition(!p || p->_M_size <= p->_M_capacity);
   if (p)
     {
-      __glibcxx_assert(p->_M_size <= p->_M_capacity);
       p->clear();
       ::operator delete(p, sizeof(*p) + p->_M_capacity * sizeof(value_type));
     }
@@ -353,7 +353,7 @@ inline auto
 path::_List::begin() noexcept
 -> iterator
 {
-  __glibcxx_assert(!empty());
+  __glibcxx_precondition(!empty());
   if (auto* ptr = _Impl::notype(_M_impl.get()))
     return ptr->begin();
   return nullptr;
@@ -363,7 +363,7 @@ inline auto
 path::_List::end() noexcept
 -> iterator
 {
-  __glibcxx_assert(!empty());
+  __glibcxx_precondition(!empty());
   if (auto* ptr = _Impl::notype(_M_impl.get()))
     return ptr->end();
   return nullptr;
@@ -373,7 +373,7 @@ auto
 path::_List::begin() const noexcept
 -> const_iterator
 {
-  __glibcxx_assert(!empty());
+  __glibcxx_precondition(!empty());
   if (auto* ptr = _Impl::notype(_M_impl.get()))
     return ptr->begin();
   return nullptr;
@@ -383,7 +383,7 @@ auto
 path::_List::end() const noexcept
 -> const_iterator
 {
-  __glibcxx_assert(!empty());
+  __glibcxx_precondition(!empty());
   if (auto* ptr = _Impl::notype(_M_impl.get()))
     return ptr->end();
   return nullptr;
@@ -420,7 +420,7 @@ path::_List::back() const noexcept
 inline void
 path::_List::pop_back()
 {
-  __glibcxx_assert(size() > 0);
+  __glibcxx_precondition(size() > 0);
   _M_impl->pop_back();
 }
 
@@ -440,7 +440,7 @@ path::_List::clear()
 void
 path::_List::reserve(int newcap, bool exact = false)
 {
-  // __glibcxx_assert(type() == _Type::_Multi);
+  // __glibcxx_precondition(type() == _Type::_Multi);
 
   _Impl* curptr = _Impl::notype(_M_impl.get());
 

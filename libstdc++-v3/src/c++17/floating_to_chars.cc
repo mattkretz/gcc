@@ -654,7 +654,8 @@ namespace
 
       constexpr auto& pow10_adjustment_tab
 	= floating_type_traits<T>::pow10_adjustment_tab;
-      __glibcxx_assert(fd.exponent/64 < (int)std::size(pow10_adjustment_tab));
+      __glibcxx_precondition((fd.exponent < 0) || fd.mantissa != 1
+			       || fd.exponent/64 < (int)std::size(pow10_adjustment_tab));
       return (pow10_adjustment_tab[fd.exponent/64]
 	      & (1ull << (63 - fd.exponent%64)));
     }
@@ -707,7 +708,7 @@ template<typename T>
   __handle_special_value(char* first, char* const last, const T value,
 			 const chars_format fmt, const int precision)
   {
-    __glibcxx_assert(precision >= 0);
+    __glibcxx_precondition(precision >= 0);
 
     string_view str;
     switch (__builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
@@ -1097,6 +1098,11 @@ template<typename T>
   __floating_to_chars_shortest(char* first, char* const last, const T value,
 			       chars_format fmt)
   {
+    __glibcxx_precondition(fmt == chars_format::hex
+			     || fmt == chars_format::fixed
+			     || fmt == chars_format::scientific
+			     || fmt == chars_format::general
+			     || fmt == chars_format{});
     if (fmt == chars_format::hex)
       {
 	// std::bfloat16_t has the same exponent range as std::float32_t

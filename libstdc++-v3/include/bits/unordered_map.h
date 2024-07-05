@@ -431,7 +431,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       node_type
       extract(const_iterator __pos)
       {
-	__glibcxx_assert(__pos != end());
+	__glibcxx_precondition(__pos != end());
 	return _M_h.extract(__pos);
       }
 
@@ -1660,7 +1660,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       node_type
       extract(const_iterator __pos)
       {
-	__glibcxx_assert(__pos != end());
+	__glibcxx_precondition(__pos != end());
 	return _M_h.extract(__pos);
       }
 

@@ -180,7 +180,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Res
       operator()(_ArgTypes... __args) _GLIBCXX_MOF_CV_REF noexcept(_Noex)
       {
-	__glibcxx_assert(*this != nullptr);
+	__glibcxx_precondition(*this != nullptr);
 	return _M_invoke(this, std::forward<_ArgTypes>(__args)...);
       }
 

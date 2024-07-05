@@ -73,7 +73,7 @@ struct uint128_t
   friend constexpr uint128_t
   operator<<(uint128_t x, const uint128_t y)
   {
-    __glibcxx_assert(y < 128);
+    __glibcxx_precondition(y < 128);
     // TODO: Convince GCC to use shldq on x86 here.
     if (y.lo >= 64)
       {
@@ -92,7 +92,7 @@ struct uint128_t
   friend constexpr uint128_t
   operator>>(uint128_t x, const uint128_t y)
   {
-    __glibcxx_assert(y < 128);
+    __glibcxx_precondition(y < 128);
     // TODO: Convince GCC to use shrdq on x86 here.
     if (y.lo >= 64)
       {
@@ -163,7 +163,7 @@ struct uint128_t
     // Ryu performs 128-bit division only by 5 and 10, so that's what we
     // implement.  The strategy here is to relate division of x with that of
     // x.hi and x.lo separately.
-    __glibcxx_assert(y == 5 || y == 10);
+    __glibcxx_precondition(y == 5 || y == 10);
     // The following implements division by 5 and 10.  In either case, we
     // first compute division by 5:
     //   x/5 = (x.hi*2^64 + x.lo)/5
@@ -188,9 +188,9 @@ struct uint128_t
     // Ryu performs 128-bit modulus only by 2, 5 and 10, so that's what we
     // implement.  The strategy here is to relate modulus of x with that of
     // x.hi and x.lo separately.
+    __glibcxx_precondition(y == 2 || y == 5 || y == 10);
     if (y == 2)
       return x & 1;
-    __glibcxx_assert(y == 5 || y == 10);
     // The following implements modulus by 5 and 10.  In either case,
     // we first compute modulus by 5:
     //   x (mod 5) = x.hi*2^64 + x.lo (mod 5)

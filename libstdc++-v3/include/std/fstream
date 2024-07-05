@@ -398,7 +398,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       native_handle_type
       native_handle() const noexcept
       {
-	__glibcxx_assert(is_open());
+	__glibcxx_precondition(is_open());
 	return _M_file.native_handle();
       }
 #endif

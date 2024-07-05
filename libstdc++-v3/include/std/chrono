@@ -2080,7 +2080,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	days __d = (_M_wdi.weekday()
 		    - chrono::weekday{sys_days{_M_y / _M_m / 1}}
 		    + days((_M_wdi.index()-1)*7 + 1));
-	__glibcxx_assert(__d.count() >= 1);
+	__glibcxx_precondition(__d.count() >= 1 || !_M_y.ok() || !_M_m.ok() || !_M_wdi.ok()
+				 || _M_wdi.index() <= 4);
 	return (unsigned)__d.count() <= (unsigned)(_M_y / _M_m / last).day();
       }
 
@@ -2577,7 +2578,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	nonexistent_local_time(const local_time<_Duration>& __tp,
 			       const local_info& __i)
 	: runtime_error(_S_make_what_str(__tp, __i))
-	{ __glibcxx_assert(__i.result == local_info::nonexistent); }
+	{ __glibcxx_precondition(__i.result == local_info::nonexistent); }
 
     private:
       template<typename _Duration>
@@ -2604,7 +2605,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	ambiguous_local_time(const local_time<_Duration>& __tp,
 			     const local_info& __i)
 	: runtime_error(_S_make_what_str(__tp, __i))
-	{ __glibcxx_assert(__i.result == local_info::ambiguous); }
+	{ __glibcxx_precondition(__i.result == local_info::ambiguous); }
 
     private:
       template<typename _Duration>

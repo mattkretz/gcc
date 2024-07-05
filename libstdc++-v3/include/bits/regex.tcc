@@ -355,7 +355,7 @@ namespace __detail
 	   const match_results<_Bi_iter, _Alloc>::char_type* __fmt_last,
 	   match_flag_type __flags) const
     {
-      __glibcxx_assert( ready() );
+      __glibcxx_precondition( ready() );
       regex_traits<char_type> __traits;
       typedef std::ctype<char_type> __ctype_type;
       const __ctype_type&

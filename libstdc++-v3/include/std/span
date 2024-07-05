@@ -165,7 +165,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (_Extent != dynamic_extent)
 	    {
-	      __glibcxx_assert(__count == _Extent);
+	      __glibcxx_precondition(__count == _Extent);
 	    }
 	  __glibcxx_requires_valid_range(__first, __first + __count);
 	}
@@ -181,7 +181,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (_Extent != dynamic_extent)
 	    {
-	      __glibcxx_assert((__last - __first) == _Extent);
+	      __glibcxx_precondition((__last - __first) == _Extent);
 	    }
 	  __glibcxx_requires_valid_range(__first, __last);
 	}
@@ -222,7 +222,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (extent != dynamic_extent)
 	    {
-	      __glibcxx_assert(ranges::size(__range) == extent);
+	      __glibcxx_precondition(ranges::size(__range) == extent);
 	    }
 	}
 
@@ -240,7 +240,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (extent != dynamic_extent)
 	    {
-	      __glibcxx_assert(__s.size() == extent);
+	      __glibcxx_precondition(__s.size() == extent);
 	    }
 	}
 
@@ -272,7 +272,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       front() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *this->_M_ptr;
       }
 
@@ -280,7 +280,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       back() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *(this->_M_ptr + (size() - 1));
       }
 
@@ -288,7 +288,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr reference
       operator[](size_type __idx) const noexcept
       {
-	__glibcxx_assert(__idx < size());
+	__glibcxx_precondition(__idx < size());
 	return *(this->_M_ptr + __idx);
       }
 
@@ -361,7 +361,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	first() const noexcept
 	{
 	  if constexpr (_Extent == dynamic_extent)
-	    __glibcxx_assert(_Count <= size());
+	    __glibcxx_precondition(_Count <= size());
 	  else
 	    static_assert(_Count <= extent);
 	  using _Sp = span<element_type, _Count>;
@@ -372,7 +372,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr span<element_type, dynamic_extent>
       first(size_type __count) const noexcept
       {
-	__glibcxx_assert(__count <= size());
+	__glibcxx_precondition(__count <= size());
 	return { this->data(), __count };
       }
 
@@ -382,7 +382,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	last() const noexcept
 	{
 	  if constexpr (_Extent == dynamic_extent)
-	    __glibcxx_assert(_Count <= size());
+	    __glibcxx_precondition(_Count <= size());
 	  else
 	    static_assert(_Count <= extent);
 	  using _Sp = span<element_type, _Count>;
@@ -393,7 +393,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr span<element_type, dynamic_extent>
       last(size_type __count) const noexcept
       {
-	__glibcxx_assert(__count <= size());
+	__glibcxx_precondition(__count <= size());
 	return { this->data() + (this->size() - __count), __count };
       }
 
@@ -405,7 +405,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  if constexpr (_Extent == dynamic_extent)
 	    {
-	      __glibcxx_assert(_Offset <= size());
+	      __glibcxx_precondition(_Offset <= size());
 	    }
 	  else
 	    static_assert(_Offset <= extent);
@@ -418,8 +418,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    {
 	      if constexpr (_Extent == dynamic_extent)
 		{
-		  __glibcxx_assert(_Count <= size());
-		  __glibcxx_assert(_Count <= (size() - _Offset));
+		  __glibcxx_precondition(_Count <= size());
+		  __glibcxx_precondition(_Count <= (size() - _Offset));
 		}
 	      else
 		{
@@ -435,14 +435,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       subspan(size_type __offset, size_type __count = dynamic_extent) const
       noexcept
       {
-	__glibcxx_assert(__offset <= size());
+	__glibcxx_precondition(__offset <= size());
+	__glibcxx_precondition(__count == dynamic_extent || __count <= size());
+	__glibcxx_precondition(__count == dynamic_extent || __offset + __count <= size());
 	if (__count == dynamic_extent)
 	  __count = this->size() - __offset;
-	else
-	  {
-	    __glibcxx_assert(__count <= size());
-	    __glibcxx_assert(__offset + __count <= size());
-	  }
 	return {this->data() + __offset, __count};
       }
 

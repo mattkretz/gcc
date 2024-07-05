@@ -1342,7 +1342,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline _Tp*
     __shared_ptr_deref(_Tp* __p)
     {
-      __glibcxx_assert(__p != nullptr);
+      __glibcxx_precondition(__p != nullptr);
       return __p;
     }
 
@@ -1414,8 +1414,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       element_type&
       operator[](ptrdiff_t __i) const noexcept
       {
-	if constexpr (extent<_Tp>::value)
-	  __glibcxx_assert(__i < extent<_Tp>::value);
+	__glibcxx_precondition(!extent<_Tp>::value || __i < extent<_Tp>::value);
 	return std::__shared_ptr_deref(_M_get())[__i];
       }
 #pragma GCC diagnostic pop
@@ -1654,7 +1653,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	reset(_Yp* __p) // _Yp must be complete.
 	{
 	  // Catch self-reset errors.
-	  __glibcxx_assert(__p == nullptr || __p != _M_ptr);
+	  __glibcxx_precondition(__p == nullptr || __p != _M_ptr);
 	  __shared_ptr(__p).swap(*this);
 	}
 

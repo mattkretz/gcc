@@ -323,7 +323,7 @@ namespace __detail
     constexpr to_chars_result
     __to_chars_i(char* __first, char* __last, _Tp __value, int __base = 10)
     {
-      __glibcxx_assert(2 <= __base && __base <= 36);
+      __glibcxx_precondition(2 <= __base && __base <= 36);
 
       using _Up = __detail::__unsigned_least_t<_Tp>;
       _Up __unsigned_val = __value;
@@ -468,8 +468,8 @@ namespace __detail
       static_assert(is_integral<_Tp>::value, "implementation bug");
       static_assert(is_unsigned<_Tp>::value, "implementation bug");
 
-      // __glibcxx_assert((__base & (__base - 1)) == 0);
-      // __glibcxx_assert(_DecOnly ? __base <= 8 : __base <= 32);
+      // __glibcxx_precondition((__base & (__base - 1)) == 0);
+      // __glibcxx_precondition(_DecOnly ? __base <= 8 : __base <= 32);
       const int __log2_base = __countr_zero(unsigned(__base & 0x3f));
 
       const ptrdiff_t __len = __last - __first;
@@ -488,7 +488,7 @@ namespace __detail
       if (__base != 2)
 	{
 	  __leading_c = __from_chars_alnum_to_val<_DecOnly>(__first[__i]);
-	  // __glibcxx_assert(__leading_c != 0);
+	  // __glibcxx_precondition(__leading_c != 0);
 	  if (__leading_c >= __base) [[__unlikely__]]
 	    {
 	      __first += __i;
@@ -511,7 +511,7 @@ namespace __detail
 	// Compensate for a leading significant digit that didn't use all
 	// of its available bits.
 	__significant_bits -= __log2_base - __bit_width(__leading_c);
-      // __glibcxx_assert(__significant_bits >= 0);
+      // __glibcxx_precondition(__significant_bits >= 0);
       return __significant_bits <= __gnu_cxx::__int_traits<_Tp>::__digits;
     }
 
@@ -522,7 +522,7 @@ namespace __detail
     __from_chars_alnum(const char*& __first, const char* __last, _Tp& __val,
 		       int __base)
     {
-      // __glibcxx_assert(_DecOnly ? __base <= 10 : __base <= 36);
+      // __glibcxx_precondition(_DecOnly ? __base <= 10 : __base <= 36);
 
       const int __bits_per_digit = __bit_width(unsigned(__base & 0x3f));
       int __unused_bits_lower_bound = __gnu_cxx::__int_traits<_Tp>::__digits;
@@ -557,7 +557,7 @@ namespace __detail
     from_chars(const char* __first, const char* __last, _Tp& __value,
 	       int __base = 10)
     {
-      __glibcxx_assert(2 <= __base && __base <= 36);
+      __glibcxx_precondition(2 <= __base && __base <= 36);
 
       from_chars_result __res{__first, {}};
 

@@ -397,7 +397,7 @@ namespace __detail
     _Compiler<_TraitsT>::
     _M_insert_character_class_matcher()
     {
-      __glibcxx_assert(_M_value.size() == 1);
+      __glibcxx_precondition(_M_value.size() == 1);
       _BracketMatcher<__icase, __collate> __matcher
 	(_M_ctype.is(_CtypeT::upper, _M_value[0]), _M_traits);
       __matcher._M_add_character_class(_M_value, false);

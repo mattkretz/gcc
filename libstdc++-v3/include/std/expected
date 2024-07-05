@@ -703,7 +703,7 @@ namespace __expected
       constexpr const _Tp*
       operator->() const noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return __builtin_addressof(_M_val);
       }
 
@@ -711,7 +711,7 @@ namespace __expected
       constexpr _Tp*
       operator->() noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return __builtin_addressof(_M_val);
       }
 
@@ -719,7 +719,7 @@ namespace __expected
       constexpr const _Tp&
       operator*() const & noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return _M_val;
       }
 
@@ -727,7 +727,7 @@ namespace __expected
       constexpr _Tp&
       operator*() & noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return _M_val;
       }
 
@@ -735,7 +735,7 @@ namespace __expected
       constexpr const _Tp&&
       operator*() const && noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return std::move(_M_val);
       }
 
@@ -743,7 +743,7 @@ namespace __expected
       constexpr _Tp&&
       operator*() && noexcept
       {
-	__glibcxx_assert(_M_has_value);
+	__glibcxx_precondition(_M_has_value);
 	return std::move(_M_val);
       }
 
@@ -796,28 +796,28 @@ namespace __expected
       constexpr const _Er&
       error() const & noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return _M_unex;
       }
 
       constexpr _Er&
       error() & noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return _M_unex;
       }
 
       constexpr const _Er&&
       error() const && noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return std::move(_M_unex);
       }
 
       constexpr _Er&&
       error() && noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return std::move(_M_unex);
       }
 
@@ -1526,7 +1526,7 @@ namespace __expected
       constexpr bool has_value() const noexcept { return _M_has_value; }
 
       constexpr void
-      operator*() const noexcept { __glibcxx_assert(_M_has_value); }
+      operator*() const noexcept { __glibcxx_precondition(_M_has_value); }
 
       constexpr void
       value() const&
@@ -1549,28 +1549,28 @@ namespace __expected
       constexpr const _Er&
       error() const & noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return _M_unex;
       }
 
       constexpr _Er&
       error() & noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return _M_unex;
       }
 
       constexpr const _Er&&
       error() const && noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return std::move(_M_unex);
       }
 
       constexpr _Er&&
       error() && noexcept
       {
-	__glibcxx_assert(!_M_has_value);
+	__glibcxx_precondition(!_M_has_value);
 	return std::move(_M_unex);
       }
 

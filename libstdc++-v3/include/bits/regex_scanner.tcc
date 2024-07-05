@@ -69,6 +69,11 @@ namespace __detail
     _Scanner<_CharT>::
     _M_advance()
     {
+      __glibcxx_precondition(_M_current == _M_end
+			       || _M_state == _S_state_normal
+			       || _M_state == _S_state_in_bracket
+			       || _M_state == _S_state_in_brace);
+
       if (_M_current == _M_end)
 	{
 	  _M_token = _S_token_eof;
@@ -79,12 +84,8 @@ namespace __detail
 	_M_scan_normal();
       else if (_M_state == _S_state_in_bracket)
 	_M_scan_in_bracket();
-      else if (_M_state == _S_state_in_brace)
-	_M_scan_in_brace();
       else
-	{
-	  __glibcxx_assert(!"unexpected state while processing regex");
-	}
+	_M_scan_in_brace();
     }
 
   // Differences between styles:

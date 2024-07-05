@@ -15,7 +15,7 @@
 // with this library; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
-// { dg-options "-D_GLIBCXX_ASSERTIONS" }
+// { dg-options "-D_GLIBCXX_ASSERTIONS -D_GLIBCXX_HARDEN=1" }
 // { dg-do run { target c++20 } }
 // { dg-xfail-run-if "__glibcxx_assert in bit_ceil should fail" { *-*-* } }
 
@@ -73,3 +73,5 @@ int main()
 {
   test01();
 }
+
+// { dg-warning "precondition failure" "" { target *-*-* } 0 }

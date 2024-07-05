@@ -3607,7 +3607,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
     [[nodiscard]] constexpr const _Tp&
     clamp(const _Tp& __val, const _Tp& __lo, const _Tp& __hi)
     {
-      __glibcxx_assert(!(__hi < __lo));
+      __glibcxx_precondition(!(__hi < __lo));
       return std::min(std::max(__val, __lo), __hi);
     }
 
@@ -3627,7 +3627,7 @@ _GLIBCXX_END_INLINE_ABI_NAMESPACE(_V2)
     [[nodiscard]] constexpr const _Tp&
     clamp(const _Tp& __val, const _Tp& __lo, const _Tp& __hi, _Compare __comp)
     {
-      __glibcxx_assert(!__comp(__hi, __lo));
+      __glibcxx_precondition(!__comp(__hi, __lo));
       return std::min(std::max(__val, __lo, __comp), __hi, __comp);
     }
 #endif // __glibcxx_clamp

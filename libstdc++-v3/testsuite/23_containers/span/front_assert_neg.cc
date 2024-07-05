@@ -18,6 +18,8 @@
 // { dg-do run { target c++20 xfail *-*-* } }
 // { dg-add-options no_pch }
 
+#undef _GLIBCXX_HARDEN
+#define _GLIBCXX_HARDEN 1
 #undef _GLIBCXX_ASSERTIONS
 #define _GLIBCXX_ASSERTIONS
 #include <span>
@@ -27,3 +29,5 @@ int main()
   std::span<int, std::dynamic_extent> s;
   (void) s.front();
 }
+
+// { dg-warning "precondition failure" "" { target *-*-* } 0 }

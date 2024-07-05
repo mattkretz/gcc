@@ -127,7 +127,7 @@ namespace __detail
 	return __val;
 #ifdef _GLIBCXX_ASSERTIONS
       if (!__is_constant_evaluated()) // overflow already detected in constexpr
-	__glibcxx_assert(__val != __gnu_cxx::__int_traits<_Res>::__min);
+	__glibcxx_precondition(__val != __gnu_cxx::__int_traits<_Res>::__min);
 #endif
       return -static_cast<_Res>(__val);
     }

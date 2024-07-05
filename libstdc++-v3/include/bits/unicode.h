@@ -468,7 +468,7 @@ namespace __unicode
       _S_error()
       {
 	char32_t __c = _ErrorHandler()();
-	__glibcxx_assert(__is_scalar_value(__c));
+	__glibcxx_precondition(__is_scalar_value(__c));
 	return __c;
       }
 

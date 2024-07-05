@@ -1140,13 +1140,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       insert_return_type
       _M_reinsert_node(node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || get_allocator() == __nh.get_allocator());
 	insert_return_type __ret;
 	if (__nh.empty())
 	  __ret.position = end();
 	else
 	  {
-	    __glibcxx_assert(get_allocator() == __nh.get_allocator());
-
 	    if (auto __loc = _M_locate(__nh._M_key()))
 	      {
 		__ret.node = std::move(__nh);
@@ -1170,10 +1169,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       _M_reinsert_node_multi(const_iterator __hint, node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || get_allocator() == __nh.get_allocator());
+
 	if (__nh.empty())
 	  return end();
-
-	__glibcxx_assert(get_allocator() == __nh.get_allocator());
 
 	const key_type& __k = __nh._M_key();
 	auto __code = this->_M_hash_code(__k);
@@ -1284,7 +1283,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  static_assert(is_same_v<typename _Compatible_Hashtable::node_type,
 	      node_type>, "Node types are compatible");
-	  __glibcxx_assert(get_allocator() == __src.get_allocator());
+	  __glibcxx_precondition(get_allocator() == __src.get_allocator());
 
 	  auto __n_elt = __src.size();
 	  size_type __first = 1;
@@ -1346,7 +1345,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  static_assert(is_same_v<typename _Compatible_Hashtable::node_type,
 	      node_type>, "Node types are compatible");
-	  __glibcxx_assert(get_allocator() == __src.get_allocator());
+	  __glibcxx_precondition(get_allocator() == __src.get_allocator());
 
 	  __node_ptr __hint = nullptr;
 	  this->reserve(size() + __src.size());

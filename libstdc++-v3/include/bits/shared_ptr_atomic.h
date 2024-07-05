@@ -556,7 +556,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       value_type
       load(memory_order __o) const noexcept
       {
-	__glibcxx_assert(__o != memory_order_release
+	__glibcxx_precondition(__o != memory_order_release
 			   && __o != memory_order_acq_rel);
 	// Ensure that the correct value of _M_ptr is visible after locking,
 	// by upgrading relaxed or consume to acquire.

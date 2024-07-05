@@ -15,7 +15,9 @@
 // with this library; see the file COPYING3.  If not see
 // <http://www.gnu.org/licenses/>.
 
+// { dg-options "-D_GLIBCXX_HARDEN=1" }
 // { dg-do run { target c++20 } }
+// { dg-warning "precondition failure" "" { target *-*-* } 0 }
 
 #include <iterator>
 #include <testsuite_hooks.h>
@@ -52,8 +54,8 @@ test01()
   VERIFY( *std::ranges::next(begin, 5, end) == 5 );
   VERIFY(  std::ranges::next(begin, 55, end) == end );
   VERIFY(  std::ranges::next(endi, 0, end) == end );
-  VERIFY(  std::ranges::next(endi, -5, end) == end );
-  VERIFY(  std::ranges::next(endi, -55, end) == end );
+  VERIFY(  std::ranges::next(endi, -5, end) == end ); // fails same_as<I, S>
+  VERIFY(  std::ranges::next(endi, -55, end) == end ); // likewise
   VERIFY(  std::ranges::next(endi, 0, begin) == end );
   VERIFY( *std::ranges::next(endi, -5, begin) == 5 );
   VERIFY(  std::ranges::next(endi, -55, begin) == begin );
@@ -83,8 +85,8 @@ test02()
   VERIFY( *std::ranges::next(begin, 5, end) == 5 );
   VERIFY(  std::ranges::next(begin, 55, end) == end );
   VERIFY(  std::ranges::next(endi, 0, end) == end );
-  VERIFY(  std::ranges::next(endi, -5, end) == end );
-  VERIFY(  std::ranges::next(endi, -55, end) == end );
+  VERIFY(  std::ranges::next(endi, -5, end) == end ); // fails same_as<I, S>
+  VERIFY(  std::ranges::next(endi, -55, end) == end ); // likewise
   VERIFY(  std::ranges::next(endi, 0, begin) == end );
   VERIFY( *std::ranges::next(endi, -5, begin) == 5 );
   VERIFY(  std::ranges::next(endi, -55, begin) == begin );
@@ -107,7 +109,7 @@ test03()
   VERIFY(  std::ranges::next(endi, end) == end );
   VERIFY(  std::ranges::next(begin, 0, begin) == begin );
   VERIFY(  std::ranges::next(begin, 5, begin) == begin );
-  VERIFY(  std::ranges::next(begin, -5, begin) == begin );
+  VERIFY(  std::ranges::next(begin, -5, begin) == begin ); // fails bidirectional_iterator<I>
   VERIFY(  std::ranges::next(begin, 0, end) == begin );
   VERIFY( *std::ranges::next(begin, 5, end) == 5 );
   VERIFY(  std::ranges::next(begin, 55, end) == end );
@@ -150,7 +152,7 @@ test04()
   VERIFY( *iter == 0 );
   iter = std::ranges::next(begin, 5, begin);
   VERIFY( *iter == 0 );
-  iter = std::ranges::next(begin, -5, begin);
+  iter = std::ranges::next(begin, -5, begin); // fails bidirectional_iterator<I>
   VERIFY( *iter == 0 );
   iter = std::ranges::next(begin, 0, end);
   VERIFY( *iter == 0 );

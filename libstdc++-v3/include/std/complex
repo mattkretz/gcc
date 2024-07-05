@@ -971,7 +971,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     inline complex<_Tp>
     polar(const _Tp& __rho, const _Tp& __theta)
     {
-      __glibcxx_assert( __rho >= 0 );
+      __glibcxx_precondition( __rho >= 0 );
       return complex<_Tp>(__rho * cos(__theta), __rho * sin(__theta));
     }
 

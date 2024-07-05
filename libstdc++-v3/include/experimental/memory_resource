@@ -326,7 +326,7 @@ namespace pmr {
 	// The adjustment is always less than the requested alignment,
 	// so if that isn't true now then either the wrong size was passed
 	// to deallocate or the token was overwritten by a buffer overflow:
-	__glibcxx_assert(static_cast<size_t>(__ptr - __orig_ptr) < _M_align);
+	__glibcxx_ifndr_assert(static_cast<size_t>(__ptr - __orig_ptr) < _M_align);
 	return __orig_ptr;
       }
 

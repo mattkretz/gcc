@@ -652,6 +652,106 @@ namespace std
 # define __glibcxx_assert(cond)
 #endif
 
+#ifndef _GLIBCXX_HARDEN
+#define _GLIBCXX_HARDEN 2
+#endif
+
+#if _GLIBCXX_HARDEN >= 2
+#define _GLIBCXX_CONSTPROP_PRECONDITION_FAILURE_ACTION __error__
+#else
+#define _GLIBCXX_CONSTPROP_PRECONDITION_FAILURE_ACTION __warning__
+#endif
+
+#if defined _GLIBCXX_ASSERTIONS
+#define _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr) _GLIBCXX_ASSERT_FAIL(expr)
+#elif _GLIBCXX_HARDEN == 1
+#define _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr) (void)0
+#elif _GLIBCXX_HARDEN == 2
+#define _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr) (void)0
+#elif _GLIBCXX_HARDEN >= 3
+#define _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr) __builtin_trap()
+#endif
+
+#if _GLIBCXX_ASSUME_PRECONDITIONS
+#if _GLIBCXX_HARDEN >= 3
+#error "Incompatible behavior: requested trap and unreachable on precondition violation"
+#endif
+#undef _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION
+#define _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr) __builtin_unreachable()
+#endif
+
+#if defined _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION
+
+#if defined(_GLIBCXX_ASSERTIONS) && _GLIBCXX_HAVE_IS_CONSTANT_EVALUATED
+#define _GLIBCXX_FAIL_ON_CONSTANT_EVALUATION(expr)                            \
+    if (std::__is_constant_evaluated())                                       \
+      if (!__precondition_result)                                             \
+	_GLIBCXX_ASSERT_FAIL(expr);
+#elif _GLIBCXX_HAVE_IS_CONSTANT_EVALUATED
+#define _GLIBCXX_FAIL_ON_CONSTANT_EVALUATION(expr)                            \
+    if (std::__is_constant_evaluated())                                       \
+      if (!__precondition_result)                                             \
+	std::__glibcxx_assert_fail();
+#else
+#define _GLIBCXX_FAIL_ON_CONSTANT_EVALUATION(expr)
+#endif
+
+// Enable compile-time and constexpr assertion checks
+// enable runtime traps at _GLIBCXX_HARDEN >= 3 or assertions with _GLIBCXX_ASSERTIONS
+#define __glibcxx_precondition(expr)                                          \
+  do {                                                                        \
+    const bool __precondition_result = bool(expr);                            \
+    _GLIBCXX_FAIL_ON_CONSTANT_EVALUATION(expr)                                \
+    if (__builtin_constant_p(__precondition_result) && !__precondition_result)\
+      []() __attribute__((__noinline__, __noipa__,                            \
+			  _GLIBCXX_CONSTPROP_PRECONDITION_FAILURE_ACTION(     \
+	"library precondition failure: '" #expr "' does not hold."))) {}();   \
+    if (__builtin_expect(!__precondition_result, false))                      \
+      _GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(expr);                     \
+  } while(false)
+
+// Inisde a branch, let the optimzer know that 'assumption' must also be true (implied by the branch
+// condition).
+// The optimizer needs to know this in order to avoid an IFNDR precondition in a subsequent function
+// call.
+// With assertions or traps enabled, the assumption is checked at runtime.
+#define __glibcxx_checked_assumption(assumption)                 \
+  do {                                                           \
+    const bool __bad = !bool(assumption);                        \
+    if (__builtin_expect(__bad, false))                          \
+      {                                                          \
+	_GLIBCXX_RUNTIME_PRECONDITION_FAILURE_ACTION(assumption);\
+	__builtin_unreachable();                                 \
+      }                                                          \
+  } while (false)
+
+#elif _GLIBCXX_HAVE_IS_CONSTANT_EVALUATED
+
+// Only check preconditions during constant evaluation.
+# define __glibcxx_precondition(cond)					\
+  do {									\
+    if (std::__is_constant_evaluated())					\
+      if (__builtin_expect(!bool(cond), false))				\
+	std::__glibcxx_assert_fail();					\
+  } while (false)
+
+#define __glibcxx_checked_assumption(expr, implication) \
+  do {                                                   \
+    if (std::__is_constant_evaluated())                  \
+      if (bool(expr) && !bool(implication))              \
+	std::__glibcxx_assert_fail();                    \
+  } while (false)
+
+#else
+
+// Don't check any preconditions.
+#define __glibcxx_precondition(expr)
+#define __glibcxx_checked_assumption(expr, implication)
+
+#endif
+
+#define __glibcxx_ifndr_assert(expr) __glibcxx_precondition(expr)
+
 // Macro indicating that TSAN is in use.
 #if __SANITIZE_THREAD__
 #  define _GLIBCXX_TSAN 1
@@ -932,8 +1032,8 @@ namespace __gnu_cxx
 #  define _PSTL_PAR_BACKEND_SERIAL
 # endif
 
-# define _PSTL_ASSERT(_Condition) __glibcxx_assert(_Condition)
-# define _PSTL_ASSERT_MSG(_Condition, _Message) __glibcxx_assert(_Condition)
+# define _PSTL_ASSERT(_Condition) __glibcxx_precondition(_Condition)
+# define _PSTL_ASSERT_MSG(_Condition, _Message) __glibcxx_precondition(_Condition)
 
 #include <pstl/pstl_config.h>
 #endif // __has_include

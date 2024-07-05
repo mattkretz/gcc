@@ -1088,7 +1088,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const_reference
       operator[] (size_type __pos) const _GLIBCXX_NOEXCEPT
       {
-	__glibcxx_assert(__pos <= size());
+	__glibcxx_precondition(__pos <= size());
 	return _M_data()[__pos];
       }
 
@@ -1107,7 +1107,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       {
 	// Allow pos == size() both in C++98 mode, as v3 extension,
 	// and in C++11 mode.
-	__glibcxx_assert(__pos <= size());
+	__glibcxx_precondition(__pos <= size());
 	// In pedantic mode be strict in C++98 mode.
 	_GLIBCXX_DEBUG_PEDASSERT(__cplusplus >= 201103L || __pos < size());
 	_M_leak();
@@ -1166,7 +1166,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       reference
       front()
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return operator[](0);
       }
 
@@ -1177,7 +1177,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const_reference
       front() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return operator[](0);
       }
 
@@ -1188,7 +1188,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       reference
       back()
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return operator[](this->size() - 1);
       }
 
@@ -1199,7 +1199,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       const_reference
       back() const noexcept
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return operator[](this->size() - 1);
       }
 #endif
@@ -1801,7 +1801,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       void
       pop_back() // FIXME C++11: should be noexcept.
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	erase(size() - 1, 1);
       }
 #endif // C++11

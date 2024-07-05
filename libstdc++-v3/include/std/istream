@@ -904,7 +904,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       if (__n < sizeof(_CharT))
 	{
 	  // There is not even space for the required null terminator.
-	  __glibcxx_assert(__n >= sizeof(_CharT));
+	  __glibcxx_precondition(__n >= sizeof(_CharT));
 	  // No point calling __istream_extract, but still need to reset width.
 	  __in.width(0);
 	  __in.setstate(ios_base::failbit);

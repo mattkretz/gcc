@@ -244,8 +244,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	void
 	_M_push(_Coro_handle __current, _Coro_handle __subyield) noexcept
 	{
-	  __glibcxx_assert(&__current.promise()._M_nest == this);
-	  __glibcxx_assert(this->_M_top() == __current);
+	  __glibcxx_precondition(&__current.promise()._M_nest == this);
+	  __glibcxx_precondition(this->_M_top() == __current);
 
 	  __subyield.promise()._M_nest._M_jump_in(__current, __subyield);
 	}
@@ -268,13 +268,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	void
 	_M_jump_in(_Coro_handle __rest, _Coro_handle __new) noexcept
 	{
-	  __glibcxx_assert(&__new.promise()._M_nest == this);
-	  __glibcxx_assert(this->_M_is_bottom());
+	  __glibcxx_precondition(&__new.promise()._M_nest == this);
+	  __glibcxx_precondition(this->_M_is_bottom());
 	  // We're bottom.  We're also top if top is unset (note that this is
 	  // not true if something was added to the coro stack and then popped,
 	  // but in that case we can't possibly be yielded from, as it would
 	  // require rerunning begin()).
-	  __glibcxx_assert(!this->_M_top());
+	  __glibcxx_precondition(!this->_M_top());
 
 	  auto& __rn = __rest.promise()._M_nest;
 	  __rn._M_top() = __new;
@@ -296,7 +296,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_ValuePtr&
 	_M_bottom_value(_Promise_erased& __current) noexcept
 	{
-	  __glibcxx_assert(&__current._M_nest == this);
+	  __glibcxx_precondition(&__current._M_nest == this);
 	  if (auto __bf = std::get_if<_Bottom_frame>(&this->_M_stack))
 	    return __bf->_M_value;
 	  auto __f = std::get_if<_Frame>(&this->_M_stack);
@@ -308,9 +308,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_ValuePtr&
 	_M_value(_Promise_erased& __current) noexcept
 	{
-	  __glibcxx_assert(&__current._M_nest == this);
+	  __glibcxx_precondition(&__current._M_nest == this);
 	  auto __bf = std::get_if<_Bottom_frame>(&this->_M_stack);
-	  __glibcxx_assert(__bf);
+	  __glibcxx_precondition(__bf);
 	  return __bf->_M_value;
 	}
       };
@@ -741,7 +741,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       void
       _M_mark_as_started() noexcept
       {
-	__glibcxx_assert(!this->_M_began);
+	__glibcxx_precondition(!this->_M_began);
 	this->_M_began = true;
       }
 

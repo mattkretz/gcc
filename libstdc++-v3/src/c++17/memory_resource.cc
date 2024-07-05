@@ -198,7 +198,7 @@ namespace pmr
     aligned_size(size_t sz, size_t align) noexcept
     : value(sz | (std::__bit_width(align) - 1u))
     {
-      __glibcxx_assert(size() == sz); // sz must be a multiple of N
+      __glibcxx_precondition(size() == sz); // sz must be a multiple of N
     }
 
     constexpr size_t
@@ -326,8 +326,8 @@ namespace pmr
       // Set bits beyond _M_size, so they are not treated as free blocks:
       if (const size_type extra_bits = num_blocks % bits_per_word)
 	_M_words[last_word] = word(-1) << extra_bits;
-      __glibcxx_assert( empty() );
-      __glibcxx_assert( free() == num_blocks );
+      __glibcxx_ifndr_assert( empty() );
+      __glibcxx_ifndr_assert( free() == num_blocks );
     }
 
     bitset() = default;
@@ -383,7 +383,7 @@ namespace pmr
 
     bool operator[](size_type n) const noexcept
     {
-      __glibcxx_assert( n < _M_size );
+      __glibcxx_precondition( n < _M_size );
       const size_type wd = n / bits_per_word;
       const word bit = word(1) << (n % bits_per_word);
       return _M_words[wd] & bit;
@@ -408,7 +408,7 @@ namespace pmr
 
     void set(size_type n) noexcept
     {
-      __glibcxx_assert( n < _M_size );
+      __glibcxx_precondition( n < _M_size );
       const size_type wd = n / bits_per_word;
       const word bit = word(1) << (n % bits_per_word);
       _M_words[wd] |= bit;
@@ -418,7 +418,7 @@ namespace pmr
 
     void clear(size_type n) noexcept
     {
-      __glibcxx_assert( n < _M_size );
+      __glibcxx_precondition( n < _M_size );
       const size_type wd = n / bits_per_word;
       const word bit = word(1) << (n % bits_per_word);
       _M_words[wd] &= ~bit;
@@ -489,7 +489,7 @@ namespace pmr
     : bitset(words, n),
       _M_bytes(bytes),
       _M_p(static_cast<std::byte*>(p))
-    { __glibcxx_assert(bytes <= chunk::max_bytes_per_chunk()); }
+    { __glibcxx_precondition(bytes <= chunk::max_bytes_per_chunk()); }
 
     chunk(chunk&& c) noexcept
     : bitset(std::move(c)), _M_bytes(c._M_bytes), _M_p(c._M_p)
@@ -541,12 +541,12 @@ namespace pmr
     // Deallocate a single block of block_size bytes
     void release(void* vp, size_t block_size)
     {
-      __glibcxx_assert( owns(vp, block_size) );
+      __glibcxx_precondition( owns(vp, block_size) );
       const size_t offset = static_cast<std::byte*>(vp) - _M_p;
       // Pointer is correctly aligned for a block in this chunk:
-      __glibcxx_assert( (offset % block_size) == 0 );
+      __glibcxx_precondition( (offset % block_size) == 0 );
       // Block has been allocated:
-      __glibcxx_assert( (*this)[offset / block_size] == true );
+      __glibcxx_precondition( (*this)[offset / block_size] == true );
       bitset::clear(offset / block_size);
     }
 
@@ -650,7 +650,7 @@ namespace pmr
     { }
 
     // Must call release(r) before destruction!
-    ~_Pool() { __glibcxx_assert(_M_chunks.empty()); }
+    ~_Pool() { __glibcxx_precondition(_M_chunks.empty()); }
 
     _Pool(_Pool&&) noexcept = default;
     _Pool& operator=(_Pool&&) noexcept = default;
@@ -773,7 +773,7 @@ namespace pmr
       { }
 
       // Must call clear(r) before destruction!
-      ~vector() { __glibcxx_assert(data == nullptr); }
+      ~vector() { __glibcxx_precondition(data == nullptr); }
 
       vector(vector&& __rval) noexcept
 	: data(__rval.data), size(__rval.size), capacity(__rval.capacity)
@@ -784,7 +784,7 @@ namespace pmr
 
       vector& operator=(vector&& __rval) noexcept
       {
-	__glibcxx_assert(data == nullptr);
+	__glibcxx_precondition(data == nullptr);
 	data = __rval.data;
 	size = __rval.size;
 	capacity = __rval.capacity;
@@ -840,7 +840,7 @@ namespace pmr
 	    data = __alloc.allocate(capacity = 8);
 	  }
 	auto back = ::new (data + size) chunk(std::move(c));
-	__glibcxx_assert(std::is_sorted(begin(), back));
+	__glibcxx_ifndr_assert(std::is_sorted(begin(), back));
 	++size;
 	return back;
       }
@@ -1029,7 +1029,7 @@ namespace pmr
   {
     const auto it
       = std::lower_bound(_M_unpooled.begin(), _M_unpooled.end(), p);
-    __glibcxx_assert(it != _M_unpooled.end() && it->pointer == p);
+    __glibcxx_ifndr_assert(it != _M_unpooled.end() && it->pointer == p);
     if (it != _M_unpooled.end() && it->pointer == p) // [[likely]]
       {
 	const auto b = *it;
@@ -1113,13 +1113,13 @@ namespace pmr
     : owner(owner), pools(owner._M_impl._M_alloc_pools())
     {
       // __builtin_printf("%p constructing\n", this);
-      __glibcxx_assert(pools);
+      __glibcxx_precondition(pools);
     }
 
     // Exclusive lock must be held in the thread where this destructor runs.
     ~_TPools()
     {
-      __glibcxx_assert(pools);
+      __glibcxx_precondition(pools);
       if (pools)
 	{
 	  memory_resource* r = owner.upstream_resource();
@@ -1138,8 +1138,8 @@ namespace pmr
     // Exclusive lock must be held in the thread where this function runs.
     void move_nonempty_chunks()
     {
-      __glibcxx_assert(pools);
-      __glibcxx_assert(__gthread_active_p());
+      __glibcxx_precondition(pools);
+      __glibcxx_precondition(__gthread_active_p());
       if (!pools)
 	return;
       memory_resource* const r = owner.upstream_resource();
@@ -1159,7 +1159,7 @@ namespace pmr
     static void destroy(_TPools* p)
     {
       exclusive_lock l(p->owner._M_mx);
-      // __glibcxx_assert(p != p->owner._M_tpools);
+      // __glibcxx_precondition(p != p->owner._M_tpools);
       p->move_nonempty_chunks();
       polymorphic_allocator<_TPools> a(p->owner.upstream_resource());
       p->~_TPools();
@@ -1229,7 +1229,7 @@ namespace pmr
   synchronized_pool_resource::_M_thread_specific_pools() noexcept
   {
     __pool_resource::_Pool* pools = nullptr;
-    __glibcxx_assert(__gthread_active_p());
+    __glibcxx_precondition(__gthread_active_p());
     if (auto tp = static_cast<_TPools*>(__gthread_getspecific(_M_key)))
       {
 	pools = tp->pools;
@@ -1344,8 +1344,8 @@ namespace pmr
   synchronized_pool_resource::_M_alloc_tpools(exclusive_lock& l)
   -> _TPools*
   {
-    __glibcxx_assert(_M_tpools != nullptr);
-    __glibcxx_assert(__gthread_active_p());
+    __glibcxx_precondition(_M_tpools != nullptr);
+    __glibcxx_precondition(__gthread_active_p());
     // dump_list(_M_tpools);
     polymorphic_allocator<_TPools> a(upstream_resource());
     _TPools* p = a.allocate(1);
@@ -1378,7 +1378,7 @@ namespace pmr
   synchronized_pool_resource::_M_alloc_shared_tpools(exclusive_lock& l)
   -> _TPools*
   {
-    __glibcxx_assert(_M_tpools == nullptr);
+    __glibcxx_precondition(_M_tpools == nullptr);
     polymorphic_allocator<_TPools> a(upstream_resource());
     _TPools* p = a.allocate(1);
     __try

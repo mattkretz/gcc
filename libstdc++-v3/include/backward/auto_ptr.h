@@ -186,8 +186,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       element_type&
       operator*() const throw()
       {
-	__glibcxx_assert(_M_ptr != 0);
-	return *_M_ptr;
+	__glibcxx_precondition(_M_ptr != 0);
+	return *_M_ptr; 
       }
 
       /**
@@ -199,8 +199,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       element_type*
       operator->() const throw()
       {
-	__glibcxx_assert(_M_ptr != 0);
-	return _M_ptr;
+	__glibcxx_precondition(_M_ptr != 0);
+	return _M_ptr; 
       }
 
       /**

@@ -1190,7 +1190,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       erase(const_iterator __position)
       {
-	__glibcxx_assert(__position != end());
+	__glibcxx_precondition(__position != end());
 	const_iterator __result = __position;
 	++__result;
 	_M_erase_aux(__position);
@@ -1202,7 +1202,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       erase(iterator __position)
       {
-	__glibcxx_assert(__position != end());
+	__glibcxx_precondition(__position != end());
 	iterator __result = __position;
 	++__result;
 	_M_erase_aux(__position);
@@ -1212,14 +1212,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       void
       erase(iterator __position)
       {
-	__glibcxx_assert(__position != end());
+	__glibcxx_precondition(__position != end());
 	_M_erase_aux(__position);
       }
 
       void
       erase(const_iterator __position)
       {
-	__glibcxx_assert(__position != end());
+	__glibcxx_precondition(__position != end());
 	_M_erase_aux(__position);
       }
 #endif
@@ -1439,13 +1439,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       insert_return_type
       _M_reinsert_node_unique(node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || _M_get_Node_allocator() == *__nh._M_alloc);
 	insert_return_type __ret;
 	if (__nh.empty())
 	  __ret.position = end();
 	else
 	  {
-	    __glibcxx_assert(_M_get_Node_allocator() == *__nh._M_alloc);
-
 	    auto __res = _M_get_insert_unique_pos(__nh._M_key());
 	    if (__res.second)
 	      {
@@ -1468,12 +1467,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       _M_reinsert_node_equal(node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || _M_get_Node_allocator() == *__nh._M_alloc);
 	iterator __ret;
 	if (__nh.empty())
 	  __ret = end();
 	else
 	  {
-	    __glibcxx_assert(_M_get_Node_allocator() == *__nh._M_alloc);
 	    auto __res = _M_get_insert_equal_pos(__nh._M_key());
 	    if (__res.second)
 	      __ret = _M_insert_node(__res.first, __res.second, __nh._M_ptr);
@@ -1488,12 +1487,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       _M_reinsert_node_hint_unique(const_iterator __hint, node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || _M_get_Node_allocator() == *__nh._M_alloc);
 	iterator __ret;
 	if (__nh.empty())
 	  __ret = end();
 	else
 	  {
-	    __glibcxx_assert(_M_get_Node_allocator() == *__nh._M_alloc);
 	    auto __res = _M_get_insert_hint_unique_pos(__hint, __nh._M_key());
 	    if (__res.second)
 	      {
@@ -1510,12 +1509,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       iterator
       _M_reinsert_node_hint_equal(const_iterator __hint, node_type&& __nh)
       {
+	__glibcxx_precondition(__nh.empty() || _M_get_Node_allocator() == *__nh._M_alloc);
 	iterator __ret;
 	if (__nh.empty())
 	  __ret = end();
 	else
 	  {
-	    __glibcxx_assert(_M_get_Node_allocator() == *__nh._M_alloc);
 	    auto __res = _M_get_insert_hint_equal_pos(__hint, __nh._M_key());
 	    if (__res.second)
 	      __ret = _M_insert_node(__res.first, __res.second, __nh._M_ptr);

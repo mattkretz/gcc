@@ -308,9 +308,9 @@ namespace __detail
       _M_match_range(const _StrTransT& __first, const _StrTransT& __last,
 		     const _StrTransT& __str) const
       {
-	__glibcxx_assert(__first.size() == 1);
-	__glibcxx_assert(__last.size() == 1);
-	__glibcxx_assert(__str.size() == 1);
+	__glibcxx_precondition(__first.size() == 1);
+	__glibcxx_precondition(__last.size() == 1);
+	__glibcxx_precondition(__str.size() == 1);
 	return this->_M_in_range_icase(__first[0], __last[0], __str[0]);
       }
     };

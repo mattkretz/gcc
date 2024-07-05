@@ -1162,42 +1162,42 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       constexpr const _Tp*
       operator->() const noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return std::__addressof(this->_M_get());
       }
 
       constexpr _Tp*
       operator->() noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return std::__addressof(this->_M_get());
       }
 
       constexpr const _Tp&
       operator*() const& noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return this->_M_get();
       }
 
       constexpr _Tp&
       operator*()& noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return this->_M_get();
       }
 
       constexpr _Tp&&
       operator*()&& noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return std::move(this->_M_get());
       }
 
       constexpr const _Tp&&
       operator*() const&& noexcept
       {
-	__glibcxx_assert(this->_M_is_engaged());
+	__glibcxx_precondition(this->_M_is_engaged());
 	return std::move(this->_M_get());
       }
 

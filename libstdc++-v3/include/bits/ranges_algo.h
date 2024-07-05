@@ -2948,7 +2948,7 @@ namespace ranges
       {
 	auto __first = ranges::begin(__r);
 	auto __last = ranges::end(__r);
-	__glibcxx_assert(__first != __last);
+	__glibcxx_precondition(__first != __last);
 	auto __result = *__first;
 	while (++__first != __last)
 	  {
@@ -2984,7 +2984,7 @@ namespace ranges
       operator()(const _Tp& __val, const _Tp& __lo, const _Tp& __hi,
 		 _Comp __comp = {}, _Proj __proj = {}) const
       {
-	__glibcxx_assert(!(std::__invoke(__comp,
+	__glibcxx_precondition(!(std::__invoke(__comp,
 					 std::__invoke(__proj, __hi),
 					 std::__invoke(__proj, __lo))));
 	auto&& __proj_val = std::__invoke(__proj, __val);
@@ -3047,7 +3047,7 @@ namespace ranges
       {
 	auto __first = ranges::begin(__r);
 	auto __last = ranges::end(__r);
-	__glibcxx_assert(__first != __last);
+	__glibcxx_precondition(__first != __last);
 	auto __comp_proj = __detail::__make_comp_proj(__comp, __proj);
 	minmax_result<range_value_t<_Range>> __result = {*__first, __result.min};
 	if (++__first == __last)
@@ -3970,7 +3970,7 @@ namespace ranges
     shift_left(_ForwardIterator __first, _ForwardIterator __last,
 	       typename iterator_traits<_ForwardIterator>::difference_type __n)
     {
-      __glibcxx_assert(__n >= 0);
+      __glibcxx_precondition(__n >= 0);
       if (__n == 0)
 	return __last;
 
@@ -3985,7 +3985,7 @@ namespace ranges
     shift_right(_ForwardIterator __first, _ForwardIterator __last,
 		typename iterator_traits<_ForwardIterator>::difference_type __n)
     {
-      __glibcxx_assert(__n >= 0);
+      __glibcxx_precondition(__n >= 0);
       if (__n == 0)
 	return __first;
 

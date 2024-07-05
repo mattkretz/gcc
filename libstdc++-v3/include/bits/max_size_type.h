@@ -161,7 +161,7 @@ namespace ranges
       constexpr __max_size_type&
       operator/=(const __max_size_type& __r) noexcept
       {
-	__glibcxx_assert(__r != 0);
+	__glibcxx_precondition(__r != 0);
 
 	if (!_M_msb && !__r._M_msb) [[likely]]
 	  _M_val /= __r._M_val;
@@ -201,7 +201,7 @@ namespace ranges
       constexpr __max_size_type&
       operator<<=(const __max_size_type& __r) noexcept
       {
-	__glibcxx_assert(__r <= _S_rep_bits);
+	__glibcxx_precondition(__r <= _S_rep_bits);
 	if (__r != 0)
 	  {
 	    _M_msb = (_M_val >> (_S_rep_bits - __r._M_val)) & 1;
@@ -217,7 +217,7 @@ namespace ranges
       constexpr __max_size_type&
       operator>>=(const __max_size_type& __r) noexcept
       {
-	__glibcxx_assert(__r <= _S_rep_bits);
+	__glibcxx_precondition(__r <= _S_rep_bits);
 	if (__r != 0)
 	  {
 	    if (__r._M_val == _S_rep_bits) [[unlikely]]

@@ -139,7 +139,7 @@ template<typename _CharT, typename _Traits>
     basic_streambuf<_CharT, _Traits>*
     setbuf(_CharT* __s, streamsize __n) override
     {
-      __glibcxx_assert(__n >= 0);
+      __glibcxx_precondition(__n >= 0);
       this->span(std::span<_CharT>(__s, __n));
       return this;
     }

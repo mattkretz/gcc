@@ -74,7 +74,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       allocator_type
       get_allocator() const noexcept
       {
-	__glibcxx_assert(!this->empty());
+	__glibcxx_precondition(!this->empty());
 	return allocator_type(_M_alloc._M_alloc);
       }
 
@@ -126,7 +126,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 			  const _NodeAlloc& __alloc)
       : _M_ptr(__ptr), _M_alloc(__alloc)
       {
-	__glibcxx_assert(__ptr != nullptr);
+	__glibcxx_precondition(__ptr != nullptr);
       }
 
       void
@@ -207,7 +207,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  if constexpr (_ATr::propagate_on_container_move_assignment::value)
 	    _M_alloc = std::move(__alloc);
 	  else if constexpr (!_AllocTraits::is_always_equal::value)
-	    __glibcxx_assert(_M_alloc == __alloc);
+	    __glibcxx_precondition(_M_alloc == __alloc);
 	}
 
 	// Precondition: _M_alloc is the active member of both unions.
@@ -218,7 +218,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  if constexpr (_AllocTraits::propagate_on_container_swap::value)
 	    swap(_M_alloc, __other._M_alloc);
 	  else if constexpr (!_AllocTraits::is_always_equal::value)
-	    __glibcxx_assert(_M_alloc == __other._M_alloc);
+	    __glibcxx_precondition(_M_alloc == __other._M_alloc);
 	}
 
 	// Precondition: _M_alloc is the active member of the union.
@@ -268,14 +268,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       key_type&
       key() const noexcept
       {
-	__glibcxx_assert(!this->empty());
+	__glibcxx_precondition(!this->empty());
 	return *_M_pkey;
       }
 
       mapped_type&
       mapped() const noexcept
       {
-	__glibcxx_assert(!this->empty());
+	__glibcxx_precondition(!this->empty());
 	return *_M_pmapped;
       }
 
@@ -358,7 +358,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       value_type&
       value() const noexcept
       {
-	__glibcxx_assert(!this->empty());
+	__glibcxx_precondition(!this->empty());
 	return *this->_M_ptr->_M_valptr();
       }
 

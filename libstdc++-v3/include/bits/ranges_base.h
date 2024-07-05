@@ -861,7 +861,7 @@ namespace ranges
 	else
 	  {
 	    // cannot decrement a non-bidirectional iterator
-	    __glibcxx_assert(__n >= 0);
+	    __glibcxx_precondition(__n >= 0);
 	    while (__n-- > 0)
 	      ++__it;
 	  }
@@ -883,9 +883,30 @@ namespace ranges
       }
 
     template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
+      constexpr bool
+      __pre_valid_range(_It __it, _Sent __bound) const
+      {
+	if constexpr (sized_sentinel_for<_Sent, _It>)
+	  return __bound - __it >= 0;
+	else
+	  return true; // assume it's okay --- too expensive to check
+      }
+
+    template<typename _It, typename _Sent>
+      requires (!input_or_output_iterator<_It> || !sentinel_for<_Sent, _It>)
+      constexpr bool
+      __pre_valid_range(_It, _Sent) const
+      { return false; }
+
+    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
       constexpr iter_difference_t<_It>
       operator()(_It& __it, iter_difference_t<_It> __n, _Sent __bound) const
       {
+	__glibcxx_precondition(
+	  (__n > 0 && __pre_valid_range(__it, __bound))
+	    || (__n == 0 && (__pre_valid_range(__it, __bound) || __pre_valid_range(__bound, __it)))
+	    || (__n < 0 && same_as<_It, _Sent> && bidirectional_iterator<_It>
+		  && __pre_valid_range(__bound, __it)));
 	if constexpr (sized_sentinel_for<_Sent, _It>)
 	  {
 	    const auto __diff = __bound - __it;
@@ -899,9 +920,6 @@ namespace ranges
 	      }
 	    else if (__n != 0) [[likely]]
 	      {
-		// n and bound must not lead in opposite directions:
-		__glibcxx_assert((__n < 0) == (__diff < 0));
-
 		(*this)(__it, __n);
 		return 0;
 	      }
@@ -933,11 +951,7 @@ namespace ranges
 	    return __n - __m;
 	  }
 	else
-	  {
-	    // cannot decrement a non-bidirectional iterator
-	    __glibcxx_assert(__n >= 0);
-	    return __n;
-	  }
+	  return __n;
       }
 
     void operator&() const = delete;

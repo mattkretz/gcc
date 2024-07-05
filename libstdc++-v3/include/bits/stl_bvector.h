@@ -1229,7 +1229,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       swap(vector& __x) _GLIBCXX_NOEXCEPT
       {
 #if __cplusplus >= 201103L
-	__glibcxx_assert(_Bit_alloc_traits::propagate_on_container_swap::value
+	__glibcxx_precondition(_Bit_alloc_traits::propagate_on_container_swap::value
 			 || _M_get_Bit_allocator() == __x._M_get_Bit_allocator());
 #endif
 	this->_M_impl._M_swap_data(__x._M_impl);

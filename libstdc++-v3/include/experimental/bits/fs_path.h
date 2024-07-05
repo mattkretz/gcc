@@ -924,8 +924,8 @@ namespace __detail
   path::path(string_type __str, _Type __type)
   : _M_pathname(__str), _M_type(__type)
   {
-    __glibcxx_assert(!empty());
-    __glibcxx_assert(_M_type != _Type::_Multi);
+    __glibcxx_precondition(!empty());
+    __glibcxx_precondition(_M_type != _Type::_Multi);
   }
 
   inline
@@ -1244,46 +1244,36 @@ namespace __detail
   inline path::iterator&
   path::iterator::operator++() noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition((_M_path->_M_type == _Type::_Multi && _M_cur != _M_path->_M_cmpts.end())
+			     || !_M_at_end);
     if (_M_path->_M_type == _Type::_Multi)
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.end());
-	++_M_cur;
-      }
+      ++_M_cur;
     else
-      {
-	__glibcxx_assert(!_M_at_end);
-	_M_at_end = true;
-      }
+      _M_at_end = true;
     return *this;
   }
 
   inline path::iterator&
   path::iterator::operator--() noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition((_M_path->_M_type == _Type::_Multi
+			      && _M_cur != _M_path->_M_cmpts.begin()) || _M_at_end);
     if (_M_path->_M_type == _Type::_Multi)
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.begin());
-	--_M_cur;
-      }
+      --_M_cur;
     else
-      {
-	__glibcxx_assert(_M_at_end);
-	_M_at_end = false;
-      }
+      _M_at_end = false;
     return *this;
   }
 
   inline path::iterator::reference
   path::iterator::operator*() const noexcept
   {
-    __glibcxx_assert(_M_path != nullptr);
+    __glibcxx_precondition(_M_path != nullptr);
+    __glibcxx_precondition(_M_path->_M_type != _Type::_Multi || _M_cur != _M_path->_M_cmpts.end());
     if (_M_path->_M_type == _Type::_Multi)
-      {
-	__glibcxx_assert(_M_cur != _M_path->_M_cmpts.end());
-	return *_M_cur;
-      }
+      return *_M_cur;
     return *_M_path;
   }
 

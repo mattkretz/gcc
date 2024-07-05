@@ -155,14 +155,14 @@ namespace ranges
       constexpr decltype(auto)
       front() requires forward_range<_Derived>
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *ranges::begin(_M_derived());
       }
 
       constexpr decltype(auto)
       front() const requires forward_range<const _Derived>
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *ranges::begin(_M_derived());
       }
 
@@ -170,7 +170,7 @@ namespace ranges
       back()
       requires bidirectional_range<_Derived> && common_range<_Derived>
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *ranges::prev(ranges::end(_M_derived()));
       }
 
@@ -179,7 +179,7 @@ namespace ranges
       requires bidirectional_range<const _Derived>
 	&& common_range<const _Derived>
       {
-	__glibcxx_assert(!empty());
+	__glibcxx_precondition(!empty());
 	return *ranges::prev(ranges::end(_M_derived()));
       }
 
@@ -402,6 +402,7 @@ namespace ranges
       {
 	// _GLIBCXX_RESOLVE_LIB_DEFECTS
 	// 3433. subrange::advance(n) has UB when n < 0
+	__glibcxx_precondition(__n >= 0 || bidirectional_iterator<_It>);
 	if constexpr (bidirectional_iterator<_It>)
 	  if (__n < 0)
 	    {
@@ -411,7 +412,6 @@ namespace ranges
 	      return *this;
 	    }
 
-	__glibcxx_assert(__n >= 0);
 	auto __d = __n - ranges::advance(_M_begin, __n, _M_end);
 	if constexpr (_S_store_size)
 	  _M_size._M_size -= __detail::__to_unsigned_like(__d);
@@ -753,7 +753,7 @@ namespace ranges
       {
 	auto __first = ranges::begin(__r);
 	auto __last = ranges::end(__r);
-	__glibcxx_assert(__first != __last);
+	__glibcxx_precondition(__first != __last);
 	auto __result = *__first;
 	while (++__first != __last)
 	  {

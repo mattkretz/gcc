@@ -627,7 +627,7 @@ inline namespace v1
 
       native_handle_type release(error_code& __ec)
       {
-	__glibcxx_assert(is_open());
+	__glibcxx_precondition(is_open());
 	cancel(__ec);
 	return std::__exchange(_M_sockfd, -1);
       }

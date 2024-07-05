@@ -105,7 +105,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		   _IntType __b = __gnu_cxx::__int_traits<_IntType>::__max)
 	: _M_a(__a), _M_b(__b)
 	{
-	  __glibcxx_assert(_M_a <= _M_b);
+	  __glibcxx_precondition(_M_a <= _M_b);
 	}
 
 	result_type
@@ -356,12 +356,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	      low in [0, urngrange].
 	    */
+	    constexpr __uctype __uerngrange = __urngrange + 1;
+	    const _IntType __tmp_max = __urange / __uerngrange;
+	    __glibcxx_checked_assumption(__tmp_max > 0);
 	    __uctype __tmp; // wraparound control
 	    do
 	      {
-		const __uctype __uerngrange = __urngrange + 1;
 		__tmp = (__uerngrange * operator()
-			 (__urng, param_type(0, __urange / __uerngrange)));
+			 (__urng, param_type(0, __tmp_max)));
 		__ret = __tmp + (__uctype(__urng()) - __urngmin);
 	      }
 	    while (__ret > __urange || __ret < __tmp);
@@ -441,14 +443,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 	      low in [0, urngrange].
 	    */
+	    constexpr __uctype __uerngrange = __urngrange + 1;
+	    const _IntType __tmp_max = __urange / __uerngrange;
+	    __glibcxx_checked_assumption(__tmp_max > 0);
 	    __uctype __tmp; // wraparound control
 	    while (__f != __t)
 	      {
 		do
 		  {
-		    constexpr __uctype __uerngrange = __urngrange + 1;
 		    __tmp = (__uerngrange * operator()
-			     (__urng, param_type(0, __urange / __uerngrange)));
+			     (__urng, param_type(0, __tmp_max)));
 		    __ret = __tmp + (__uctype(__urng()) - __urngmin);
 		  }
 		while (__ret > __urange || __ret < __tmp);

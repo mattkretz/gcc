@@ -175,7 +175,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     explicit __atomic_semaphore(__detail::__platform_wait_t __count) noexcept
       : _M_counter(__count)
     {
-      __glibcxx_assert(__count >= 0 && __count <= _S_max);
+      __glibcxx_precondition(__count >= 0 && __count <= _S_max);
     }
 
     __atomic_semaphore(const __atomic_semaphore&) = delete;
