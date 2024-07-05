@@ -141,7 +141,7 @@ namespace __gnu_debug
     __check_singular(_Tp* const& __ptr)
     { return __ptr == 0; }
 
-  /** We say that integral types for a valid range, and defer to other
+  /** We say that integral types form a valid range, and defer to other
    *  routines to realize what to do with integral types instead of
    *  iterators.
   */
