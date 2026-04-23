@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-options "-std=c++20 -fno-overloadable-conditional" }
 
 struct A {};
 struct B {};
