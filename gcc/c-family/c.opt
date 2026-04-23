@@ -2377,6 +2377,10 @@ frtti
 C++ ObjC++ Optimization Var(flag_rtti) Init(1)
 Generate run time type descriptor information.
 
+foverloadable-conditional
+C++ ObjC++ Var(flag_overloadable_conditional) Init(1)
+Allow overload resolution for operator?:.
+
 fsearch-include-path
 C ObjC C++ ObjC++
 Look for the main source file on the include path.

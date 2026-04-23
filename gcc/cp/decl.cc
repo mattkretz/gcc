@@ -17966,9 +17966,81 @@ grok_op_properties (tree decl, bool complain)
 
   if (operator_code == COND_EXPR)
     {
-      /* 13.4.0.3 */
-      error_at (loc, "ISO C++ prohibits overloading %<operator ?:%>");
-      return false;
+      if (!flag_overloadable_conditional)
+	{
+	  /* 13.4.0.3 */
+	  error_at (loc, "ISO C++ prohibits overloading %<operator ?:%>");
+	  return false;
+	}
+
+      /* G++ extension: operator?: may be overloaded, but only as a
+	 non-member function with exactly three arguments.  */
+      if (methodp)
+	{
+	  error_at (loc, "%qD must not be a member function", decl);
+	  return false;
+	}
+
+      /* Count arguments and check for ellipsis.  */
+      int cond_arity = 0;
+      for (tree arg = argtypes; arg != void_list_node; arg = TREE_CHAIN (arg))
+	{
+	  if (!arg)
+	    {
+	      error_at (loc, "%qD must not have variable number of arguments",
+			decl);
+	      return false;
+	    }
+	  ++cond_arity;
+	}
+
+      if (cond_arity != 3)
+	{
+	  error_at (loc, "%qD must have exactly three arguments", decl);
+	  return false;
+	}
+
+      /* No default arguments.  */
+      for (tree arg = argtypes; arg && arg != void_list_node;
+	   arg = TREE_CHAIN (arg))
+	if (TREE_PURPOSE (arg))
+	  {
+	    TREE_PURPOSE (arg) = NULL_TREE;
+	    error_at (loc, "%qD cannot have default arguments", decl);
+	    return false;
+	  }
+
+      /* Check whether a built-in operator?: already exists for these types.
+	 Only matters when the first argument is bool (the condition type of
+	 the built-in ?:).  Skip inside template declarations — we don't know
+	 instantiated types yet.  Also skip template specializations — a
+	 built-in ?: never does overload resolution, so it would never
+	 instantiate such a template.  Skip defaulted functions — they're
+	 validated in check_defaulted_conditional.  */
+      if (!template_parm_scope_p ()
+	  && !DECL_DEFAULTED_FN (decl)
+	  && !DECL_TEMPLATE_SPECIALIZATION (decl))
+	{
+	  tree cond_t1 = TREE_VALUE (argtypes);
+	  if (same_type_ignoring_top_level_qualifiers_p (cond_t1,
+							 boolean_type_node))
+	    {
+	      tree cond_t2 = TREE_VALUE (TREE_CHAIN (argtypes));
+	      tree cond_t3 = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (argtypes)));
+	      while (TREE_CODE (cond_t2) == REFERENCE_TYPE)
+		cond_t2 = TREE_TYPE (cond_t2);
+	      while (TREE_CODE (cond_t3) == REFERENCE_TYPE)
+		cond_t3 = TREE_TYPE (cond_t3);
+	      if (conditional_operator_has_builtin_p (cond_t2, cond_t3))
+		{
+		  error_at (loc, "%qD: built-in operator?: already exists "
+				 "for %qT and %qT", decl, cond_t2, cond_t3);
+		  return false;
+		}
+	    }
+	}
+
+      return true;
     }
 
   /* Count the number of arguments and check for ellipsis.  */

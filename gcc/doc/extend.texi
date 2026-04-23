@@ -30662,6 +30662,7 @@ Predefined Macros,cpp,The GNU C Preprocessor}).
                         each needed template instantiation is emitted.
 * Bound member functions:: You can extract a function pointer to the
                         method denoted by a @samp{->*} or @samp{.*} expression.
+* Overloading Conditional Operator:: How to overload @code{operator?:}.
 * C++ Attributes::      Variable, function, and type attributes for C++ only.
 * Function Multiversioning::   Declaring multiple function versions.
 * Type Traits::         Compiler support for type traits.
@@ -31111,6 +31112,42 @@ fptr p1 = (fptr)(&A::foo);
 
 @opindex Wno-pmf-conversions
 You must specify @option{-Wno-pmf-conversions} to use this extension.
+
+@node Overloading Conditional Operator
+@section Overloading the Conditional Operator (@code{operator?:})
+@cindex operator?:
+@cindex conditional operator overload
+@cindex ternary operator overload
+
+As a G++ extension, the conditional operator (@code{?:}) may be overloaded.
+This enables efficient SIMD blend operations where the condition operand
+is a mask type rather than a scalar boolean.
+
+The extension is enabled by default and can be disabled with
+@option{-fno-overloadable-conditional}.  When disabled, overloading
+@code{operator?:} produces an ISO C++ standard error, and the preprocessor
+macro @code{__GXX_CONDITIONAL_IS_OVERLOADABLE__} is not defined.
+
+A user-defined @code{operator?:} must be a non-member function taking exactly
+three arguments corresponding to the condition, true-expression, and false-expression.
+Member @code{operator?:} and overloads with fewer or more than three parameters are
+rejected.  Default arguments are not permitted.
+
+When a user-defined @code{operator?:} is found by ordinary name lookup or ADL,
+it participates in overload resolution alongside the built-in conditional operator.
+A user-defined overload is preferred when it is viable.
+
+@example
+struct mask @{ bool v; @};
+struct vec  @{ int v; @};
+
+vec operator?: (mask m, vec a, vec b)
+@{ return m.v ? a : b; @}
+
+mask m = @{true@};
+vec x = @{1@}, y = @{2@};
+vec z = m ? x : y;  // Calls user-defined operator?:
+@end example
 
 @node C++ Attributes
 @section C++-Specific Variable, Function, and Type Attributes

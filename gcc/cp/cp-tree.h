@@ -6182,7 +6182,8 @@ enum special_function_kind {
   sfk_conversion,	   /* A conversion operator.  */
   sfk_deduction_guide,	   /* A class template deduction guide.  */
   sfk_comparison,	   /* A comparison operator (e.g. ==, <, <=>).  */
-  sfk_virtual_destructor   /* Used by member synthesis fns.  */
+  sfk_virtual_destructor,  /* Used by member synthesis fns.  */
+  sfk_conditional	   /* A conditional operator (operator?:).  */
 };
 
 /* The various kinds of linkage.  From [basic.link],
@@ -7968,6 +7969,7 @@ extern uintptr_t module_token_lang (int type, int keyword, tree value,
 				    location_t, uintptr_t);
 
 /* in method.cc */
+extern bool conditional_operator_has_builtin_p	(tree, tree);
 extern void init_method				(void);
 extern tree make_thunk				(tree, bool, tree, tree);
 extern void finish_thunk			(tree);

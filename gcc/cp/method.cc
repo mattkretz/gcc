@@ -1164,6 +1164,123 @@ genericize_spaceship (location_t loc, tree type, tree op0, tree op1)
   return r;
 }
 
+/* Return true when a built-in operator?: already exists for types T2 and T3.
+   This is the case when: (a) neither is a class type, (b) the types are the
+   same, or (c) one implicitly converts to the other.  In these cases the
+   standard conditional expression rules provide a common type, so a user-
+   defined overload would be ill-formed.  T2 and T3 should already have
+   reference qualifiers stripped.  */
+
+bool
+conditional_operator_has_builtin_p (tree t2, tree t3)
+{
+  /* At least one must be a class type, otherwise the standard already
+     handles the common type (arithmetic/enum/pointer).  */
+  if (!CLASS_TYPE_P (t2) && !CLASS_TYPE_P (t3))
+    return true;
+
+  /* If the types are the same, common type exists.  */
+  if (same_type_p (t2, t3))
+    return true;
+
+  /* If one type implicitly converts to the other, common type exists.  */
+  if (can_convert_arg (t3, t2, NULL_TREE, LOOKUP_NORMAL, tf_none)
+      || can_convert_arg (t2, t3, NULL_TREE, LOOKUP_NORMAL, tf_none))
+    return true;
+
+  return false;
+}
+
+/* Check that a defaulted operator?: is valid.  FN has exactly 3
+   parameters: (bool, B, C).  Reject if a common type already exists
+   for B and C under the standard conditional expression rules.  */
+
+static bool
+check_defaulted_conditional (tree fn)
+{
+  location_t loc = DECL_SOURCE_LOCATION (fn);
+  tree parms = FUNCTION_FIRST_USER_PARMTYPE (fn);
+
+  /* Need exactly 3 parameters.  */
+  if (!parms || parms == void_list_node)
+    {
+      error_at (loc, "defaulted %qD requires three parameters", fn);
+      return false;
+    }
+
+  /* First parameter must be bool.  */
+  tree t1 = TREE_VALUE (parms);
+  if (!same_type_ignoring_top_level_qualifiers_p (t1, boolean_type_node))
+    {
+      error_at (loc, "first parameter of defaulted %qD must be %<bool%>", fn);
+      return false;
+    }
+
+  /* Get second and third parameter types.  */
+  parms = TREE_CHAIN (parms);
+  if (!parms || parms == void_list_node)
+    {
+      error_at (loc, "defaulted %qD requires three parameters", fn);
+      return false;
+    }
+  tree t2 = TREE_VALUE (parms);
+  parms = TREE_CHAIN (parms);
+  if (!parms || parms == void_list_node)
+    {
+      error_at (loc, "defaulted %qD requires three parameters", fn);
+      return false;
+    }
+  tree t3 = TREE_VALUE (parms);
+
+  /* Strip top-level reference qualifiers for the check.  */
+  while (TREE_CODE (t2) == REFERENCE_TYPE)
+    t2 = TREE_TYPE (t2);
+  while (TREE_CODE (t3) == REFERENCE_TYPE)
+    t3 = TREE_TYPE (t3);
+
+  /* Check whether a built-in operator?: already exists for these types.
+     Skip inside template declarations — we don't know instantiated types
+     yet.  Also skip for template specializations — a built-in ?: never
+     does overload resolution, so it would never find or instantiate such
+     templates anyway.  */
+  if (!template_parm_scope_p ()
+      && !DECL_TEMPLATE_SPECIALIZATION (fn)
+      && conditional_operator_has_builtin_p (t2, t3))
+    {
+      error_at (loc, "%qD: built-in operator?: already exists for %qT and %qT",
+		fn, t2, t3);
+      return false;
+    }
+
+  tree cond_result = TREE_TYPE (TREE_TYPE (fn));
+  if (dependent_type_p (cond_result) || dependent_type_p (t2)
+	|| dependent_type_p (t3))
+    return true;
+
+  /* Verify that each argument type can be directly-initialized to the
+     return type.  This catches cases like:
+
+       C& operator?:(bool, A&, B&) = default;
+
+     where A has no conversion to C&.  Skip for dependent types inside
+     templates — we can't determine validity until instantiation.  */
+  cp_unevaluated cp_uneval_guard;
+
+  for (tree argtype : { t2, t3 })
+    {
+      tree expr = build_dummy_object (argtype);
+      tree result = perform_direct_initialization_if_possible
+		      (cond_result, expr, /*c_cast_p=*/true, tf_none);
+      if (!result || result == error_mark_node)
+	{
+	  error_at (loc, "defaulted %qD: cannot convert %qT to %qT",
+		    fn, argtype, cond_result);
+	  return false;
+	}
+    }
+  return true;
+}
+
 /* Check that the signature of a defaulted comparison operator is
    well-formed.  */
 
@@ -1837,6 +1954,39 @@ synthesize_method (tree fndecl)
     {
       /* Pass tf_none so the function is just deleted if there's a problem.  */
       build_comparison_op (fndecl, true, tf_none);
+      need_body = false;
+    }
+  else if (sfk == sfk_conditional)
+    {
+      /* Defaulted operator?: may be called as a function when its address is
+	 taken. Synthesize: return cond ? R(arg2) : R(arg3);
+	 where R is the return type.  */
+      tree args = DECL_ARGUMENTS (fndecl);
+      tree cond = args;
+      tree arg2 = DECL_CHAIN (args);
+      tree arg3 = DECL_CHAIN (arg2);
+      tree rettype = TREE_TYPE (TREE_TYPE (fndecl));
+
+      /* Strip reference type from parameters before conversion, matching
+	 what apply_user_defined_conditional does.  implicit_conversion
+	 asserts the argument type is not a reference.  */
+      arg2 = convert_from_reference (arg2);
+      arg3 = convert_from_reference (arg3);
+
+      arg2 = perform_direct_initialization_if_possible
+	       (rettype, arg2, true, tf_warning_or_error);
+      arg3 = perform_direct_initialization_if_possible
+	       (rettype, arg3, true, tf_warning_or_error);
+
+      if (!TYPE_REF_P (rettype))
+	{
+	  arg2 = force_rvalue (arg2, tf_none);
+	  arg3 = force_rvalue (arg3, tf_none);
+	}
+
+      tree result = build_x_conditional_expr (input_location, cond, arg2,
+					      arg3, tf_none);
+      finish_return_stmt (result);
       need_body = false;
     }
 
@@ -3798,6 +3948,13 @@ defaulted_late_check (tree fn, tristate imp_const/*=tristate::unknown()*/)
       return;
     }
 
+  if (kind == sfk_conditional)
+    {
+      /* Early validation already done in check_defaulted_conditional.
+	 Nothing further to check for defaulted operator?:.  */
+      return;
+    }
+
   bool fn_const_p = (copy_fn_p (fn) == 2);
   /* "if F2 has a non-object parameter of type const C&, the corresponding
      non-object parameter of F1 may be of type C&."  But not the other way
@@ -3885,7 +4042,13 @@ defaultable_fn_check (tree fn)
 {
   special_function_kind kind = sfk_none;
 
-  if (template_parm_scope_p ())
+  if (DECL_OVERLOADED_OPERATOR_IS (fn, COND_EXPR))
+    {
+      kind = sfk_conditional;
+      if (!check_defaulted_conditional (fn))
+	return false;
+    }
+  else if (template_parm_scope_p ())
     {
       error ("a template cannot be defaulted");
       return false;

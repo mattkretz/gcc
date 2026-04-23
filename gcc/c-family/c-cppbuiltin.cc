@@ -963,6 +963,10 @@ c_cpp_builtins (cpp_reader *pfile)
 	  cpp_define (pfile, "__cpp_rtti=199711L");
 	}
 
+      /* G++ extension: operator?: is overloadable.  */
+      if (flag_overloadable_conditional)
+	cpp_define (pfile, "__GXX_CONDITIONAL_IS_OVERLOADABLE__");
+
       if (cxx_dialect >= cxx11)
 	{
 	  cpp_define (pfile, "__GXX_EXPERIMENTAL_CXX0X__");

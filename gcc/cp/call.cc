@@ -2376,9 +2376,13 @@ add_candidate (struct z_candidate **candidates,
   *candidates = cand;
 
   if (convs && cand->reversed ())
-    /* Swap the conversions for comparison in joust; we'll swap them back
-       before build_over_call.  */
-    std::swap (convs[0], convs[1]);
+    {
+      /* Swap the conversions for comparison in joust; we'll swap them back
+         before build_over_call.  For ternary operator?:, don't swap — the
+         caller handles arg2/arg3 swap, keeping convs aligned.  */
+      if (num_convs < 3)
+        std::swap (convs[0], convs[1]);
+    }
 
   return cand;
 }
@@ -3811,6 +3815,41 @@ add_template_candidate_real (struct z_candidate **candidates, tree tmpl,
 	     such as X(X<T>).  */
 	  reason = invalid_copy_with_fn_template_rejection ();
 	  goto fail;
+	}
+    }
+
+  /* For a defaulted operator?: template instantiation, re-check that
+     arg2 and arg3 can be directly-initialized to the return type.
+     This was skipped at definition time for dependent types; now that
+     we have concrete types, failure here means SFINAE elimination.  */
+  if (DECL_DEFAULTED_FN (fn)
+      && DECL_OVERLOADED_OPERATOR_IS (fn, COND_EXPR)
+      && DECL_TI_TEMPLATE (fn))
+    {
+      tree cond_result = TREE_TYPE (TREE_TYPE (fn));
+      tree inst_parms = FUNCTION_FIRST_USER_PARMTYPE (fn);
+      gcc_assert (inst_parms);
+      inst_parms = TREE_CHAIN (inst_parms);  // skip bool
+      gcc_assert (inst_parms);
+      tree t2 = TREE_VALUE (inst_parms);
+      tree t3 = TREE_VALUE (TREE_CHAIN (inst_parms));
+
+      cp_unevaluated cp_uneval_guard;
+      for (tree argtype : { t2, t3 })
+	{
+	  while (TREE_CODE (argtype) == REFERENCE_TYPE)
+	    argtype = TREE_TYPE (argtype);
+	  tree expr = build_dummy_object (argtype);
+	  tree result = perform_direct_initialization_if_possible
+			  (cond_result, expr, /*c_cast_p=*/true, tf_none);
+	  if (!result || result == error_mark_node)
+	    {
+	      reason = template_unification_rejection (tmpl, explicit_targs,
+						       targs, args_without_in_chrg,
+						       nargs_without_in_chrg,
+						       return_type, strict, flags);
+	      goto fail;
+	    }
 	}
     }
 
@@ -5848,6 +5887,200 @@ conditional_conversion (tree e1, tree e2, tsubst_flags_t complain)
 				LOOKUP_IMPLICIT, complain);
 }
 
+/* Return a built-in conditional operator applied to ARG1, ARG2, ARG3.  */
+
+static tree
+build_conditional_expr_1 (const op_location_t &loc, tree arg2_type,
+			  tree arg1, tree arg2, tree arg3,
+			  tsubst_flags_t complain, tree result_type,
+			  tree semantic_result_type, bool is_glvalue)
+{
+  if (processing_template_decl && is_glvalue)
+    {
+      /* Let lvalue_kind know this was a glvalue.  */
+      tree arg = (result_type == arg2_type ? arg2 : arg3);
+      result_type = cp_build_reference_type (result_type, xvalue_p (arg));
+    }
+
+  tree result = build3_loc (loc, COND_EXPR, result_type, arg1, arg2, arg3);
+
+  /* If the ARG2 and ARG3 are the same and don't have side-effects,
+     warn here, because the COND_EXPR will be turned into ARG2.  */
+  if (warn_duplicated_branches
+      && (complain & tf_warning)
+      && (arg2 == arg3 || operand_equal_p (arg2, arg3,
+					   OEP_ADDRESS_OF_SAME_FIELD)))
+    warning_at (EXPR_LOCATION (result), OPT_Wduplicated_branches,
+		"this condition has identical branches");
+
+  /* We can't use result_type below, as fold might have returned a
+     throw_expr.  */
+
+  if (!is_glvalue)
+    {
+      /* Expand both sides into the same slot, hopefully the target of
+	 the ?: expression.  We used to check for TARGET_EXPRs here,
+	 but now we sometimes wrap them in NOP_EXPRs so the test would
+	 fail.  */
+      if (CLASS_TYPE_P (TREE_TYPE (result)))
+	{
+	  result = get_target_expr (result, complain);
+	  /* Tell gimplify_modify_expr_rhs not to strip this in
+	     assignment context: we want both arms to initialize
+	     the same temporary.  */
+	  TARGET_EXPR_NO_ELIDE (result) = true;
+	}
+      /* If this expression is an rvalue, but might be mistaken for an
+	 lvalue, we must add a NON_LVALUE_EXPR.  */
+      result = rvalue (result);
+      if (semantic_result_type)
+	result = build1 (EXCESS_PRECISION_EXPR, semantic_result_type,
+			 result);
+    }
+  else
+    {
+      result = force_paren_expr (result);
+      gcc_assert (semantic_result_type == NULL_TREE);
+    }
+
+  return result;
+}
+
+/* Look up user-defined (defaulted or not) operator?: and do overload resolution
+   with reversed lookup.  If a winning user-defined operator?: candidate is
+   found, convert ARG1, ARG2, ARG3 as per the candidate's conversions.  For a
+   defaulted operator?: this emits a built-in COND_EXPR by converting arg2/arg3
+   to the declared return type and calling build_conditional_expr_1.  For a
+   non-defaulted operator?: this builds and returns a CALL_EXPR, or
+   error_mark_node on failure.  */
+
+static tree
+build_user_defined_conditional_expr (const op_location_t &loc,
+				     tree arg1, tree arg2, tree arg3,
+				     tsubst_flags_t complain)
+{
+  releasing_vec args;
+  args->quick_push (arg1);
+  args->quick_push (arg2);
+  args->quick_push (arg3);
+  tree fnname = ovl_op_identifier (false, COND_EXPR);
+  tree fns = lookup_name (fnname, LOOK_where::BLOCK_NAMESPACE);
+  fns = lookup_arg_dependent (fnname, fns, args);
+  if (!fns)
+    {
+      if (complain & tf_error)
+	inform (loc, "no user-defined %<operator?:%> found");
+      return error_mark_node;
+    }
+  struct z_candidate *candidates = 0;
+  bool any_viable;
+
+  /* Normal order (arg1, arg2, arg3).  */
+  add_candidates (fns, NULL_TREE, args, NULL_TREE, NULL_TREE, false,
+		  NULL_TREE, NULL_TREE, LOOKUP_IMPLICIT, &candidates,
+		  complain);
+
+  tree neg_arg1 = NULL_TREE;
+  if (TREE_TYPE(arg2) != TREE_TYPE(arg3))
+    {
+      /* Reversed order (!arg1, arg3, arg2).  If !arg1 is not well-formed, don't
+	 add reversed candidates and inform() the user about it if no viable
+	 candidates are found.  */
+      neg_arg1 = build_x_unary_op (loc, TRUTH_NOT_EXPR, arg1, NULL_TREE,
+				   tf_none);
+      if (neg_arg1 != error_mark_node)
+	{
+	  releasing_vec rev_args;
+	  rev_args->quick_push (neg_arg1);
+	  rev_args->quick_push (arg3);
+	  rev_args->quick_push (arg2);
+	  add_candidates (fns, NULL_TREE, rev_args, NULL_TREE,
+			  NULL_TREE, false, NULL_TREE, NULL_TREE,
+			  LOOKUP_IMPLICIT | LOOKUP_REVERSED, &candidates,
+			  complain);
+	}
+    }
+
+  candidates = splice_viable (candidates, false, &any_viable);
+  if (!any_viable)
+    {
+      if (complain & tf_error)
+	{
+	  auto_diagnostic_group d;
+	  inform (loc, "no viable user-defined %<operator?:%> found");
+	  if (neg_arg1 == error_mark_node)
+	    inform (loc, "no reversed candidates considered because %<!%T%> is"
+			 " ill-formed", TREE_TYPE(arg1));
+	}
+      return error_mark_node;
+    }
+
+  struct z_candidate *winner = tourney (candidates, complain);
+  if (!winner)
+    {
+      if (complain & tf_error)
+	{
+	  auto_diagnostic_group d;
+	  op_error (loc, COND_EXPR, NOP_EXPR, arg1, arg2, arg3, false);
+	  print_z_candidates (loc, candidates);
+	}
+      return error_mark_node;
+    }
+  if (winner->reversed())
+    {
+      arg1 = neg_arg1;
+      std::swap(arg2, arg3);
+    }
+  tree fn = winner->fn;
+  if (DECL_DEFAULTED_FN (fn))
+    {
+      /* Defaulted operator?: won.  Emit built-in COND_EXPR with
+	 arg2/arg3 converted to the declared return type A.  */
+      conversion *wc;
+      tree result_type = TREE_TYPE (TREE_TYPE (fn));
+
+      wc = winner->convs[0];
+      arg1 = convert_like (wc, arg1, complain);
+      wc = winner->convs[1];
+      arg2 = convert_like (wc, arg2, complain);
+      wc = winner->convs[2];
+      arg3 = convert_like (wc, arg3, complain);
+
+      tree arg2_unref = convert_from_reference (arg2);
+      tree arg3_unref = convert_from_reference (arg3);
+
+      arg2 = perform_direct_initialization_if_possible
+	       (result_type, arg2_unref, /*c_cast_p=*/true, complain);
+      arg3 = perform_direct_initialization_if_possible
+	       (result_type, arg3_unref, /*c_cast_p=*/true, complain);
+
+      if (arg2 == error_mark_node || arg2 == NULL_TREE
+	    || arg3 == error_mark_node || arg3 == NULL_TREE)
+	return error_mark_node;
+
+      bool is_glvalue = TYPE_REF_P (result_type);
+      if (is_glvalue)
+	result_type = TREE_TYPE (result_type);
+      else
+	{
+	  arg2 = force_rvalue (arg2, complain);
+	  arg3 = force_rvalue (arg3, complain);
+	}
+
+      return build_conditional_expr_1(loc, TREE_TYPE(arg2), arg1, arg2, arg3,
+				      complain, result_type, NULL_TREE,
+				      is_glvalue);
+    }
+  else
+    {
+      releasing_vec call_args;
+      call_args->quick_push (arg1);
+      call_args->quick_push (arg2);
+      call_args->quick_push (arg3);
+      return cp_build_function_call_vec (fn, &call_args, complain);
+    }
+}
+
 /* Implement [expr.cond].  ARG1, ARG2, and ARG3 are the three
    arguments to the conditional expression.  */
 
@@ -6048,6 +6281,25 @@ build_conditional_expr (const op_location_t &loc,
       return build3_loc (loc, VEC_COND_EXPR, arg2_type, arg1, arg2, arg3);
     }
 
+  /* G++ extension: if the condition is not convertible to bool, attempt
+     to resolve the conditional as a call to user-defined operator?:.
+     This enables blend operations where the condition is e.g. a simd_mask.
+     Only try this when at least one operand has class type (so ADL or name
+     lookup can find an overload).  If no overload is found, fall through to
+     the normal "not convertible to bool" error below.  */
+  if (flag_overloadable_conditional
+	&& !can_convert_arg (boolean_type_node, TREE_TYPE (arg1), arg1,
+			     LOOKUP_NORMAL, complain)
+	&& (CLASS_TYPE_P (TREE_TYPE (arg1))
+	      || CLASS_TYPE_P (TREE_TYPE (arg2))
+	      || CLASS_TYPE_P (TREE_TYPE (arg3))))
+    {
+      result = build_user_defined_conditional_expr(loc, arg1, arg2, arg3,
+						   complain);
+      if (result != error_mark_node)
+	return result;
+    }
+
   /* [expr.cond]
 
      The first expression is implicitly converted to bool (clause
@@ -6170,7 +6422,9 @@ build_conditional_expr (const op_location_t &loc,
 	  return error_mark_node;
 	}
 
-      goto valid_operands;
+      return build_conditional_expr_1(loc, arg2_type, arg1, arg2, arg3,
+				      complain, result_type,
+				      semantic_result_type, is_glvalue);
     }
   /* [expr.cond]
 
@@ -6207,6 +6461,18 @@ build_conditional_expr (const op_location_t &loc,
 	  || (conv2 && conv2->kind == ck_ambig)
 	  || (conv3 && conv3->kind == ck_ambig))
 	{
+	  /* G++ extension: before rejecting interconvertible types, try
+	     user-defined operator?: overloads which may provide a common
+	     type via defaulted declaration.  We try both arg orders and let
+	     them compete in a single tournament.  */
+	  if (flag_overloadable_conditional)
+	    {
+	      result = build_user_defined_conditional_expr (loc, arg1, arg2,
+							    arg3, complain);
+	      if (result != error_mark_node)
+		return result;
+	    }
+
 	  if (complain & tf_error)
 	    {
 	      error_at (loc, "operands to %<?:%> have different types "
@@ -6281,8 +6547,9 @@ build_conditional_expr (const op_location_t &loc,
        || (xvalue_p (arg2) && xvalue_p (arg3)))
       && same_type_p (arg2_type, arg3_type))
     {
-      result_type = arg2_type;
-      goto valid_operands;
+      return build_conditional_expr_1(loc, arg2_type, arg1, arg2, arg3,
+				      complain, arg2_type, semantic_result_type,
+				      is_glvalue);
     }
 
   /* [expr.cond]
@@ -6320,6 +6587,17 @@ build_conditional_expr (const op_location_t &loc,
       candidates = splice_viable (candidates, false, &any_viable_p);
       if (!any_viable_p)
 	{
+	  /* G++ extension: try to resolve user-defined operator?: overloads
+	     found by ordinary name lookup and ADL.  We try both arg orders
+	     and let them compete in a single tournament.  */
+	  if (flag_overloadable_conditional)
+	    {
+	      result = build_user_defined_conditional_expr (loc, arg1, arg2,
+							    arg3, complain);
+	      if (result != error_mark_node)
+		return result;
+	    }
+
           if (complain & tf_error)
 	    error_at (loc, "operands to %<?:%> have different types %qT and %qT",
 		      arg2_type, arg3_type);
@@ -6582,56 +6860,9 @@ build_conditional_expr (const op_location_t &loc,
   if (arg2 == error_mark_node || arg3 == error_mark_node)
     return error_mark_node;
 
- valid_operands:
-  if (processing_template_decl && is_glvalue)
-    {
-      /* Let lvalue_kind know this was a glvalue.  */
-      tree arg = (result_type == arg2_type ? arg2 : arg3);
-      result_type = cp_build_reference_type (result_type, xvalue_p (arg));
-    }
-
-  result = build3_loc (loc, COND_EXPR, result_type, arg1, arg2, arg3);
-
-  /* If the ARG2 and ARG3 are the same and don't have side-effects,
-     warn here, because the COND_EXPR will be turned into ARG2.  */
-  if (warn_duplicated_branches
-      && (complain & tf_warning)
-      && (arg2 == arg3 || operand_equal_p (arg2, arg3,
-					   OEP_ADDRESS_OF_SAME_FIELD)))
-    warning_at (EXPR_LOCATION (result), OPT_Wduplicated_branches,
-		"this condition has identical branches");
-
-  /* We can't use result_type below, as fold might have returned a
-     throw_expr.  */
-
-  if (!is_glvalue)
-    {
-      /* Expand both sides into the same slot, hopefully the target of
-	 the ?: expression.  We used to check for TARGET_EXPRs here,
-	 but now we sometimes wrap them in NOP_EXPRs so the test would
-	 fail.  */
-      if (CLASS_TYPE_P (TREE_TYPE (result)))
-	{
-	  result = get_target_expr (result, complain);
-	  /* Tell gimplify_modify_expr_rhs not to strip this in
-	     assignment context: we want both arms to initialize
-	     the same temporary.  */
-	  TARGET_EXPR_NO_ELIDE (result) = true;
-	}
-      /* If this expression is an rvalue, but might be mistaken for an
-	 lvalue, we must add a NON_LVALUE_EXPR.  */
-      result = rvalue (result);
-      if (semantic_result_type)
-	result = build1 (EXCESS_PRECISION_EXPR, semantic_result_type,
-			 result);
-    }
-  else
-    {
-      result = force_paren_expr (result);
-      gcc_assert (semantic_result_type == NULL_TREE);
-    }
-
-  return result;
+  return build_conditional_expr_1(loc, arg2_type, arg1, arg2, arg3, complain,
+				  result_type, semantic_result_type,
+				  is_glvalue);
 }
 
 /* OPERAND is an operand to an expression.  Perform necessary steps
