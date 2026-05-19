@@ -13869,7 +13869,10 @@ joust (struct z_candidate *cand1, struct z_candidate *cand2, bool warn,
   /* or, if not that,
      F1 and F2 are template functions and the function template for F1 is
      more specialized than the template for F2 according to the partial
-     ordering rules.  */
+     ordering rules.
+     or, if not that,
+     F1 and F2 are template conditional operators where one is reversed and the
+     other isn't.  */
 
   if (cand1->template_decl && cand2->template_decl)
     {
@@ -13883,6 +13886,12 @@ joust (struct z_candidate *cand1, struct z_candidate *cand2, bool warn,
 	 cand1->num_convs + DECL_CONSTRUCTOR_P (cand1->fn));
       if (winner)
 	return winner;
+      if (cand1->reversed () != cand2->reversed ()
+	    && TREE_CODE (cand1->fn) == FUNCTION_DECL
+	    && TREE_CODE (cand2->fn) == FUNCTION_DECL
+	    && DECL_TI_TEMPLATE (cand1->fn) == DECL_TI_TEMPLATE (cand2->fn)
+	    && DECL_OVERLOADED_OPERATOR_IS (cand1->fn, COND_EXPR))
+	return cand1->reversed() ? -1 : 1;
     }
 
   /* F1 and F2 are non-template functions and

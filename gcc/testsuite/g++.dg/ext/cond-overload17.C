@@ -1,10 +1,11 @@
 // { dg-do run }
-// { dg-options "-std=c++20 -foverloadable-conditional" }
+// { dg-options "-std=c++20" }
 //
-// P2600 scenario: with -fno-overloadable-conditional, ADL for operator?:
-// is not performed, so Wrap<Incomplete> is not instantiated and the code
-// is well-formed. With -foverloadable-conditional (default), ADL would
-// attempt to instantiate Wrap<Incomplete>, which is ill-formed.
+// P2600 scenario: without name lookup for operator?:, ADL for operator?:
+// is never performed, so Wrap<Incomplete> is not instantiated and the code
+// is well-formed. With -foverloadable-conditional (default), make sure that no
+// name lookup / ADL is attempted for a built-in conditional operator, thus
+// keeping backwards compatibility.
 
 struct Incomplete;
 template <typename T> struct Wrap { T t; };
