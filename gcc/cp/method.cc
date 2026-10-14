@@ -1224,6 +1224,7 @@ check_defaulted_conditional (tree fn)
       return false;
     }
   tree t2 = TREE_VALUE (parms);
+  tree p2 = t2;  /* unstripped: value category of the branch at use site */
   parms = TREE_CHAIN (parms);
   if (!parms || parms == void_list_node)
     {
@@ -1231,8 +1232,9 @@ check_defaulted_conditional (tree fn)
       return false;
     }
   tree t3 = TREE_VALUE (parms);
+  tree p3 = t3;
 
-  /* Strip top-level reference qualifiers for the check.  */
+  /* Strip top-level reference qualifiers for the has_builtin_p check.  */
   while (TREE_CODE (t2) == REFERENCE_TYPE)
     t2 = TREE_TYPE (t2);
   while (TREE_CODE (t3) == REFERENCE_TYPE)
@@ -1266,15 +1268,16 @@ check_defaulted_conditional (tree fn)
      templates — we can't determine validity until instantiation.  */
   cp_unevaluated cp_uneval_guard;
 
-  for (tree argtype : { t2, t3 })
+  /* declval<P> gives the branch's real value category (by-value P is an rvalue).  */
+  for (tree p : { p2, p3 })
     {
-      tree expr = build_dummy_object (argtype);
+      tree expr = build_stub_object (p);
       tree result = perform_direct_initialization_if_possible
 		      (cond_result, expr, /*c_cast_p=*/true, tf_none);
       if (!result || result == error_mark_node)
 	{
 	  error_at (loc, "defaulted %qD: cannot convert %qT to %qT",
-		    fn, argtype, cond_result);
+		    fn, p, cond_result);
 	  return false;
 	}
     }
