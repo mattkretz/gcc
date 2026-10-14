@@ -3847,9 +3847,7 @@ add_template_candidate_real (struct z_candidate **candidates, tree tmpl,
       cp_unevaluated cp_uneval_guard;
       for (tree argtype : { t2, t3 })
 	{
-	  while (TREE_CODE (argtype) == REFERENCE_TYPE)
-	    argtype = TREE_TYPE (argtype);
-	  tree expr = build_dummy_object (argtype);
+	  tree expr = build_stub_object (argtype);
 	  tree result = perform_direct_initialization_if_possible
 			  (cond_result, expr, /*c_cast_p=*/true, tf_none);
 	  if (!result || result == error_mark_node)
