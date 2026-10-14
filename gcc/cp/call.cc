@@ -6068,7 +6068,14 @@ build_user_defined_conditional_expr (const op_location_t &loc,
 
       bool is_glvalue = TYPE_REF_P (result_type);
       if (is_glvalue)
-	result_type = TREE_TYPE (result_type);
+	{
+	  result_type = TREE_TYPE (result_type);
+	  /* A glvalue COND_EXPR needs lvalue referents as branches, not the
+	     reference-typed direct-initializations.  The built-in lvalue ?:
+	     uses lvalues of the referenced type.  */
+	  arg2 = convert_from_reference (arg2);
+	  arg3 = convert_from_reference (arg3);
+	}
       else
 	{
 	  arg2 = force_rvalue (arg2, complain);
