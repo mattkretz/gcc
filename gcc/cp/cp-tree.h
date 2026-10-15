@@ -7370,6 +7370,7 @@ extern bool can_convert_arg			(tree, tree, tree, int,
 						 tsubst_flags_t);
 extern bool can_convert_arg_bad			(tree, tree, tree, int,
 						 tsubst_flags_t);
+extern bool builtin_conditional_viable_p		(tree, tree);
 extern int conv_flags				(int, int, tree, tree, int);
 extern struct conversion * good_conversion	(tree, tree, tree, int, tsubst_flags_t);
 extern location_t get_fndecl_argument_location  (tree, int);
@@ -7977,7 +7978,6 @@ extern uintptr_t module_token_lang (int type, int keyword, tree value,
 				    location_t, uintptr_t);
 
 /* in method.cc */
-extern bool conditional_operator_has_builtin_p	(tree, tree);
 extern void init_method				(void);
 extern tree make_thunk				(tree, bool, tree, tree);
 extern void finish_thunk			(tree);
