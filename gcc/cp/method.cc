@@ -1164,33 +1164,6 @@ genericize_spaceship (location_t loc, tree type, tree op0, tree op1)
   return r;
 }
 
-/* Return true when a built-in operator?: already exists for types T2 and T3.
-   This is the case when: (a) neither is a class type, (b) the types are the
-   same, or (c) one implicitly converts to the other.  In these cases the
-   standard conditional expression rules provide a common type, so a user-
-   defined overload would be ill-formed.  T2 and T3 should already have
-   reference qualifiers stripped.  */
-
-bool
-conditional_operator_has_builtin_p (tree t2, tree t3)
-{
-  /* At least one must be a class type, otherwise the standard already
-     handles the common type (arithmetic/enum/pointer).  */
-  if (!CLASS_TYPE_P (t2) && !CLASS_TYPE_P (t3))
-    return true;
-
-  /* If the types are the same, common type exists.  */
-  if (same_type_p (t2, t3))
-    return true;
-
-  /* If one type implicitly converts to the other, common type exists.  */
-  if (can_convert_arg (t3, t2, NULL_TREE, LOOKUP_NORMAL, tf_none)
-      || can_convert_arg (t2, t3, NULL_TREE, LOOKUP_NORMAL, tf_none))
-    return true;
-
-  return false;
-}
-
 /* Check that a defaulted operator?: is valid.  FN has exactly 3
    parameters: (bool, B, C).  Reject if a common type already exists
    for B and C under the standard conditional expression rules.  */
@@ -1223,22 +1196,14 @@ check_defaulted_conditional (tree fn)
       error_at (loc, "defaulted %qD requires three parameters", fn);
       return false;
     }
-  tree t2 = TREE_VALUE (parms);
-  tree p2 = t2;  /* unstripped: value category of the branch at use site */
+  tree p2 = TREE_VALUE (parms);
   parms = TREE_CHAIN (parms);
   if (!parms || parms == void_list_node)
     {
       error_at (loc, "defaulted %qD requires three parameters", fn);
       return false;
     }
-  tree t3 = TREE_VALUE (parms);
-  tree p3 = t3;
-
-  /* Strip top-level reference qualifiers for the has_builtin_p check.  */
-  while (TREE_CODE (t2) == REFERENCE_TYPE)
-    t2 = TREE_TYPE (t2);
-  while (TREE_CODE (t3) == REFERENCE_TYPE)
-    t3 = TREE_TYPE (t3);
+  tree p3 = TREE_VALUE (parms);
 
   /* Check whether a built-in operator?: already exists for these types.
      Skip inside template declarations — we don't know instantiated types
@@ -1247,16 +1212,16 @@ check_defaulted_conditional (tree fn)
      templates anyway.  */
   if (!template_parm_scope_p ()
       && !DECL_TEMPLATE_SPECIALIZATION (fn)
-      && conditional_operator_has_builtin_p (t2, t3))
+      && builtin_conditional_viable_p (p2, p3))
     {
       error_at (loc, "%qD: built-in operator?: already exists for %qT and %qT",
-		fn, t2, t3);
+		fn, p2, p3);
       return false;
     }
 
   tree cond_result = TREE_TYPE (TREE_TYPE (fn));
-  if (dependent_type_p (cond_result) || dependent_type_p (t2)
-	|| dependent_type_p (t3))
+  if (dependent_type_p (cond_result) || dependent_type_p (p2)
+	|| dependent_type_p (p3))
     return true;
 
   /* Verify that each argument type can be directly-initialized to the

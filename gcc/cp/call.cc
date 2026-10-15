@@ -5895,6 +5895,42 @@ conditional_conversion (tree e1, tree e2, tsubst_flags_t complain)
 				LOOKUP_IMPLICIT, complain);
 }
 
+/* Return true when a built-in conditional operator is viable for branch
+   operands of the (unstripped) types T2 and T3, i.e. the standard
+   conditional expression [expr.cond] determines a result type for them.
+   This is the case when: (a) neither is a class type, (b) the types are the
+   same, or (c) exactly one operand converts to match the other (the "convert
+   one operand to the type of the other" rule, which for glvalue branches
+   binds through a reference).  When both operands convert (interconvertible
+   types) or neither does, no built-in common type exists, so return false.  */
+
+bool
+builtin_conditional_viable_p (tree t2, tree t3)
+{
+  tree plain2 = non_reference (t2);
+  tree plain3 = non_reference (t3);
+
+  /* At least one must be a class type, otherwise the standard already
+     handles the common type (arithmetic/enum/pointer).  */
+  if (!CLASS_TYPE_P (plain2) && !CLASS_TYPE_P (plain3))
+    return true;
+
+  /* If the types are the same, common type exists.  */
+  if (same_type_p (plain2, plain3))
+    return true;
+
+  tree e2 = build_stub_object (t2);
+  tree e3 = build_stub_object (t3);
+  conversion *conv2 = conditional_conversion (e2, e3, tf_none);
+  conversion *conv3 = conditional_conversion (e3, e2, tf_none);
+  bool conv2_good = conv2 && !conv2->bad_p;
+  bool conv3_good = conv3 && !conv3->bad_p;
+  bool ill_formed = (conv2_good && conv3_good)
+    || (conv2 && conv2->kind == ck_ambig)
+    || (conv3 && conv3->kind == ck_ambig);
+  return (conv2_good || conv3_good) && !ill_formed;
+}
+
 /* Return a built-in conditional operator applied to ARG1, ARG2, ARG3.  */
 
 static tree

@@ -18239,11 +18239,7 @@ grok_op_properties (tree decl, bool complain)
 	    {
 	      tree cond_t2 = TREE_VALUE (TREE_CHAIN (argtypes));
 	      tree cond_t3 = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (argtypes)));
-	      while (TREE_CODE (cond_t2) == REFERENCE_TYPE)
-		cond_t2 = TREE_TYPE (cond_t2);
-	      while (TREE_CODE (cond_t3) == REFERENCE_TYPE)
-		cond_t3 = TREE_TYPE (cond_t3);
-	      if (conditional_operator_has_builtin_p (cond_t2, cond_t3))
+	      if (builtin_conditional_viable_p (cond_t2, cond_t3))
 		{
 		  error_at (loc, "%qD: built-in operator?: already exists "
 				 "for %qT and %qT", decl, cond_t2, cond_t3);
