@@ -1727,6 +1727,15 @@ namespace simd
 		}
 	    }
 	}
+
+      // [simd.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      template <_TargetTraits _Traits = {}>
+	[[__gnu__::__always_inline__]]
+	friend constexpr basic_vec
+	operator?:(const mask_type& __k, const basic_vec& __t, const basic_vec& __f) noexcept
+	{ return __select_impl(__k, __t, __f); }
+#endif
     };
 
   template <__vectorizable _Tp, __abi_tag _Ap>
@@ -2238,6 +2247,17 @@ namespace simd
 	return _S_init(__select_impl(__k._M_data0, __t._M_data0, __f._M_data0),
 		       __select_impl(__k._M_data1, __t._M_data1, __f._M_data1));
       }
+
+      // [simd.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_vec
+      operator?:(const mask_type& __k, const basic_vec& __t, const basic_vec& __f) noexcept
+      {
+	return _S_init(__select_impl(__k._M_data0, __t._M_data0, __f._M_data0),
+		       __select_impl(__k._M_data1, __t._M_data1, __f._M_data1));
+      }
+#endif
     };
 
   // [simd.overview] deduction guide ------------------------------------------
