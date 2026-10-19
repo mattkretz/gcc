@@ -1265,7 +1265,9 @@ namespace simd
       friend constexpr basic_mask
       __select_impl(const basic_mask& __k, const basic_mask& __t, const basic_mask& __f) noexcept
       {
-	if constexpr (!_S_use_bitmask)
+	if constexpr (_S_is_scalar)
+	  return __k._M_data ? __t : __f;
+	else if constexpr (!_S_use_bitmask)
 	  {
 #if _GLIBCXX_X86
 	    // this works around bad code-gen when the compiler can't see that __k is a vector-mask.
@@ -1306,6 +1308,55 @@ namespace simd
 	    }
 	}
 
+      // [simd.mask.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, const basic_mask& __t, const basic_mask& __f) noexcept
+      {
+	if constexpr (_S_is_scalar)
+	  return __k._M_data ? __t : __f;
+	else if constexpr (!_S_use_bitmask)
+	  {
+#if _GLIBCXX_X86
+	    // this works around bad code-gen when the compiler can't see that __k is a vector-mask.
+	    // This pattern, is recognized to match the x86 blend instructions, which only consider
+	    // the sign bit of the mask register. Also, without SSE4, if the compiler knows that __k
+	    // is a vector-mask, then the '< 0' is elided.
+	    return __k._M_data < 0 ? __t._M_data : __f._M_data;
+#endif
+	    return __k._M_data ? __t._M_data : __f._M_data;
+	  }
+	else
+	  return (__k._M_data & __t._M_data) | (~__k._M_data & __f._M_data);
+      }
+
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, same_as<bool> auto __t, same_as<bool> auto __f) noexcept
+      {
+	if (__t == __f)
+	  return basic_mask(__t);
+	else
+	  return __t ? __k : !__k;
+      }
+
+      template <__vectorizable _T0, same_as<_T0> _T1>
+	requires (sizeof(_T0) == _Bytes)
+	[[__gnu__::__always_inline__]]
+	friend constexpr vec<_T0, _S_size>
+	operator?:(const basic_mask& __k, const _T0& __t, const _T1& __f) noexcept
+	{
+	  if constexpr (_S_is_scalar)
+	    return __k._M_data ? __t : __f;
+	  else
+	    {
+	      using _Vp = vec<_T0, _S_size>;
+	      using _Mp = typename _Vp::mask_type;
+	      return __select_impl(_Mp(__k), _Vp(__t), _Vp(__f));
+	    }
+	}
+#endif
       // [simd.mask.reductions] implementation --------------------------------
       [[__gnu__::__always_inline__]]
       constexpr bool
@@ -1997,6 +2048,43 @@ namespace simd
 				__select_impl(__k._M_data1, __t, __f));
 	}
 
+      // [simd.mask.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, const basic_mask& __t, const basic_mask& __f) noexcept
+      {
+	return _S_init(__select_impl(__k._M_data0, __t._M_data0, __f._M_data0),
+		       __select_impl(__k._M_data1, __t._M_data1, __f._M_data1));
+      }
+
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, same_as<bool> auto __t, same_as<bool> auto __f) noexcept
+      {
+	if (__t == __f)
+	  return basic_mask(__t);
+	else
+	  return __t ? __k : !__k;
+      }
+
+      template <__vectorizable _T0, same_as<_T0> _T1>
+	requires (sizeof(_T0) == _Bytes)
+	[[__gnu__::__always_inline__]]
+	friend constexpr vec<_T0, _S_size>
+	operator?:(const basic_mask& __k, const _T0& __t, const _T1& __f) noexcept
+	{
+	  using _Vp = vec<_T0, _S_size>;
+	  if constexpr (!is_same_v<basic_mask, typename _Vp::mask_type>)
+	    return __select_impl(static_cast<_Vp::mask_type>(__k), __t, __f);
+	  else if constexpr (__complex_like<_T0>)
+	    return _Vp::_S_concat(__select_impl(__k._M_data0, __t, __f),
+				  __select_impl(__k._M_data1, __t, __f));
+	  else
+	    return _Vp::_S_init(__select_impl(__k._M_data0, __t, __f),
+				__select_impl(__k._M_data1, __t, __f));
+	}
+#endif
       template <_ArchTraits _Traits = {}>
 	[[__gnu__::__always_inline__]]
 	constexpr bool

@@ -766,6 +766,28 @@ namespace simd
 	  return __select_impl(static_cast<typename _Vp::mask_type>(__k), _Vp(__t), _Vp(__f));
 	}
 
+      // [simd.mask.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, const basic_mask& __t, const basic_mask& __f) noexcept
+      { return _S_init(__select_impl(__k._M_data, __t._M_data, __f._M_data)); }
+
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, same_as<bool> auto __t, same_as<bool> auto __f) noexcept
+      { return _S_init(__select_impl(__k._M_data, __t, __f)); }
+
+      template <__vectorizable _T0, same_as<_T0> _T1>
+	requires (sizeof(_T0) == _Bytes)
+	[[__gnu__::__always_inline__]]
+	friend constexpr vec<_T0, _S_size>
+	operator?:(const basic_mask& __k, const _T0& __t, const _T1& __f) noexcept
+	{
+	  using _Vp = vec<_T0, _S_size>;
+	  return __select_impl(static_cast<typename _Vp::mask_type>(__k), _Vp(__t), _Vp(__f));
+	}
+#endif
       // [simd.mask.reductions] implementation --------------------------------
       [[__gnu__::__always_inline__]]
       constexpr bool
@@ -1260,6 +1282,13 @@ namespace simd
       __select_impl(const mask_type& __k, const basic_vec& __t, const basic_vec& __f) noexcept
       { return _S_init(__select_impl(__k._M_data, __t._M_data, __f._M_data)); }
 
+      // [simd.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_vec
+      operator?:(const mask_type& __k, const basic_vec& __t, const basic_vec& __f) noexcept
+      { return _S_init(__select_impl(__k._M_data, __t._M_data, __f._M_data)); }
+#endif
       // [simd.complex.math] internals ---------------------------------------
       [[__gnu__::__always_inline__]]
       constexpr _RealSimd
@@ -1728,6 +1757,28 @@ namespace simd
 	  return __select_impl(static_cast<typename _Vp::mask_type>(__k), _Vp(__t), _Vp(__f));
 	}
 
+      // [simd.mask.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, const basic_mask& __t, const basic_mask& __f) noexcept
+      { return __select_impl(__k._M_data, __t._M_data, __f._M_data); }
+
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_mask
+      operator?:(const basic_mask& __k, same_as<bool> auto __t, same_as<bool> auto __f) noexcept
+      { return _S_init(__select_impl(__k._M_data, __t, __f)); }
+
+      template <__vectorizable _T0, same_as<_T0> _T1>
+	requires (sizeof(_T0) == _Bytes)
+	[[__gnu__::__always_inline__]]
+	friend constexpr vec<_T0, _S_size>
+	operator?:(const basic_mask& __k, const _T0& __t, const _T1& __f) noexcept
+	{
+	  using _Vp = vec<_T0, _S_size>;
+	  return __select_impl(static_cast<typename _Vp::mask_type>(__k), _Vp(__t), _Vp(__f));
+	}
+#endif
       // [simd.mask.reductions] implementation --------------------------------
       [[__gnu__::__always_inline__]]
       constexpr bool
@@ -2287,6 +2338,17 @@ namespace simd
 			 __select_impl(__kk, __t._M_imag, __f._M_imag));
       }
 
+      // [simd.cond] operator?: (P0917) — mirrors __select_impl
+#ifdef __GXX_CONDITIONAL_IS_OVERLOADABLE__
+      [[__gnu__::__always_inline__]]
+      friend constexpr basic_vec
+      operator?:(const mask_type& __k, const basic_vec& __t, const basic_vec& __f) noexcept
+      {
+	typename basic_vec::_RealSimd::mask_type __kk(__k);
+	return basic_vec(__select_impl(__kk, __t._M_real, __f._M_real),
+			 __select_impl(__kk, __t._M_imag, __f._M_imag));
+      }
+#endif
       // [simd.complex.math] internals ---------------------------------------
       [[__gnu__::__always_inline__]]
       constexpr _RealSimd
