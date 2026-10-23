@@ -1224,8 +1224,11 @@ check_defaulted_conditional (tree fn)
 	|| dependent_type_p (p3))
     return true;
 
-  /* Verify that each argument type can be directly-initialized to the
-     return type.  This catches cases like:
+  /* Verify that each branch can be converted to the return type via
+     static_cast.  For a value return type this permits built-in narrowing
+     conversions such as float -> std::float16_t and explicit conversions;
+     for a reference return type it performs reference binding.  This
+     catches cases like:
 
        C& operator?:(bool, A&, B&) = default;
 
@@ -1237,8 +1240,7 @@ check_defaulted_conditional (tree fn)
   for (tree p : { p2, p3 })
     {
       tree expr = build_stub_object (p);
-      tree result = perform_direct_initialization_if_possible
-		      (cond_result, expr, /*c_cast_p=*/true, tf_none);
+      tree result = build_static_cast (loc, cond_result, expr, tf_none);
       if (!result || result == error_mark_node)
 	{
 	  error_at (loc, "defaulted %qD: cannot convert %qT to %qT",
@@ -1941,10 +1943,10 @@ synthesize_method (tree fndecl)
       arg2 = convert_from_reference (arg2);
       arg3 = convert_from_reference (arg3);
 
-      arg2 = perform_direct_initialization_if_possible
-	       (rettype, arg2, true, tf_warning_or_error);
-      arg3 = perform_direct_initialization_if_possible
-	       (rettype, arg3, true, tf_warning_or_error);
+      arg2 = build_static_cast
+		    (input_location, rettype, arg2, tf_warning_or_error);
+      arg3 = build_static_cast
+		    (input_location, rettype, arg3, tf_warning_or_error);
 
       if (!TYPE_REF_P (rettype))
 	{

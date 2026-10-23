@@ -3829,7 +3829,7 @@ add_template_candidate_real (struct z_candidate **candidates, tree tmpl,
     }
 
   /* For a defaulted operator?: template instantiation, re-check that
-     arg2 and arg3 can be directly-initialized to the return type.
+     arg2 and arg3 can be converted to the return type via static_cast.
      This was skipped at definition time for dependent types; now that
      we have concrete types, failure here means SFINAE elimination.  */
   if (DECL_DEFAULTED_FN (fn)
@@ -3848,8 +3848,8 @@ add_template_candidate_real (struct z_candidate **candidates, tree tmpl,
       for (tree argtype : { t2, t3 })
 	{
 	  tree expr = build_stub_object (argtype);
-	  tree result = perform_direct_initialization_if_possible
-			  (cond_result, expr, /*c_cast_p=*/true, tf_none);
+	  tree result = build_static_cast
+			(input_location, cond_result, expr, tf_none);
 	  if (!result || result == error_mark_node)
 	    {
 	      reason = template_unification_rejection (tmpl, explicit_targs,
@@ -6093,10 +6093,8 @@ build_user_defined_conditional_expr (const op_location_t &loc,
       tree arg2_unref = convert_from_reference (arg2);
       tree arg3_unref = convert_from_reference (arg3);
 
-      arg2 = perform_direct_initialization_if_possible
-	       (result_type, arg2_unref, /*c_cast_p=*/true, complain);
-      arg3 = perform_direct_initialization_if_possible
-	       (result_type, arg3_unref, /*c_cast_p=*/true, complain);
+      arg2 = build_static_cast (loc, result_type, arg2_unref, complain);
+      arg3 = build_static_cast (loc, result_type, arg3_unref, complain);
 
       if (arg2 == error_mark_node || arg2 == NULL_TREE
 	    || arg3 == error_mark_node || arg3 == NULL_TREE)
@@ -6107,7 +6105,7 @@ build_user_defined_conditional_expr (const op_location_t &loc,
 	{
 	  result_type = TREE_TYPE (result_type);
 	  /* A glvalue COND_EXPR needs lvalue referents as branches, not the
-	     reference-typed direct-initializations.  The built-in lvalue ?:
+	     reference-typed results of the cast above.  The built-in lvalue ?:
 	     uses lvalues of the referenced type.  */
 	  arg2 = convert_from_reference (arg2);
 	  arg3 = convert_from_reference (arg3);
