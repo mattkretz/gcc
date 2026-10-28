@@ -1236,7 +1236,8 @@ check_defaulted_conditional (tree fn)
      templates — we can't determine validity until instantiation.  */
   cp_unevaluated cp_uneval_guard;
 
-  /* declval<P> gives the branch's real value category (by-value P is an rvalue).  */
+  /* declval<P> gives the branch's real value category (by-value P is an
+     rvalue).  */
   for (tree p : { p2, p3 })
     {
       tree expr = build_stub_object (p);
@@ -1929,19 +1930,19 @@ synthesize_method (tree fndecl)
   else if (sfk == sfk_conditional)
     {
       /* Defaulted operator?: may be called as a function when its address is
-	 taken. Synthesize: return cond ? R(arg2) : R(arg3);
-	 where R is the return type.  */
+	 taken. Synthesize:
+	 return cond ? static_cast<R>(forward(arg2))
+		     : static_cast<R>(forward(arg3));
+	 where R is the return type and each branch is forwarded with its
+	 declared value category.  */
       tree args = DECL_ARGUMENTS (fndecl);
       tree cond = args;
       tree arg2 = DECL_CHAIN (args);
       tree arg3 = DECL_CHAIN (arg2);
       tree rettype = TREE_TYPE (TREE_TYPE (fndecl));
 
-      /* Strip reference type from parameters before conversion, matching
-	 what apply_user_defined_conditional does.  implicit_conversion
-	 asserts the argument type is not a reference.  */
-      arg2 = convert_from_reference (arg2);
-      arg3 = convert_from_reference (arg3);
+      arg2 = forward_parm (arg2);
+      arg3 = forward_parm (arg3);
 
       arg2 = build_static_cast
 		    (input_location, rettype, arg2, tf_warning_or_error);
